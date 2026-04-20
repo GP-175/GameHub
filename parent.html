@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="description" content="Parent dashboard for GameHub. Manage kids' profiles and track educational progress." />
+<title>Parent Dashboard – GameHub</title>
+
+<!-- PWA + iOS home-screen -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css" />
+<script src="assets/hub.js" defer></script>
+<style>
+  .panel { margin-bottom: 28px; }
+  .panel h2 { margin-bottom: 14px; }
+  .profile-row {
+    display: flex; align-items: center; gap: 14px;
+    background: white; border-radius: 16px; padding: 14px;
+    box-shadow: var(--shadow);
+    margin-bottom: 10px;
+  }
+  .profile-row .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    color: white; font-weight: 800; display: grid; place-items: center;
+  }
+  .games-toggles { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-top: 8px; }
+  .toggle-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px; background: var(--accent-soft); border-radius: 12px;
+  }
+  .toggle-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
+  .toggle-row .ic { font-size: 1.3rem; }
+  .toggle-row label { font-weight: 700; cursor: pointer; }
+  .pin-input { letter-spacing: .5em; text-align: center; font-size: 1.4rem; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="logo">G</span> Parent</div>
+  <nav>
+    <a href="index.html">Back to Hub</a>
+  </nav>
+</header>
+
+<main class="container">
+
+  <!-- Lock screen -->
+  <section id="view-lock" class="hidden">
+    <div class="card" style="max-width:420px;margin:60px auto;text-align:center;">
+      <h1>Parent only</h1>
+      <p class="muted">Enter PIN to continue. (Default: 1234)</p>
+      <div class="form-row">
+        <input id="pin" class="input pin-input" type="password" inputmode="numeric"
+               pattern="[0-9]*" maxlength="8" placeholder="••••" autofocus />
+      </div>
+      <button class="btn btn-big" id="unlock">Unlock</button>
+      <p id="pin-err" class="feedback bad hidden">Wrong PIN — try again.</p>
+    </div>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="view-dash" class="hidden">
+
+    <div class="panel" id="profiles">
+      <h2>Kids</h2>
+      <div id="profile-list"></div>
+
+      <details class="card" style="margin-top:14px;">
+        <summary style="cursor:pointer;font-weight:800;">+ Add a new kid</summary>
+        <div class="form-row" style="margin-top:14px;">
+          <label>Name</label>
+          <input id="new-name" class="input" placeholder="e.g. Ada" maxlength="24" />
+        </div>
+        <div class="form-row">
+          <label>Age group</label>
+          <select id="new-age">
+            <option value="toddler">Toddler (2–4)</option>
+            <option value="early-elem" selected>Early Elementary (5–7)</option>
+          </select>
+        </div>
+        <button class="btn" id="add-kid">Add kid</button>
+      </details>
+    </div>
+
+    <div class="panel">
+      <h2>Progress</h2>
+      <div id="progress-report"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Settings</h2>
+      <div class="card">
+        <div class="form-row">
+          <label>Change parent PIN</label>
+          <div class="row">
+            <input id="new-pin" class="input pin-input" maxlength="8" placeholder="new PIN" style="max-width:160px;" />
+            <button class="btn btn-soft" id="save-pin">Save PIN</button>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Reset progress</label>
+          <div class="row">
+            <button class="btn btn-bad" id="reset-all">Reset all progress</button>
+            <span class="muted">Clears scores and time played for every kid. Profiles are kept.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  window.addEventListener('DOMContentLoaded', () => {
+    show('view-lock');
+    $('pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
+    $('unlock').onclick = tryUnlock;
+  });
+
+
+
+  function tryUnlock() {
+    const v = $('pin').value.trim();
+    if (v === Hub.getPin()) {
+      show('view-dash');
+      renderAll();
+    } else {
+      $('pin-err').classList.remove('hidden');
+      $('pin').value = ''; $('pin').focus();
+    }
+  }
+
+  function renderAll() {
+    renderProfiles();
+    renderProgress();
+    bindSettings();
+  }
+
+  function renderProfiles() {
+    const list = $('profile-list');
+    list.innerHTML = '';
+    const profiles = Hub.getProfiles();
+
+    if (profiles.length === 0) {
+      list.innerHTML = '<p class="muted">No kids yet. Add one below.</p>';
+    }
+
+    profiles.forEach(p => {
+      const row = document.createElement('div');
+      row.className = 'card';
+      row.style.marginBottom = '12px';
+      const toggles = Hub.GAMES
+        .filter(g => g.ageGroups.includes(p.ageGroup))
+        .map(g => {
+          const enabled = Hub.isGameEnabled(p.id, g.id);
+          return `<div class="toggle-row">
+            <input type="checkbox" id="tg-${p.id}-${g.id}" ${enabled ? 'checked' : ''}
+                   data-pid="${p.id}" data-gid="${g.id}" />
+            <span class="ic">${g.icon}</span>
+            <label for="tg-${p.id}-${g.id}">${escapeHtml(g.title)}</label>
+          </div>`;
+        }).join('');
+
+      row.innerHTML = `
+        <div class="profile-row" style="box-shadow:none;padding:0;margin:0;">
+          <div class="avatar" style="background:${p.color}">${initials(p.name)}</div>
+          <div style="flex:1">
+            <input class="input" style="max-width:240px;display:inline-block;"
+                   data-role="rename" data-pid="${p.id}" value="${escapeHtml(p.name)}" maxlength="24" />
+            <select data-role="age" data-pid="${p.id}" style="max-width:220px;display:inline-block;margin-left:8px;">
+              <option value="toddler"${p.ageGroup==='toddler'?' selected':''}>Toddler (2–4)</option>
+              <option value="early-elem"${p.ageGroup==='early-elem'?' selected':''}>Early Elementary (5–7)</option>
+            </select>
+          </div>
+          <button class="btn btn-bad" data-role="remove" data-pid="${p.id}">Remove</button>
+        </div>
+        <h3 style="margin:18px 0 4px;font-size:1rem;">Enabled games</h3>
+        <div class="games-toggles">${toggles || '<span class="muted">No games match this age group yet.</span>'}</div>
+      `;
+      list.appendChild(row);
+    });
+
+    // wire toggles / rename / age / remove
+    list.querySelectorAll('input[type=checkbox][data-pid]').forEach(cb => {
+      cb.onchange = () => {
+        Hub.setGameEnabled(cb.dataset.pid, cb.dataset.gid, cb.checked);
+        toast(cb.checked ? 'Game enabled' : 'Game disabled');
+      };
+    });
+    list.querySelectorAll('input[data-role=rename]').forEach(inp => {
+      inp.onchange = () => {
+        Hub.updateProfile(inp.dataset.pid, { name: inp.value.trim() || 'Kid' });
+        toast('Name saved');
+      };
+    });
+    list.querySelectorAll('select[data-role=age]').forEach(sel => {
+      sel.onchange = () => {
+        Hub.updateProfile(sel.dataset.pid, { ageGroup: sel.value });
+        renderAll(); // age change changes available games
+        toast('Age group updated');
+      };
+    });
+    list.querySelectorAll('button[data-role=remove]').forEach(btn => {
+      btn.onclick = () => {
+        const p = Hub.getProfiles().find(x => x.id === btn.dataset.pid);
+        if (!p) return;
+        if (confirm(`Remove ${p.name}? This deletes their progress too.`)) {
+          Hub.removeProfile(p.id);
+          renderAll();
+          toast('Profile removed');
+        }
+      };
+    });
+
+    // add kid
+    $('add-kid').onclick = () => {
+      const name = $('new-name').value.trim();
+      if (!name) { toast('Enter a name first'); return; }
+      Hub.addProfile({ name, ageGroup: $('new-age').value });
+      $('new-name').value = '';
+      renderAll();
+      toast('Kid added');
+    };
+  }
+
+  function renderProgress() {
+    const container = $('progress-report');
+    const profiles = Hub.getProfiles();
+    if (profiles.length === 0) {
+      container.innerHTML = '<p class="muted">No kids yet — add one above to see progress.</p>';
+      return;
+    }
+
+    container.innerHTML = profiles.map(p => {
+      const rows = Hub.GAMES
+        .filter(g => g.ageGroups.includes(p.ageGroup))
+        .map(g => {
+          const pr = Hub.getProgress(p.id, g.id);
+          return `<tr>
+            <td><span style="font-size:1.2rem">${g.icon}</span> ${escapeHtml(g.title)}</td>
+            <td>${pr.plays || 0}</td>
+            <td>${pr.bestScore ? pr.bestScore + '%' : '—'}</td>
+            <td>${formatDuration(pr.totalSeconds)}</td>
+            <td>${pr.lastPlayed ? formatDate(pr.lastPlayed) : '—'}</td>
+          </tr>`;
+        }).join('');
+
+      return `<div class="card" style="margin-bottom:14px;">
+        <div class="row">
+          <div class="avatar" style="background:${p.color};width:36px;height:36px;border-radius:50%;color:white;font-weight:800;display:grid;place-items:center;">
+            ${initials(p.name)}
+          </div>
+          <h3 style="margin:0;">${escapeHtml(p.name)}</h3>
+          <span class="badge">${ageLabel(p.ageGroup)}</span>
+          <span class="spacer"></span>
+          <button class="btn btn-ghost" data-reset="${p.id}">Reset this kid</button>
+        </div>
+        <table class="table" style="margin-top:12px;">
+          <thead><tr><th>Game</th><th>Plays</th><th>Best</th><th>Time</th><th>Last played</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    container.querySelectorAll('button[data-reset]').forEach(btn => {
+      btn.onclick = () => {
+        if (confirm('Reset progress for this kid?')) {
+          Hub.resetProgress(btn.dataset.reset);
+          renderAll();
+          toast('Progress reset');
+        }
+      };
+    });
+  }
+
+  function bindSettings() {
+    $('save-pin').onclick = () => {
+      const p = $('new-pin').value.trim();
+      if (!/^\d{4,8}$/.test(p)) { toast('PIN must be 4–8 digits'); return; }
+      Hub.setPin(p);
+      $('new-pin').value = '';
+      toast('PIN saved');
+    };
+    $('reset-all').onclick = () => {
+      if (confirm('Reset ALL progress for every kid? This cannot be undone.')) {
+        Hub.resetProgress();
+        renderAll();
+        toast('All progress reset');
+      }
+    };
+  }
+
+  // ---------- helpers ----------
+  function formatDuration(s){ if(!s) return '—'; const m=Math.floor(s/60), r=s%60; return m?`${m}m ${r}s`:`${r}s`; }
+  function formatDate(iso){ const d=new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+</script>
+
+</body>
+</html>

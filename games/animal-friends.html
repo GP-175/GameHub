@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Animal Friends – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .choice.animal { font-size: 4.4rem; padding: 18px; min-height: 150px; background: white; }
+  .choice.animal.correct { background: var(--good); }
+  .choice.animal.wrong   { background: var(--bad); }
+  .target-card {
+    background: white; border-radius: 22px; padding: 18px 28px;
+    display: inline-flex; align-items: center; gap: 18px;
+    box-shadow: var(--shadow);
+  }
+  .target-card .ltr {
+    width: 56px; height: 56px; border-radius: 14px;
+    background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-weight: 900; font-size: 2rem;
+  }
+  .target-card .name { font-size: 1.6rem; font-weight: 800; text-transform: capitalize; }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🐾 Animal Friends</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt">Tap the matching animal!</div>
+    <div class="target-card">
+      <span class="ltr" id="target-letter">A</span>
+      <span class="name" id="target-name">animal</span>
+    </div>
+    <div class="choices" id="choices" style="max-width:680px;"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const ANIMALS = [
+  { name: 'cat',    em: '🐱' },
+  { name: 'dog',    em: '🐶' },
+  { name: 'cow',    em: '🐮' },
+  { name: 'pig',    em: '🐷' },
+  { name: 'duck',   em: '🦆' },
+  { name: 'frog',   em: '🐸' },
+  { name: 'bear',   em: '🐻' },
+  { name: 'lion',   em: '🦁' },
+  { name: 'monkey', em: '🐵' },
+  { name: 'fish',   em: '🐠' },
+  { name: 'bird',   em: '🐦' },
+  { name: 'horse',  em: '🐴' },
+  { name: 'sheep',  em: '🐑' },
+  { name: 'rabbit', em: '🐰' },
+  { name: 'owl',    em: '🦉' },
+  { name: 'fox',    em: '🦊' },
+];
+
+const TOTAL_ROUNDS = 8;
+let round = 0, correct = 0, locked = false, target = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('animal-friends');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('animal-friends');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++;
+  locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+
+  const pool = [...ANIMALS].sort(() => Math.random() - 0.5);
+  target = pool[0];
+  const choices = pool.slice(0, 4).sort(() => Math.random() - 0.5);
+
+  document.getElementById('target-letter').textContent = target.name[0].toUpperCase();
+  document.getElementById('target-name').textContent = target.name;
+  Hub.speak('Find the ' + target.name);
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'choice animal';
+    b.textContent = c.em;
+    b.setAttribute('aria-label', c.name);
+    b.onclick = () => onPick(b, c);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, choice) {
+  if (locked) return;
+  locked = true;
+  if (choice.name === target.name) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Yes! ' + target.name + '!';
+    document.getElementById('feedback').className = 'feedback good';
+    Hub.speak('Yes! ' + target.name);
+    setTimeout(nextRound, 900);
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'That is a ' + choice.name + '. Try again!';
+    document.getElementById('feedback').className = 'feedback bad';
+    Hub.speak('That is a ' + choice.name);
+    setTimeout(() => { btn.classList.remove('wrong'); locked = false; }, 800);
+  }
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+  Hub.speak(msg);
+}
+</script>
+</body>
+</html>

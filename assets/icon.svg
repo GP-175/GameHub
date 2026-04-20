@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="GameHub">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8a5cf5"/>
+      <stop offset="55%" stop-color="#6c5ce7"/>
+      <stop offset="100%" stop-color="#3a2a9f"/>
+    </linearGradient>
+    <linearGradient id="rocket" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#ffd8f0"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff176"/>
+      <stop offset="45%" stop-color="#ff9e3d"/>
+      <stop offset="100%" stop-color="#ff4d6d"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.55">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Rounded square background (safe area for maskable icon) -->
+  <rect x="0" y="0" width="512" height="512" rx="112" ry="112" fill="url(#bg)"/>
+
+  <!-- Soft radial highlight -->
+  <circle cx="200" cy="170" r="200" fill="url(#glow)"/>
+
+  <!-- Stars -->
+  <g fill="#ffffff" opacity="0.85">
+    <circle cx="86"  cy="120" r="4"/>
+    <circle cx="420" cy="100" r="5"/>
+    <circle cx="440" cy="280" r="3"/>
+    <circle cx="70"  cy="360" r="3"/>
+    <circle cx="380" cy="410" r="4"/>
+    <circle cx="120" cy="240" r="2.5"/>
+  </g>
+
+  <!-- Rocket (centered, pointing up) -->
+  <g transform="translate(256 256)">
+    <!-- Flame -->
+    <path d="M -34 92 Q -18 142 0 168 Q 18 142 34 92 Q 18 110 0 104 Q -18 110 -34 92 Z"
+          fill="url(#flame)"/>
+
+    <!-- Body -->
+    <path d="M 0 -140
+             C 38 -110 56 -60 56 0
+             L 56 72
+             L -56 72
+             L -56 0
+             C -56 -60 -38 -110 0 -140 Z"
+          fill="url(#rocket)" stroke="#6b4cd4" stroke-width="4"/>
+
+    <!-- Window -->
+    <circle cx="0" cy="-30" r="22" fill="#0e1438"/>
+    <circle cx="0" cy="-30" r="22" fill="none" stroke="#6b4cd4" stroke-width="4"/>
+    <circle cx="-7" cy="-37" r="5" fill="#7eeaff" opacity="0.85"/>
+
+    <!-- Left fin -->
+    <path d="M -56 20 L -100 80 L -56 72 Z" fill="#ff7eb6" stroke="#c54b92" stroke-width="3"/>
+    <!-- Right fin -->
+    <path d="M 56 20 L 100 80 L 56 72 Z" fill="#ff7eb6" stroke="#c54b92" stroke-width="3"/>
+
+    <!-- Booster highlight -->
+    <rect x="-8" y="-90" width="16" height="150" rx="8" fill="#ffffff" opacity="0.35"/>
+  </g>
+</svg>

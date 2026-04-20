@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Color Match – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .swatch {
+    width: 100%; aspect-ratio: 1;
+    border-radius: 28px; border: 0; cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: transform .1s ease;
+  }
+  .swatch:hover { transform: translateY(-3px) scale(1.02); }
+  .swatch.correct { animation: pop .35s ease; outline: 4px solid white; outline-offset: -10px; }
+  .swatch.wrong   { animation: shake .35s ease; opacity: .6; }
+  .target-pill {
+    display: inline-flex; align-items: center; gap: 14px;
+    padding: 18px 32px; border-radius: 999px; background: white;
+    box-shadow: var(--shadow); font-size: 1.6rem; font-weight: 800;
+  }
+  .target-pill .dot {
+    width: 56px; height: 56px; border-radius: 50%;
+    box-shadow: inset 0 0 0 3px rgba(0,0,0,.06);
+  }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🎨 Color Match</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt">Tap the matching color!</div>
+    <div class="target-pill">
+      <span class="dot" id="target-dot"></span>
+      <span id="target-name">—</span>
+    </div>
+    <div class="choices" id="choices" style="max-width:520px;"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+  </main>
+</div>
+
+<!-- Game over -->
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLORS = [
+  { name: 'Red',    hex: '#ef476f' },
+  { name: 'Orange', hex: '#fb8500' },
+  { name: 'Yellow', hex: '#ffd166' },
+  { name: 'Green',  hex: '#06d6a0' },
+  { name: 'Blue',   hex: '#118ab2' },
+  { name: 'Purple', hex: '#8338ec' },
+  { name: 'Pink',   hex: '#ff7eb6' },
+  { name: 'Brown',  hex: '#7c4a2e' },
+];
+
+const TOTAL_ROUNDS = 8;
+let round = 0, correct = 0, locked = false, target = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('color-match');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('color-match');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++;
+  locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+  // pick target + 3 distractors
+  const shuffled = [...COLORS].sort(() => Math.random() - 0.5);
+  target = shuffled[0];
+  const choices = shuffled.slice(0, 4).sort(() => Math.random() - 0.5);
+
+  document.getElementById('target-dot').style.background = target.hex;
+  document.getElementById('target-name').textContent = target.name;
+  Hub.speak(target.name);
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  choices.forEach(c => {
+    const b = document.createElement('button');
+    b.className = 'swatch';
+    b.style.background = c.hex;
+    b.setAttribute('aria-label', c.name);
+    b.onclick = () => onPick(b, c);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, choice) {
+  if (locked) return;
+  locked = true;
+  if (choice.name === target.name) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Yes! ' + target.name + '!';
+    document.getElementById('feedback').className = 'feedback good';
+    Hub.speak('Yes! ' + target.name);
+    setTimeout(nextRound, 900);
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'Try again — find ' + target.name;
+    document.getElementById('feedback').className = 'feedback bad';
+    Hub.speak('Try again');
+    setTimeout(() => { locked = false; }, 700);
+  }
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+  Hub.speak(msg);
+}
+</script>
+</body>
+</html>

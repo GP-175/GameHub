@@ -1,0 +1,22 @@
+{
+  "name": "GameHub – Learning Games for Kids",
+  "short_name": "GameHub",
+  "description": "Premium educational games and activities for kids.",
+  "id": "/",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#faf7ff",
+  "theme_color": "#6c5ce7",
+  "categories": ["education", "games", "kids"],
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

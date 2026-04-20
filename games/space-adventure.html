@@ -1,0 +1,2555 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Space Adventure – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#050318" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+
+<!-- Three.js r160 via CDN importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<style>
+/* ── Page reset: canvas is full viewport, no scrolling ───────── */
+html, body {
+  margin: 0; padding: 0;
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: #050318;
+}
+
+/* ── WebGL canvas: pinned to full viewport behind HUD ────────── */
+#space-canvas {
+  position: fixed; inset: 0;
+  width: 100vw; height: 100vh;
+  display: block;
+  z-index: 0;
+}
+
+/* ── Loading / error cards ───────────────────────────────────── */
+#loading-card, #webgl-error {
+  position: fixed; inset: 0;
+  display: grid; place-items: center;
+  background: radial-gradient(circle at center, #0d1535 0%, #050318 70%);
+  color: #e8f4ff;
+  z-index: 200;
+  padding: 20px;
+  text-align: center;
+}
+#loading-card .rocket {
+  font-size: 3.5rem;
+  animation: load-bounce 1.2s ease-in-out infinite;
+  display: inline-block;
+}
+@keyframes load-bounce {
+  0%, 100% { transform: translateY(0) rotate(-15deg); }
+  50%      { transform: translateY(-14px) rotate(-15deg); }
+}
+#loading-card .label { margin-top: 14px; opacity: 0.8; font-weight: 700; letter-spacing: .04em; }
+
+/* ── Game shell: HUD layer above canvas ──────────────────────── */
+.game-shell {
+  position: relative; z-index: 10;
+  min-height: unset;        /* override styles.css default */
+  height: 100vh;
+  display: flex; flex-direction: column;
+  pointer-events: none;     /* re-enable on interactive children */
+}
+.game-shell > * { pointer-events: auto; }
+
+/* ── Dark-glass header ───────────────────────────────────────── */
+.game-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  background: rgba(8, 10, 26, 0.55);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(0, 201, 255, 0.22);
+}
+.game-header h1 { font-size: 1.2rem; margin: 0; color: #e8f4ff; text-shadow: 0 0 10px rgba(0,201,255,0.4); }
+.game-header .score-pill {
+  background: rgba(0, 201, 255, 0.18);
+  color: #00eaff;
+  border: 1px solid rgba(0, 201, 255, 0.4);
+  padding: 6px 14px; border-radius: 999px; font-weight: 800;
+  box-shadow: 0 0 14px rgba(0, 201, 255, 0.2);
+}
+.game-header .btn.btn-ghost { color: #a0c4ff; }
+
+/* Audio mute toggle */
+.audio-toggle {
+  background: rgba(0, 234, 255, 0.12);
+  color: #00eaff;
+  border: 1px solid rgba(0, 234, 255, 0.35);
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: grid; place-items: center;
+  transition: transform 0.1s ease, background 0.15s ease;
+  margin-right: 8px;
+}
+.audio-toggle:hover { transform: scale(1.08); background: rgba(0, 234, 255, 0.22); }
+.audio-toggle.muted { color: #6b7a9a; border-color: rgba(140, 160, 200, 0.3); background: rgba(40, 50, 80, 0.35); }
+
+/* ── Combo streak pill ───────────────────────────────────────── */
+.streak-pill {
+  background: linear-gradient(135deg, rgba(255, 180, 60, 0.22), rgba(255, 110, 180, 0.22));
+  color: #ffcc66;
+  border: 1px solid rgba(255, 180, 60, 0.45);
+  padding: 6px 14px; border-radius: 999px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  margin-right: 8px;
+  box-shadow: 0 0 14px rgba(255, 180, 60, 0.3);
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+}
+.streak-pill.visible { opacity: 1; transform: scale(1); }
+.streak-pill.bump { animation: streak-bump 0.45s ease; }
+@keyframes streak-bump {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); box-shadow: 0 0 22px rgba(255, 200, 100, 0.7); }
+  100% { transform: scale(1); }
+}
+
+/* ── Settings panel ──────────────────────────────────────────── */
+#settings-overlay {
+  position: fixed; inset: 0;
+  background: rgba(5, 8, 20, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: grid; place-items: center;
+  padding: 20px;
+  z-index: 150;
+}
+#settings-overlay.hidden { display: none; }
+.settings-card {
+  background: linear-gradient(145deg, #0d1535 0%, #150d30 100%);
+  border: 1px solid rgba(0, 234, 255, 0.35);
+  box-shadow: 0 0 60px rgba(0, 234, 255, 0.2), 0 28px 72px rgba(0, 0, 0, 0.7);
+  color: #e8f4ff;
+  max-width: 520px; width: 100%;
+  padding: 28px;
+  border-radius: 24px;
+}
+.settings-card h2 {
+  margin: 0 0 6px;
+  color: #00eaff;
+  text-shadow: 0 0 18px rgba(0, 234, 255, 0.5);
+}
+.settings-card .sub {
+  color: rgba(190, 220, 255, 0.7);
+  font-size: 0.95rem;
+  margin-bottom: 20px;
+}
+.settings-row {
+  margin-bottom: 16px;
+}
+.settings-row > label {
+  display: block;
+  font-weight: 800;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(200, 220, 255, 0.75);
+  margin-bottom: 8px;
+}
+.seg-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.seg {
+  flex: 1;
+  min-width: 70px;
+  padding: 10px 14px;
+  background: rgba(8, 18, 48, 0.7);
+  border: 2px solid rgba(0, 234, 255, 0.2);
+  color: #c8dcff;
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 0.95rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.seg:hover { border-color: rgba(0, 234, 255, 0.5); }
+.seg.active {
+  background: rgba(0, 234, 255, 0.22);
+  border-color: #00eaff;
+  color: #00eaff;
+  box-shadow: 0 0 14px rgba(0, 234, 255, 0.35);
+}
+.settings-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+  justify-content: flex-end;
+}
+.settings-actions .btn {
+  background: linear-gradient(135deg, #0077b6, #00eaff);
+  box-shadow: 0 4px 22px rgba(0, 234, 255, 0.4);
+}
+.settings-actions .btn.btn-soft {
+  background: rgba(0, 234, 255, 0.12);
+  color: #00eaff;
+  border: 1px solid rgba(0, 234, 255, 0.35);
+  box-shadow: none;
+}
+
+/* ── Game area: spacer in middle, HUD panel at bottom ────────── */
+.game-area {
+  flex: 1;
+  display: flex; flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px 18px 22px;
+  gap: 12px;
+  text-align: center;
+}
+
+/* ── Targeting reticle above locked obstacle (top center) ────── */
+.reticle {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 110px; height: 110px;
+  border: 2px solid rgba(0, 234, 255, 0.55);
+  border-radius: 50%;
+  box-shadow: 0 0 20px rgba(0, 234, 255, 0.35), inset 0 0 20px rgba(0, 234, 255, 0.15);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 5;
+}
+.reticle.visible { opacity: 1; animation: reticle-pulse 1.8s ease-in-out infinite; }
+.reticle::before, .reticle::after {
+  content: ''; position: absolute;
+  background: rgba(0, 234, 255, 0.8);
+}
+.reticle::before {
+  top: -14px; left: 50%; width: 2px; height: 10px;
+  box-shadow: 0 130px 0 rgba(0,234,255,0.8);
+}
+.reticle::after {
+  top: 50%; left: -14px; width: 10px; height: 2px;
+  box-shadow: 130px 0 0 rgba(0,234,255,0.8);
+}
+@keyframes reticle-pulse {
+  0%, 100% { transform: translate(-50%, -50%) scale(1);   box-shadow: 0 0 20px rgba(0,234,255,0.35), inset 0 0 20px rgba(0,234,255,0.15); }
+  50%      { transform: translate(-50%, -50%) scale(1.08); box-shadow: 0 0 30px rgba(0,234,255,0.6),  inset 0 0 30px rgba(0,234,255,0.25); }
+}
+
+/* ── Zone banner (fades in when entering new zone) ───────────── */
+.zone-banner {
+  position: fixed;
+  top: 90px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8, 10, 26, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 234, 255, 0.3);
+  color: #e8f4ff;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.5), 0 0 18px rgba(0, 234, 255, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 8;
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+.zone-banner.show {
+  opacity: 1;
+  transform: translate(-50%, 6px);
+}
+.zone-banner .ic { margin-right: 10px; }
+
+/* ── HUD flash (wrong-answer red warning) ────────────────────── */
+.hud-flash {
+  position: fixed; inset: 0;
+  background: radial-gradient(circle at center, transparent 40%, rgba(239, 71, 111, 0.45) 100%);
+  opacity: 0; pointer-events: none;
+  z-index: 6;
+  transition: opacity 0.2s ease;
+}
+.hud-flash.active { opacity: 1; animation: hud-flash-fade 0.5s ease-out; }
+@keyframes hud-flash-fade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Obstacle prompt ─────────────────────────────────────────── */
+.obstacle-prompt {
+  font-size: 1rem;
+  color: rgba(190, 220, 255, 0.75);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  min-height: 1.3em;
+}
+
+/* ── Math problem ────────────────────────────────────────────── */
+.math-problem {
+  font-size: clamp(2.4rem, 6vw, 3.2rem);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.06em;
+  text-shadow:
+    0 0 20px rgba(0, 234, 255, 0.7),
+    0 0 45px rgba(0, 234, 255, 0.3),
+    0 2px 10px rgba(0, 0, 0, 0.85);
+  min-height: 1em;
+}
+
+/* ── Choice buttons (space glass) ────────────────────────────── */
+.choices {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+.choice.space-btn {
+  background: rgba(8, 18, 48, 0.7);
+  border: 2px solid rgba(0, 234, 255, 0.32);
+  color: #e8f4ff;
+  font-family: inherit;
+  font-size: 1.9rem;
+  font-weight: 900;
+  min-height: 88px;
+  border-radius: 18px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 22px rgba(0, 0, 0, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: transform 0.1s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.choice.space-btn:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 234, 255, 0.8);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(0, 234, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.choice.space-btn.correct {
+  background: rgba(6, 214, 160, 0.28);
+  border-color: #06d6a0;
+  color: #06d6a0;
+  box-shadow: 0 0 22px rgba(6, 214, 160, 0.55);
+  animation: pop .35s ease;
+}
+.choice.space-btn.wrong {
+  background: rgba(239, 71, 111, 0.28);
+  border-color: #ef476f;
+  color: #ef476f;
+  animation: shake .35s ease;
+}
+
+/* ── Feedback ────────────────────────────────────────────────── */
+.feedback {
+  font-size: 1.2rem; font-weight: 800;
+  min-height: 1.6em;
+  color: rgba(200, 220, 255, 0.85);
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+.feedback.good { color: #06d6a0; text-shadow: 0 0 14px rgba(6,214,160,0.5); }
+.feedback.bad  { color: #ef476f; text-shadow: 0 0 14px rgba(239,71,111,0.5); }
+
+/* ── Progress bar ────────────────────────────────────────────── */
+.progress-bar {
+  width: 100%; max-width: 600px; margin: 0 auto;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(0, 234, 255, 0.18);
+  border-radius: 999px; overflow: hidden;
+}
+.progress-bar .fill {
+  height: 100%;
+  background: linear-gradient(90deg, #0077b6, #00eaff);
+  transition: width 0.35s ease;
+  box-shadow: 0 0 12px rgba(0, 234, 255, 0.6);
+}
+
+/* ── Game-over overlay ───────────────────────────────────────── */
+#overlay {
+  position: fixed; inset: 0;
+  background: rgba(5, 8, 20, 0.8);
+  display: grid; place-items: center;
+  padding: 20px;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+#overlay .game-over {
+  background: linear-gradient(145deg, #0d1535 0%, #150d30 100%);
+  border: 1px solid rgba(0, 234, 255, 0.35);
+  box-shadow:
+    0 0 60px rgba(0, 234, 255, 0.2),
+    0 28px 72px rgba(0, 0, 0, 0.7);
+  color: #e8f4ff;
+  max-width: 440px;
+  padding: 30px;
+  border-radius: 24px;
+  text-align: center;
+}
+#overlay .game-over .star { font-size: 3rem; display: block; }
+#overlay .game-over .score-line { color: #00eaff; font-size: 2.4rem; font-weight: 900; margin: .25em 0; text-shadow: 0 0 18px rgba(0,234,255,0.6); }
+#overlay .game-over .muted  { color: rgba(190, 220, 255, 0.6); }
+
+/* ── Responsive tweaks ───────────────────────────────────────── */
+@media (max-width: 600px) {
+  .choices { grid-template-columns: repeat(2, 1fr); }
+  .choice.space-btn { font-size: 1.6rem; min-height: 74px; }
+  .math-problem { font-size: 2.2rem; }
+  .reticle { width: 80px; height: 80px; }
+  .reticle::before { box-shadow: 0 96px 0 rgba(0,234,255,0.8); }
+  .reticle::after  { box-shadow: 96px 0 0 rgba(0,234,255,0.8); }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Loading card (removed after first render) -->
+<div id="loading-card">
+  <div>
+    <span class="rocket">🚀</span>
+    <div class="label">Warming up the engines…</div>
+  </div>
+</div>
+
+<!-- WebGL unsupported fallback -->
+<div id="webgl-error" class="hidden">
+  <div>
+    <div style="font-size:3rem">😔</div>
+    <h2>Can't run this game</h2>
+    <p class="muted">Your device or browser doesn't support 3D graphics (WebGL).</p>
+    <a class="btn" href="../index.html" style="background:linear-gradient(135deg,#0077b6,#00c9ff);margin-top:12px;">
+      ← Back to Hub
+    </a>
+  </div>
+</div>
+
+<!-- 3D scene canvas -->
+<canvas id="space-canvas"></canvas>
+
+<!-- Targeting reticle (positioned dynamically) -->
+<div class="reticle" id="reticle"></div>
+
+<!-- Zone banner (fades in when entering a new environment zone) -->
+<div class="zone-banner" id="zone-banner"><span class="ic">⟡</span><span id="zone-banner-text">Near Space</span></div>
+
+<!-- HUD flash overlay (red tint on wrong) -->
+<div class="hud-flash" id="hud-flash"></div>
+
+<!-- HUD above canvas -->
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🚀 Space Adventure</h1>
+    <div style="display:flex;align-items:center;">
+      <button class="audio-toggle" id="settings-btn" aria-label="Settings" title="Settings">⚙️</button>
+      <button class="audio-toggle" id="audio-toggle" aria-label="Toggle sound" title="Toggle sound">🔊</button>
+      <span class="streak-pill" id="streak-pill">🔥 ×<span id="streak-count">0</span></span>
+      <span class="score-pill" id="score">0 / 0</span>
+    </div>
+  </header>
+
+  <main class="game-area">
+    <div class="obstacle-prompt" id="obstacle-prompt">&nbsp;</div>
+    <div class="math-problem" id="math-problem">&nbsp;</div>
+    <div class="choices" id="choices"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar" style="width:0%"></div></div>
+  </main>
+</div>
+
+<!-- Settings overlay -->
+<div id="settings-overlay" class="hidden">
+  <div class="settings-card">
+    <h2>🚀 Mission Settings</h2>
+    <div class="sub">Pick your flight plan, pilot.</div>
+
+    <div class="settings-row">
+      <label>Math operations</label>
+      <div class="seg-group" data-setting="operations">
+        <button class="seg" data-value="add">➕ Add</button>
+        <button class="seg" data-value="sub">➖ Subtract</button>
+        <button class="seg" data-value="mul">✖️ Multiply</button>
+        <button class="seg" data-value="mixed">🎲 Mixed</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Difficulty</label>
+      <div class="seg-group" data-setting="difficulty">
+        <button class="seg" data-value="easy">Easy</button>
+        <button class="seg" data-value="medium">Medium</button>
+        <button class="seg" data-value="hard">Hard</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Mission length</label>
+      <div class="seg-group" data-setting="rounds">
+        <button class="seg" data-value="5">5 rounds</button>
+        <button class="seg" data-value="10">10 rounds</button>
+        <button class="seg" data-value="15">15 rounds</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Answer choices</label>
+      <div class="seg-group" data-setting="choices">
+        <button class="seg" data-value="3">3 options</button>
+        <button class="seg" data-value="4">4 options</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Voice narration</label>
+      <div class="seg-group" data-setting="narration">
+        <button class="seg" data-value="on">🔊 On</button>
+        <button class="seg" data-value="off">🔇 Off</button>
+      </div>
+    </div>
+
+    <div class="settings-row">
+      <label>Reduce motion</label>
+      <div class="seg-group" data-setting="reduceMotion">
+        <button class="seg" data-value="off">Normal</button>
+        <button class="seg" data-value="on">Calm</button>
+      </div>
+    </div>
+
+    <div class="settings-actions">
+      <button class="btn btn-soft" id="settings-cancel">Cancel</button>
+      <button class="btn" id="settings-save">Start mission</button>
+    </div>
+  </div>
+</div>
+
+<!-- Game-over overlay -->
+<div id="overlay" class="hidden">
+  <div class="game-over">
+    <span class="star">🚀</span>
+    <div class="muted">Mission complete!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:14px;gap:12px;">
+      <button class="btn" id="play-again"
+              style="background:linear-gradient(135deg,#0077b6,#00eaff);box-shadow:0 4px 22px rgba(0,234,255,0.4);">
+        Play again
+      </button>
+      <a class="btn btn-soft" href="../index.html"
+         style="background:rgba(0,234,255,0.12);color:#00eaff;border:1px solid rgba(0,234,255,0.35);box-shadow:none;">
+        Hub
+      </a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// Space Adventure — 3D Chase-Cam Math Game
+// ═══════════════════════════════════════════════════════════════
+
+import * as THREE from 'three';
+
+// ─── DOM refs ─────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const canvasEl  = $('space-canvas');
+const loadingEl = $('loading-card');
+const errorEl   = $('webgl-error');
+const reticleEl = $('reticle');
+const flashEl   = $('hud-flash');
+const scoreEl   = $('score');
+const promptEl  = $('obstacle-prompt');
+const mathEl    = $('math-problem');
+const choicesEl = $('choices');
+const feedbackEl = $('feedback');
+const barEl     = $('bar');
+const overlayEl = $('overlay');
+const audioToggleEl = $('audio-toggle');
+const zoneBannerEl  = $('zone-banner');
+const zoneBannerTextEl = $('zone-banner-text');
+const streakPillEl  = $('streak-pill');
+const streakCountEl = $('streak-count');
+const settingsOverlayEl = $('settings-overlay');
+const settingsBtnEl = $('settings-btn');
+
+// ═══════════════════════════════════════════════════════════════
+// AUDIO — procedural Web Audio sound design (no external assets)
+// ═══════════════════════════════════════════════════════════════
+const SFX = (() => {
+  let ctx = null;
+  let masterGain = null;
+  let muted = localStorage.getItem('space-adventure.muted') === '1';
+
+  // Continuous voices
+  let engineOsc = null, engineGain = null, engineSubOsc = null, engineSubGain = null;
+  let ambientOsc = null, ambientGain = null, ambientOsc2 = null;
+  let warpNoiseNode = null, warpFilter = null, warpGain = null;
+
+  function ensure() {
+    if (ctx) return ctx;
+    try {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return null;
+      ctx = new AC();
+      masterGain = ctx.createGain();
+      masterGain.gain.value = muted ? 0 : 0.7;
+      masterGain.connect(ctx.destination);
+    } catch (e) { ctx = null; }
+    return ctx;
+  }
+
+  // White-noise buffer (reusable)
+  let noiseBuffer = null;
+  function getNoiseBuffer() {
+    if (noiseBuffer) return noiseBuffer;
+    const len = ctx.sampleRate * 2;
+    noiseBuffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    return noiseBuffer;
+  }
+
+  // --- Continuous: engine hum (two layered oscillators + filtered noise) ---
+  function startEngine() {
+    if (!ensure() || engineOsc) return;
+
+    // Low sub-bass drone
+    engineSubOsc = ctx.createOscillator();
+    engineSubOsc.type = 'sine';
+    engineSubOsc.frequency.value = 55;
+    engineSubGain = ctx.createGain();
+    engineSubGain.gain.value = 0.18;
+    engineSubOsc.connect(engineSubGain).connect(masterGain);
+    engineSubOsc.start();
+
+    // Mid sawtooth layer (the "whoosh")
+    engineOsc = ctx.createOscillator();
+    engineOsc.type = 'sawtooth';
+    engineOsc.frequency.value = 110;
+    const engineFilter = ctx.createBiquadFilter();
+    engineFilter.type = 'lowpass';
+    engineFilter.frequency.value = 420;
+    engineFilter.Q.value = 4;
+    engineGain = ctx.createGain();
+    engineGain.gain.value = 0.06;
+    engineOsc.connect(engineFilter).connect(engineGain).connect(masterGain);
+    engineOsc.start();
+  }
+
+  function setEngineIntensity(warp01) {
+    // warp01 = normalized warp speed (roughly 0..1, where 1 ≈ cruise 80)
+    if (!engineGain) return;
+    const k = Math.min(Math.max(warp01, 0), 2.5);
+    engineGain.gain.setTargetAtTime(0.04 + k * 0.06, ctx.currentTime, 0.15);
+    engineSubGain.gain.setTargetAtTime(0.12 + k * 0.08, ctx.currentTime, 0.15);
+    engineOsc.frequency.setTargetAtTime(95 + k * 40, ctx.currentTime, 0.2);
+  }
+
+  // --- Continuous: ambient space pad ---
+  function startAmbient() {
+    if (!ensure() || ambientOsc) return;
+    ambientOsc = ctx.createOscillator();
+    ambientOsc.type = 'sine';
+    ambientOsc.frequency.value = 220; // A3
+    ambientOsc2 = ctx.createOscillator();
+    ambientOsc2.type = 'sine';
+    ambientOsc2.frequency.value = 329.63; // E4 (perfect fifth)
+    ambientGain = ctx.createGain();
+    ambientGain.gain.value = 0.04;
+    const lfo = ctx.createOscillator();
+    lfo.type = 'sine';
+    lfo.frequency.value = 0.15; // slow sway
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 0.015;
+    lfo.connect(lfoGain).connect(ambientGain.gain);
+    ambientOsc.connect(ambientGain).connect(masterGain);
+    ambientOsc2.connect(ambientGain);
+    ambientOsc.start(); ambientOsc2.start(); lfo.start();
+  }
+
+  // --- One-shot: laser zap ---
+  function laser() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1200, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.35);
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.frequency.value = 800;
+    filt.Q.value = 6;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.45, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+    osc.connect(filt).connect(g).connect(masterGain);
+    osc.start(now); osc.stop(now + 0.42);
+  }
+
+  // --- One-shot: explosion (noise burst + sub thump) ---
+  function explosion() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    // Noise crackle
+    const src = ctx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.setValueAtTime(2400, now);
+    filt.frequency.exponentialRampToValueAtTime(180, now + 0.8);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.6, now + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+    src.connect(filt).connect(g).connect(masterGain);
+    src.start(now); src.stop(now + 0.95);
+
+    // Sub-bass thump
+    const sub = ctx.createOscillator();
+    sub.type = 'sine';
+    sub.frequency.setValueAtTime(90, now);
+    sub.frequency.exponentialRampToValueAtTime(30, now + 0.45);
+    const sg = ctx.createGain();
+    sg.gain.setValueAtTime(0.0001, now);
+    sg.gain.exponentialRampToValueAtTime(0.55, now + 0.015);
+    sg.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+    sub.connect(sg).connect(masterGain);
+    sub.start(now); sub.stop(now + 0.55);
+  }
+
+  // --- One-shot: warp woosh (filtered noise sweep) ---
+  function warp() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const src = ctx.createBufferSource();
+    src.buffer = getNoiseBuffer();
+    const filt = ctx.createBiquadFilter();
+    filt.type = 'bandpass';
+    filt.Q.value = 2.5;
+    filt.frequency.setValueAtTime(200, now);
+    filt.frequency.exponentialRampToValueAtTime(3500, now + 0.4);
+    filt.frequency.exponentialRampToValueAtTime(400, now + 0.9);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.linearRampToValueAtTime(0.35, now + 0.15);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.95);
+    src.connect(filt).connect(g).connect(masterGain);
+    src.start(now); src.stop(now + 1);
+  }
+
+  // --- One-shot: correct chime (major-third arpeggio) ---
+  function correct() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const notes = [659.25, 830.61, 987.77]; // E5, G#5, B5 (E major triad)
+    notes.forEach((f, i) => {
+      const t0 = now + i * 0.08;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.32, t0 + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.45);
+      osc.connect(g).connect(masterGain);
+      osc.start(t0); osc.stop(t0 + 0.5);
+    });
+  }
+
+  // --- One-shot: wrong buzzer (descending dissonance) ---
+  function wrong() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.linearRampToValueAtTime(100, now + 0.25);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, now);
+    g.gain.exponentialRampToValueAtTime(0.28, now + 0.01);
+    g.gain.setValueAtTime(0.28, now + 0.22);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+    osc.connect(g).connect(masterGain);
+    osc.start(now); osc.stop(now + 0.32);
+  }
+
+  // --- One-shot: arrival fanfare (rising major arpeggio) ---
+  function fanfare() {
+    if (!ensure()) return;
+    const now = ctx.currentTime;
+    const notes = [261.63, 329.63, 392.00, 523.25, 659.25]; // C E G C E
+    notes.forEach((f, i) => {
+      const t0 = now + i * 0.12;
+      const osc = ctx.createOscillator();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(0.3, t0 + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+      osc.connect(g).connect(masterGain);
+      osc.start(t0); osc.stop(t0 + 0.75);
+
+      // Harmony fifth above
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = f * 1.5;
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.0001, t0);
+      g2.gain.exponentialRampToValueAtTime(0.16, t0 + 0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.7);
+      osc2.connect(g2).connect(masterGain);
+      osc2.start(t0); osc2.stop(t0 + 0.75);
+    });
+  }
+
+  function setMuted(m) {
+    muted = m;
+    localStorage.setItem('space-adventure.muted', m ? '1' : '0');
+    if (masterGain) {
+      masterGain.gain.setTargetAtTime(m ? 0 : 0.7, ctx.currentTime, 0.05);
+    }
+  }
+  function isMuted() { return muted; }
+
+  // Many browsers suspend AudioContext until user gesture
+  function resume() {
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+  }
+
+  return {
+    startEngine, startAmbient, setEngineIntensity,
+    laser, explosion, warp, correct, wrong, fanfare,
+    setMuted, isMuted, resume, ensure,
+  };
+})();
+
+// Mute toggle button
+function refreshAudioToggleUI() {
+  const m = SFX.isMuted();
+  audioToggleEl.textContent = m ? '🔇' : '🔊';
+  audioToggleEl.classList.toggle('muted', m);
+}
+audioToggleEl.addEventListener('click', () => {
+  SFX.ensure();
+  SFX.resume();
+  SFX.setMuted(!SFX.isMuted());
+  refreshAudioToggleUI();
+});
+refreshAudioToggleUI();
+
+// Resume audio on first user gesture (browser autoplay policy)
+function unlockAudio() {
+  SFX.ensure();
+  SFX.resume();
+  SFX.startEngine();
+  SFX.startAmbient();
+  window.removeEventListener('pointerdown', unlockAudio);
+  window.removeEventListener('keydown', unlockAudio);
+}
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
+
+// ─── Game state ────────────────────────────────────────────────
+// TOTAL_ROUNDS is now mutable and driven by user settings
+let TOTAL_ROUNDS = 10;
+
+// ─── Mission configuration ─────────────────────────────────────
+const DEFAULT_CONFIG = {
+  operations: 'mixed',     // 'add' | 'sub' | 'mul' | 'mixed'
+  difficulty: 'medium',    // 'easy' | 'medium' | 'hard'
+  rounds: 10,              // 5 | 10 | 15
+  choices: 4,              // 3 | 4
+  narration: 'on',         // 'on' | 'off'
+  reduceMotion: 'off',     // 'on' | 'off'
+};
+
+// Difficulty tiers — controls number ranges per op
+const DIFFICULTY_TIERS = {
+  easy: {
+    add:  { aMin: 1, aMax: 5,  bMin: 1, bMax: 5  },
+    sub:  { aMin: 2, aMax: 8,  bMin: 1 }, // b clamped to ≤ a
+    mul:  { aMin: 1, aMax: 3,  bMin: 1, bMax: 3  },
+    distractorRange: 2,
+  },
+  medium: {
+    add:  { aMin: 1, aMax: 9,  bMin: 1, bMax: 9  },
+    sub:  { aMin: 3, aMax: 12, bMin: 1 },
+    mul:  { aMin: 1, aMax: 5,  bMin: 1, bMax: 5  },
+    distractorRange: 4,
+  },
+  hard: {
+    add:  { aMin: 2, aMax: 20, bMin: 2, bMax: 20 },
+    sub:  { aMin: 5, aMax: 20, bMin: 1 },
+    mul:  { aMin: 2, aMax: 9,  bMin: 2, bMax: 9  },
+    distractorRange: 6,
+  },
+};
+
+let gameConfig = { ...DEFAULT_CONFIG };
+
+// Load config from Hub for the active profile (if any)
+function loadGameConfig() {
+  if (!window.Hub) return { ...DEFAULT_CONFIG };
+  const activeProfile = Hub.getActiveProfile?.();
+  const stored = activeProfile
+    ? Hub.getGameConfig(activeProfile.id, 'space-adventure')
+    : null;
+  return stored ? { ...DEFAULT_CONFIG, ...stored } : { ...DEFAULT_CONFIG };
+}
+
+function saveGameConfig(config) {
+  if (!window.Hub) return;
+  const activeProfile = Hub.getActiveProfile?.();
+  if (activeProfile) {
+    Hub.setGameConfig(activeProfile.id, 'space-adventure', config);
+  } else {
+    // Fallback to localStorage if no profile active
+    try { localStorage.setItem('space-adventure.config', JSON.stringify(config)); } catch (e) {}
+  }
+}
+
+function applyConfig(config) {
+  gameConfig = { ...config };
+  TOTAL_ROUNDS = parseInt(gameConfig.rounds, 10) || 10;
+}
+
+const STATE = {
+  LOADING:      'LOADING',
+  APPROACHING:  'APPROACHING',
+  LOCKED:       'LOCKED',
+  FIRING:       'FIRING',
+  EXPLODING:    'EXPLODING',
+  PASSING:      'PASSING',
+  ARRIVING:     'ARRIVING',
+  VICTORY:      'VICTORY',
+};
+
+let state        = STATE.LOADING;
+let round        = 0;
+let correctCount = 0;
+let answer       = 0;
+let locked       = false;
+let firstAttempt = true;
+
+// Timing / motion state
+let approachT   = 0;      // 0..1 during APPROACHING
+let passingT    = 0;      // during PASSING
+let arrivingT   = 0;      // during ARRIVING
+let warpSpeed       = 80; // current star speed
+let targetWarpSpeed = 80; // lerp target
+
+// Ship shake (wrong-answer feedback)
+let shipShakeMag = 0;
+
+// Camera shake (independent from ship shake — kicks on laser hit)
+let cameraShakeMag = 0;
+
+// Combo streak (consecutive first-attempt correct answers)
+let streak = 0;
+let maxStreakThisRun = 0;
+
+// ─── Three.js scene setup ──────────────────────────────────────
+let renderer, scene, camera, clock;
+try {
+  renderer = new THREE.WebGLRenderer({
+    canvas: canvasEl,
+    antialias: true,
+    powerPreference: 'high-performance',
+  });
+} catch (e) {
+  showWebGLError();
+  throw e;
+}
+
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x050318, 1);
+
+scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x050318, 90, 450);
+
+camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 2000);
+camera.position.set(0, 2.5, 8);
+camera.lookAt(0, 1.5, -30);
+
+clock = new THREE.Clock();
+
+// ─── Lights ────────────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x5a3a9a, 0.55);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0x88bbff, 0.95);
+keyLight.position.set(6, 8, 5);
+scene.add(keyLight);
+
+const rimLight = new THREE.DirectionalLight(0xff77cc, 0.35);
+rimLight.position.set(-5, 3, -6);
+scene.add(rimLight);
+
+// ═══════════════════════════════════════════════════════════════
+// SHIP
+// ═══════════════════════════════════════════════════════════════
+const ship = new THREE.Group();
+
+// Hull (capsule along Z)
+{
+  const geo = new THREE.CapsuleGeometry(0.7, 1.6, 6, 16);
+  const mat = new THREE.MeshStandardMaterial({ color: 0xe8ecf5, metalness: 0.6, roughness: 0.28 });
+  const hull = new THREE.Mesh(geo, mat);
+  hull.rotation.x = Math.PI / 2;
+  ship.add(hull);
+}
+
+// Nose cone (violet, pointing -Z/forward)
+{
+  const geo = new THREE.ConeGeometry(0.7, 1.4, 24);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x9b72cf, metalness: 0.5, roughness: 0.32 });
+  const nose = new THREE.Mesh(geo, mat);
+  nose.rotation.x = -Math.PI / 2;
+  nose.position.z = -1.95;
+  ship.add(nose);
+}
+
+// Wings (swept back, angled)
+{
+  const geo = new THREE.BoxGeometry(2.4, 0.12, 0.9);
+  const mat = new THREE.MeshStandardMaterial({ color: 0x7c4fcf, metalness: 0.45, roughness: 0.4 });
+  const wings = new THREE.Mesh(geo, mat);
+  wings.position.z = 0.45;
+  ship.add(wings);
+
+  // Wing tip lights
+  const tipMat = new THREE.MeshBasicMaterial({ color: 0xff5577, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 });
+  const tipGeo = new THREE.SphereGeometry(0.13, 8, 8);
+  const tipL = new THREE.Mesh(tipGeo, tipMat);
+  tipL.position.set(-1.2, 0.06, 0.45);
+  ship.add(tipL);
+  const tipR = tipL.clone();
+  tipR.position.x = 1.2;
+  ship.add(tipR);
+}
+
+// Engines (two dark cylinders at back)
+{
+  const engineGeo = new THREE.CylinderGeometry(0.26, 0.28, 0.9, 16);
+  const engineMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.85, roughness: 0.2 });
+  const engL = new THREE.Mesh(engineGeo, engineMat);
+  engL.rotation.x = Math.PI / 2;
+  engL.position.set(-0.9, 0, 1.1);
+  ship.add(engL);
+  const engR = engL.clone();
+  engR.position.x = 0.9;
+  ship.add(engR);
+}
+
+// Engine glow (additive spheres + point lights)
+const engineGlowL = (() => {
+  const geo = new THREE.SphereGeometry(0.38, 16, 16);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x00eaff,
+    transparent: true,
+    opacity: 0.92,
+    blending: THREE.AdditiveBlending,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.position.set(-0.9, 0, 1.62);
+  ship.add(m);
+  return m;
+})();
+const engineGlowR = engineGlowL.clone();
+engineGlowR.material = engineGlowL.material.clone();
+engineGlowR.position.x = 0.9;
+ship.add(engineGlowR);
+
+const engineLightL = new THREE.PointLight(0x00eaff, 1.6, 6);
+engineLightL.position.set(-0.9, 0, 1.8);
+ship.add(engineLightL);
+const engineLightR = engineLightL.clone();
+engineLightR.position.x = 0.9;
+ship.add(engineLightR);
+
+// Cockpit (dark glass dome)
+{
+  const geo = new THREE.SphereGeometry(0.42, 20, 20);
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x091028,
+    metalness: 0.92,
+    roughness: 0.12,
+    emissive: 0x004466,
+    emissiveIntensity: 0.45,
+  });
+  const cockpit = new THREE.Mesh(geo, mat);
+  cockpit.position.set(0, 0.5, -0.35);
+  cockpit.scale.set(1.25, 0.62, 1.35);
+  ship.add(cockpit);
+}
+
+// Lasers (children of ship so they move with it)
+const laserLen = 100;
+const laserGeo = new THREE.CylinderGeometry(0.1, 0.04, laserLen, 8);
+laserGeo.translate(0, -laserLen / 2, 0); // top end at origin → extends downward (−Y)
+const laserMatBase = new THREE.MeshBasicMaterial({
+  color: 0x00f0ff,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const laserL = new THREE.Mesh(laserGeo, laserMatBase.clone());
+laserL.rotation.x = -Math.PI / 2; // flips -Y to +Z... wait
+// With rotation.x = -π/2: the cylinder's local -Y axis maps to +Z.
+// We want the laser to extend forward (-Z). Use +π/2 instead.
+laserL.rotation.x = Math.PI / 2;   // local -Y → -Z. So cylinder extends into -Z. ✓
+laserL.position.set(-1.2, 0.06, 0.4);
+laserL.scale.y = 0;
+ship.add(laserL);
+const laserR = laserL.clone();
+laserR.material = laserMatBase.clone();
+laserR.position.x = 1.2;
+ship.add(laserR);
+
+ship.position.set(0, 1.2, 0);
+scene.add(ship);
+
+// Streak aura — glowing torus around the ship, intensity scales with streak
+const streakAuraMat = new THREE.MeshBasicMaterial({
+  color: 0xffaa33,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
+const streakAura = new THREE.Mesh(new THREE.TorusGeometry(2.0, 0.15, 12, 48), streakAuraMat);
+streakAura.rotation.x = Math.PI / 2; // lie flat around the ship
+ship.add(streakAura);
+
+// Secondary inner aura (rotates opposite)
+const streakAura2 = new THREE.Mesh(
+  new THREE.TorusGeometry(1.55, 0.08, 10, 40),
+  new THREE.MeshBasicMaterial({
+    color: 0xff66cc, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
+  })
+);
+streakAura2.rotation.x = Math.PI / 2;
+ship.add(streakAura2);
+
+// ═══════════════════════════════════════════════════════════════
+// THRUST TRAIL — additive particles streaming from each engine
+// ═══════════════════════════════════════════════════════════════
+const THRUST_COUNT = 140;     // per engine
+const THRUST_LIFE  = 0.75;    // seconds
+// World-space particles (not children of ship) so they stay behind as ship bobs
+
+function createThrustEmitter(baseColor) {
+  const pos  = new Float32Array(THRUST_COUNT * 3);
+  const col  = new Float32Array(THRUST_COUNT * 3);
+  const age  = new Float32Array(THRUST_COUNT);
+  const life = new Float32Array(THRUST_COUNT);
+  const vel  = new Float32Array(THRUST_COUNT * 3);
+
+  // Start all particles dead (age >= life), will be spawned over time
+  for (let i = 0; i < THRUST_COUNT; i++) {
+    age[i]  = 10;
+    life[i] = THRUST_LIFE;
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.55,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+    sizeAttenuation: true,
+  });
+
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+
+  return {
+    points, geo, pos, col, age, life, vel,
+    baseColor, spawnCursor: 0,
+  };
+}
+
+const thrustL = createThrustEmitter(new THREE.Color(0x00eaff));
+const thrustR = createThrustEmitter(new THREE.Color(0x00eaff));
+
+function updateThrust(dt) {
+  // Emit + advance particles for both engines
+  const engPosL = new THREE.Vector3();
+  const engPosR = new THREE.Vector3();
+  engineGlowL.getWorldPosition(engPosL);
+  engineGlowR.getWorldPosition(engPosR);
+
+  // Spawn rate scales with warp speed (cruise 80 → ~4/frame at 60fps)
+  const intensity = Math.min(warpSpeed / 80, 3.2);
+  const spawnPerFrame = Math.floor(2 + intensity * 3);
+
+  stepEmitter(thrustL, engPosL, dt, spawnPerFrame, intensity);
+  stepEmitter(thrustR, engPosR, dt, spawnPerFrame, intensity);
+}
+
+function stepEmitter(em, emitPos, dt, spawnCount, intensity) {
+  // Spawn new particles in empty slots
+  for (let s = 0; s < spawnCount; s++) {
+    // Find a dead particle (round-robin cursor)
+    let idx = em.spawnCursor;
+    for (let tries = 0; tries < THRUST_COUNT; tries++) {
+      if (em.age[idx] >= em.life[idx]) break;
+      idx = (idx + 1) % THRUST_COUNT;
+    }
+    em.spawnCursor = (idx + 1) % THRUST_COUNT;
+    if (em.age[idx] < em.life[idx]) continue; // all alive, skip
+
+    const i3 = idx * 3;
+    // Jitter around engine nozzle
+    em.pos[i3]     = emitPos.x + (Math.random() - 0.5) * 0.18;
+    em.pos[i3 + 1] = emitPos.y + (Math.random() - 0.5) * 0.18;
+    em.pos[i3 + 2] = emitPos.z + (Math.random() - 0.5) * 0.1;
+
+    // Velocity: mostly backward (+Z), small lateral spread
+    const backSpeed = 8 + intensity * 18;
+    em.vel[i3]     = (Math.random() - 0.5) * 0.8;
+    em.vel[i3 + 1] = (Math.random() - 0.5) * 0.6;
+    em.vel[i3 + 2] = backSpeed + Math.random() * 4;
+
+    em.age[idx] = 0;
+    em.life[idx] = THRUST_LIFE * (0.7 + Math.random() * 0.5);
+  }
+
+  // Advance + update colors
+  const c = em.baseColor;
+  for (let i = 0; i < THRUST_COUNT; i++) {
+    const i3 = i * 3;
+    if (em.age[i] >= em.life[i]) {
+      // Dead — park off-screen
+      em.col[i3] = 0; em.col[i3 + 1] = 0; em.col[i3 + 2] = 0;
+      continue;
+    }
+    em.age[i] += dt;
+    em.pos[i3]     += em.vel[i3]     * dt;
+    em.pos[i3 + 1] += em.vel[i3 + 1] * dt;
+    em.pos[i3 + 2] += em.vel[i3 + 2] * dt;
+
+    // Fade + color shift: start bright white-cyan, cool to engine color, fade out
+    const t = em.age[i] / em.life[i];
+    const k = 1 - t;
+    // white hot near emitter → base color → fade
+    const heat = Math.max(0, 1 - t * 2.5); // first ~40% is hot white
+    em.col[i3]     = (c.r + heat * (1 - c.r)) * k;
+    em.col[i3 + 1] = (c.g + heat * (1 - c.g)) * k;
+    em.col[i3 + 2] = (c.b + heat * (1 - c.b)) * k;
+  }
+
+  em.geo.attributes.position.needsUpdate = true;
+  em.geo.attributes.color.needsUpdate = true;
+  em.points.material.size = 0.45 + Math.min(intensity * 0.12, 0.3);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WARP STARFIELD
+// ═══════════════════════════════════════════════════════════════
+const STAR_COUNT = 420;
+const TRAIL_LEN = 5;
+
+const starPositions = new Float32Array(STAR_COUNT * 6); // 2 verts per star
+const starColors    = new Float32Array(STAR_COUNT * 6);
+
+const TUBE_X = 90, TUBE_Y = 55, TUBE_Z_FAR = -1100, TUBE_Z_NEAR = -40;
+
+for (let i = 0; i < STAR_COUNT; i++) {
+  const x = (Math.random() - 0.5) * TUBE_X * 2;
+  const y = (Math.random() - 0.5) * TUBE_Y * 2;
+  const z = TUBE_Z_FAR + Math.random() * (TUBE_Z_NEAR - TUBE_Z_FAR);
+  // lead vertex
+  starPositions[i*6 + 0] = x;
+  starPositions[i*6 + 1] = y;
+  starPositions[i*6 + 2] = z;
+  // tail vertex (behind, more negative Z)
+  starPositions[i*6 + 3] = x;
+  starPositions[i*6 + 4] = y;
+  starPositions[i*6 + 5] = z - TRAIL_LEN;
+
+  // color: bluish white, lead brighter than tail
+  const tint = 0.7 + Math.random() * 0.3;
+  starColors[i*6 + 0] = 0.65 * tint;
+  starColors[i*6 + 1] = 0.85 * tint;
+  starColors[i*6 + 2] = 1.0  * tint;
+  starColors[i*6 + 3] = 0.1  * tint;   // tail darker
+  starColors[i*6 + 4] = 0.2  * tint;
+  starColors[i*6 + 5] = 0.35 * tint;
+}
+
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+starGeo.setAttribute('color', new THREE.BufferAttribute(starColors, 3));
+
+const starMat = new THREE.LineBasicMaterial({
+  vertexColors: true,
+  transparent: true,
+  opacity: 0.95,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+});
+const stars = new THREE.LineSegments(starGeo, starMat);
+scene.add(stars);
+
+function updateStars(dt) {
+  const pos = starGeo.attributes.position.array;
+  const advance = warpSpeed * dt;
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const leadIdx = i * 6;
+    const tailIdx = leadIdx + 3;
+
+    pos[leadIdx + 2] += advance;
+    pos[tailIdx + 2] = pos[leadIdx + 2] - TRAIL_LEN;
+
+    if (pos[leadIdx + 2] > 10) {
+      const x = (Math.random() - 0.5) * TUBE_X * 2;
+      const y = (Math.random() - 0.5) * TUBE_Y * 2;
+      const z = TUBE_Z_FAR + Math.random() * 80;
+      pos[leadIdx]     = x; pos[leadIdx+1] = y; pos[leadIdx+2] = z;
+      pos[tailIdx]     = x; pos[tailIdx+1] = y; pos[tailIdx+2] = z - TRAIL_LEN;
+    }
+  }
+  starGeo.attributes.position.needsUpdate = true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ENVIRONMENT ZONES — scene tint shifts as you journey
+// ═══════════════════════════════════════════════════════════════
+// Each zone defines: fog color, ambient light tint, star color, and a
+// distant nebula tint. Scene values lerp toward current zone every frame.
+const ZONES = [
+  {
+    name: 'Near Space',
+    rounds: [1, 2],
+    fog:    0x050318,
+    ambient:0x5a3a9a,
+    star:   new THREE.Color(0.65, 0.85, 1.0),
+    nebula: new THREE.Color(0.15, 0.25, 0.55),
+    nebulaOpacity: 0.0,
+  },
+  {
+    name: 'Asteroid Belt',
+    rounds: [3, 4],
+    fog:    0x1a1208,
+    ambient:0x8a6a3a,
+    star:   new THREE.Color(1.0, 0.85, 0.55),
+    nebula: new THREE.Color(0.55, 0.35, 0.15),
+    nebulaOpacity: 0.18,
+  },
+  {
+    name: 'Crimson Nebula',
+    rounds: [5, 6],
+    fog:    0x1c0828,
+    ambient:0x9a3a7a,
+    star:   new THREE.Color(1.0, 0.7, 0.95),
+    nebula: new THREE.Color(0.85, 0.25, 0.75),
+    nebulaOpacity: 0.35,
+  },
+  {
+    name: 'Deep Space',
+    rounds: [7, 8],
+    fog:    0x02030e,
+    ambient:0x2a3a8a,
+    star:   new THREE.Color(0.55, 0.75, 1.0),
+    nebula: new THREE.Color(0.1, 0.2, 0.45),
+    nebulaOpacity: 0.15,
+  },
+  {
+    name: 'Home Approach',
+    rounds: [9, 10],
+    fog:    0x0a1228,
+    ambient:0x6a7aaa,
+    star:   new THREE.Color(1.0, 0.95, 0.7),
+    nebula: new THREE.Color(0.95, 0.75, 0.4),
+    nebulaOpacity: 0.22,
+  },
+];
+
+function zoneForRound(r) {
+  // r starts at 1; clamp
+  const clamped = Math.max(1, Math.min(r || 1, 10));
+  return ZONES.find(z => clamped >= z.rounds[0] && clamped <= z.rounds[1]) || ZONES[0];
+}
+
+// Distant nebula plane — big translucent quad way behind the action
+const nebulaMat = new THREE.MeshBasicMaterial({
+  color: 0x000000,
+  transparent: true,
+  opacity: 0,
+  blending: THREE.AdditiveBlending,
+  depthWrite: false,
+  side: THREE.DoubleSide,
+});
+// Procedural soft radial gradient via canvas texture (painted once)
+{
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 256;
+  const g = cv.getContext('2d');
+  const grd = g.createRadialGradient(128, 128, 20, 128, 128, 128);
+  grd.addColorStop(0.0, 'rgba(255,255,255,0.9)');
+  grd.addColorStop(0.4, 'rgba(255,255,255,0.45)');
+  grd.addColorStop(1.0, 'rgba(255,255,255,0.0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv);
+  nebulaMat.map = tex;
+  nebulaMat.alphaMap = tex;
+}
+const nebulaPlane = new THREE.Mesh(new THREE.PlaneGeometry(600, 400), nebulaMat);
+nebulaPlane.position.set(0, 0, -850);
+scene.add(nebulaPlane);
+
+// Current scene values (lerped toward zone targets)
+const curFog     = new THREE.Color(0x050318);
+const curAmbient = new THREE.Color(0x5a3a9a);
+const curStar    = new THREE.Color(0.65, 0.85, 1.0);
+const curNebula  = new THREE.Color(0.15, 0.25, 0.55);
+let   curNebulaOpacity = 0;
+
+function updateZone(dt) {
+  // During ARRIVING/VICTORY, force Home Approach zone
+  const target = (state === STATE.ARRIVING || state === STATE.VICTORY)
+    ? ZONES[ZONES.length - 1]
+    : zoneForRound(round);
+
+  const fogTarget     = new THREE.Color(target.fog);
+  const ambientTarget = new THREE.Color(target.ambient);
+
+  const k = Math.min(dt * 1.2, 1); // ~0.8s to fully transition
+  curFog.lerp(fogTarget, k);
+  curAmbient.lerp(ambientTarget, k);
+  curStar.lerp(target.star, k);
+  curNebula.lerp(target.nebula, k);
+  curNebulaOpacity += (target.nebulaOpacity - curNebulaOpacity) * k;
+
+  scene.fog.color.copy(curFog);
+  renderer.setClearColor(curFog, 1);
+  scene.background = null; // let clear color show through
+  ambientLight.color.copy(curAmbient);
+
+  nebulaMat.color.copy(curNebula);
+  nebulaMat.opacity = curNebulaOpacity;
+  nebulaPlane.rotation.z += dt * 0.01;
+
+  // Tint the star field via per-star colors (multiplicative shift)
+  applyStarTint();
+}
+
+// Re-tint stars by recomputing their color buffer toward curStar.
+// Cheap: once per frame, single attribute update.
+let starTintFrame = 0;
+function applyStarTint() {
+  starTintFrame++;
+  // Only refresh every 3rd frame to save CPU
+  if (starTintFrame % 3 !== 0) return;
+  const arr = starGeo.attributes.color.array;
+  for (let i = 0; i < STAR_COUNT; i++) {
+    const tint = 0.7 + ((i * 9301 + 49297) % 233) / 233 * 0.3; // stable per-star pseudo-rand
+    arr[i*6]     = curStar.r * tint;
+    arr[i*6 + 1] = curStar.g * tint;
+    arr[i*6 + 2] = curStar.b * tint;
+    arr[i*6 + 3] = curStar.r * tint * 0.25;
+    arr[i*6 + 4] = curStar.g * tint * 0.25;
+    arr[i*6 + 5] = curStar.b * tint * 0.25;
+  }
+  starGeo.attributes.color.needsUpdate = true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OBSTACLE FACTORY
+// ═══════════════════════════════════════════════════════════════
+const OBSTACLE_TYPES = [
+  { type: 'ringed',  label: 'ringed planet' },
+  { type: 'moon',    label: 'dark moon' },
+  { type: 'red',     label: 'volcanic planet' },
+  { type: 'alien',   label: 'alien ship' },
+  { type: 'comet',   label: 'glowing comet' },
+  { type: 'ice',     label: 'ice asteroid' },
+  { type: 'vortex',  label: 'energy vortex' },
+];
+
+function pickObstacleType() {
+  return OBSTACLE_TYPES[Math.floor(Math.random() * OBSTACLE_TYPES.length)];
+}
+
+function createObstacle(type) {
+  const g = new THREE.Group();
+
+  if (type === 'ringed') {
+    const body = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(3.2, 1),
+      new THREE.MeshStandardMaterial({ color: 0xff9966, roughness: 0.6 })
+    );
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(5.2, 0.3, 8, 60),
+      new THREE.MeshStandardMaterial({ color: 0xffd8a8, roughness: 0.4, side: THREE.DoubleSide })
+    );
+    ring.rotation.x = Math.PI / 2.2;
+    g.add(body, ring);
+
+  } else if (type === 'moon') {
+    const body = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(2.9, 2),
+      new THREE.MeshStandardMaterial({ color: 0xaaaabb, roughness: 0.95 })
+    );
+    const craterMat = new THREE.MeshStandardMaterial({ color: 0x666677, roughness: 0.98 });
+    for (let i = 0; i < 7; i++) {
+      const c = new THREE.Mesh(
+        new THREE.SphereGeometry(0.3 + Math.random() * 0.5, 10, 10),
+        craterMat
+      );
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      c.position.setFromSphericalCoords(2.8, phi, theta);
+      c.scale.z = 0.25;
+      body.add(c);
+    }
+    g.add(body);
+
+  } else if (type === 'red') {
+    const body = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(3.3, 2),
+      new THREE.MeshStandardMaterial({
+        color: 0xcc3322, roughness: 0.7,
+        emissive: 0x551100, emissiveIntensity: 0.4,
+      })
+    );
+    // Volcanic hotspots
+    const hotMat = new THREE.MeshBasicMaterial({ color: 0xffaa22, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.85 });
+    for (let i = 0; i < 5; i++) {
+      const h = new THREE.Mesh(new THREE.SphereGeometry(0.35, 10, 10), hotMat);
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      h.position.setFromSphericalCoords(3.25, phi, theta);
+      body.add(h);
+    }
+    g.add(body);
+
+  } else if (type === 'alien') {
+    const saucer = new THREE.Mesh(
+      new THREE.CylinderGeometry(3.0, 3.6, 0.8, 20),
+      new THREE.MeshStandardMaterial({ color: 0x889999, metalness: 0.75, roughness: 0.3 })
+    );
+    const dome = new THREE.Mesh(
+      new THREE.SphereGeometry(1.5, 20, 20, 0, Math.PI * 2, 0, Math.PI / 2),
+      new THREE.MeshStandardMaterial({
+        color: 0x66ff99,
+        emissive: 0x00aa44, emissiveIntensity: 0.7,
+        transparent: true, opacity: 0.78,
+      })
+    );
+    dome.position.y = 0.35;
+    const lightsMat = new THREE.MeshBasicMaterial({ color: 0xffff66, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 });
+    for (let i = 0; i < 10; i++) {
+      const light = new THREE.Mesh(new THREE.SphereGeometry(0.19, 8, 8), lightsMat);
+      const a = (i / 10) * Math.PI * 2;
+      light.position.set(Math.cos(a) * 3.3, -0.12, Math.sin(a) * 3.3);
+      saucer.add(light);
+    }
+    g.add(saucer, dome);
+
+  } else if (type === 'comet') {
+    const head = new THREE.Mesh(
+      new THREE.SphereGeometry(1.3, 20, 20),
+      new THREE.MeshStandardMaterial({
+        color: 0xffeebb,
+        emissive: 0xff9966, emissiveIntensity: 0.9,
+      })
+    );
+    g.add(head);
+    // Point light on the comet
+    const cometLight = new THREE.PointLight(0xffcc88, 1.5, 10);
+    head.add(cometLight);
+    // Tail points behind (+Z = behind when moving -Z toward camera; but our obstacle moves +Z so "behind" = -Z)
+    const tailCount = 100;
+    const tp = new Float32Array(tailCount * 3);
+    const tc = new Float32Array(tailCount * 3);
+    for (let i = 0; i < tailCount; i++) {
+      const spread = 0.8 * (i / tailCount);
+      tp[i*3]     = (Math.random() - 0.5) * spread;
+      tp[i*3 + 1] = (Math.random() - 0.5) * spread;
+      tp[i*3 + 2] = -0.5 - (i / tailCount) * 8; // trails into -Z
+      const k = 1 - (i / tailCount);
+      tc[i*3]     = 1 * k;
+      tc[i*3 + 1] = 0.7 * k;
+      tc[i*3 + 2] = 0.4 * k;
+    }
+    const tailGeo = new THREE.BufferGeometry();
+    tailGeo.setAttribute('position', new THREE.BufferAttribute(tp, 3));
+    tailGeo.setAttribute('color', new THREE.BufferAttribute(tc, 3));
+    const tailMat = new THREE.PointsMaterial({
+      vertexColors: true,
+      size: 0.35,
+      transparent: true,
+      opacity: 0.75,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    g.add(new THREE.Points(tailGeo, tailMat));
+
+  } else if (type === 'ice') {
+    const body = new THREE.Mesh(
+      new THREE.OctahedronGeometry(2.8, 0),
+      new THREE.MeshStandardMaterial({
+        color: 0x99ccff,
+        metalness: 0.4, roughness: 0.2,
+        emissive: 0x002244, emissiveIntensity: 0.35,
+      })
+    );
+    for (let i = 0; i < 5; i++) {
+      const c = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.7 + Math.random() * 0.9, 0),
+        body.material
+      );
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      c.position.setFromSphericalCoords(2.3, phi, theta);
+      c.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      body.add(c);
+    }
+    g.add(body);
+
+  } else if (type === 'vortex') {
+    const r1 = new THREE.Mesh(
+      new THREE.TorusGeometry(2.8, 0.45, 12, 60),
+      new THREE.MeshBasicMaterial({ color: 0xaa66ff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending })
+    );
+    const r2 = new THREE.Mesh(
+      new THREE.TorusGeometry(2.0, 0.35, 12, 60),
+      new THREE.MeshBasicMaterial({ color: 0x66ddff, transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending })
+    );
+    r2.rotation.x = Math.PI / 2;
+    const r3 = new THREE.Mesh(
+      new THREE.TorusGeometry(1.3, 0.25, 12, 60),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending })
+    );
+    r3.rotation.y = Math.PI / 2;
+    g.add(r1, r2, r3);
+    g.userData.rings = [r1, r2, r3];
+  }
+
+  return g;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTIVE OBSTACLE MANAGEMENT
+// ═══════════════════════════════════════════════════════════════
+let currentObstacle = null;
+let currentObstacleInfo = null;
+
+function spawnObstacle() {
+  disposeCurrentObstacle();
+
+  const info = pickObstacleType();
+  const g = createObstacle(info.type);
+
+  // Start far away, slight off-center
+  const startX = (Math.random() - 0.5) * 8;
+  const startY = 1.5 + (Math.random() - 0.5) * 2;
+  const targetX = startX * 0.25;
+  const targetY = 2.0 + (Math.random() - 0.5) * 1.2;
+
+  g.position.set(startX, startY, -480);
+  g.userData = {
+    info,
+    startX, startY, startZ: -480,
+    targetX, targetY, targetZ: -48,
+    rotSpeed: {
+      x: (Math.random() - 0.5) * 0.4,
+      y: 0.3 + Math.random() * 0.4,
+      z: (Math.random() - 0.5) * 0.3,
+    },
+  };
+  scene.add(g);
+  currentObstacle = g;
+  currentObstacleInfo = info;
+  approachT = 0;
+  state = STATE.APPROACHING;
+}
+
+function disposeCurrentObstacle() {
+  if (!currentObstacle) return;
+  scene.remove(currentObstacle);
+  currentObstacle.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+      else o.material.dispose();
+    }
+  });
+  currentObstacle = null;
+  currentObstacleInfo = null;
+}
+
+function updateObstacleIdle(dt) {
+  if (!currentObstacle) return;
+  const rs = currentObstacle.userData.rotSpeed;
+  currentObstacle.rotation.x += rs.x * dt;
+  currentObstacle.rotation.y += rs.y * dt;
+  currentObstacle.rotation.z += rs.z * dt;
+  // Vortex rings spin individually
+  const rings = currentObstacle.userData.rings;
+  if (rings) {
+    rings[0].rotation.z += 1.2 * dt;
+    rings[1].rotation.x += 0.9 * dt;
+    rings[2].rotation.y += 1.5 * dt;
+  }
+}
+
+function updateApproach(dt) {
+  approachT += dt / 2.5; // 2.5 s approach
+  const p = Math.min(approachT, 1);
+  const eased = 1 - Math.pow(1 - p, 2); // ease-out quad
+  const ud = currentObstacle.userData;
+  currentObstacle.position.x = ud.startX + (ud.targetX - ud.startX) * eased;
+  currentObstacle.position.y = ud.startY + (ud.targetY - ud.startY) * eased;
+  currentObstacle.position.z = ud.startZ + (ud.targetZ - ud.startZ) * eased;
+
+  if (p >= 1) {
+    state = STATE.LOCKED;
+    onObstacleLocked();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LASERS + EXPLOSION
+// ═══════════════════════════════════════════════════════════════
+let laserT = 0;
+let laserActive = false;
+const LASER_DURATION = 0.45;
+
+function fireLasers() {
+  laserT = 0;
+  laserActive = true;
+  laserL.material.opacity = 1;
+  laserR.material.opacity = 1;
+  SFX.laser();
+}
+
+function updateLaser(dt) {
+  if (!laserActive) return;
+  laserT += dt;
+  const p = Math.min(laserT / LASER_DURATION, 1);
+  if (p < 0.35) {
+    const k = p / 0.35;
+    laserL.scale.y = k;
+    laserR.scale.y = k;
+  } else {
+    laserL.scale.y = 1;
+    laserR.scale.y = 1;
+    const fade = (p - 0.35) / 0.65;
+    laserL.material.opacity = 1 - fade;
+    laserR.material.opacity = 1 - fade;
+  }
+  if (p >= 1) {
+    laserL.scale.y = 0; laserR.scale.y = 0;
+    laserL.material.opacity = 0; laserR.material.opacity = 0;
+    laserActive = false;
+  }
+}
+
+// Explosion particles + shockwave
+const activeExplosions = [];
+function createExplosion(position) {
+  const count = 80;
+  const pos = new Float32Array(count * 3);
+  const vel = [];
+  for (let i = 0; i < count; i++) {
+    pos[i*3]   = position.x;
+    pos[i*3+1] = position.y;
+    pos[i*3+2] = position.z;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const sp = 10 + Math.random() * 24;
+    vel.push({
+      x: Math.sin(phi) * Math.cos(theta) * sp,
+      y: Math.sin(phi) * Math.sin(theta) * sp,
+      z: Math.cos(phi) * sp + 8, // slight forward bias toward camera
+    });
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    color: 0xffaa44,
+    size: 0.9,
+    transparent: true,
+    opacity: 1,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const particles = new THREE.Points(geo, mat);
+  scene.add(particles);
+
+  // Shockwave
+  const shock = new THREE.Mesh(
+    new THREE.SphereGeometry(1, 20, 20),
+    new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.85,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  shock.position.copy(position);
+  scene.add(shock);
+
+  activeExplosions.push({
+    particles, vel, age: 0, maxAge: 1.2,
+    shock, shockMaxAge: 0.55,
+  });
+  SFX.explosion();
+  triggerCameraShake(0.55);
+}
+
+function updateExplosions(dt) {
+  for (let i = activeExplosions.length - 1; i >= 0; i--) {
+    const ex = activeExplosions[i];
+    ex.age += dt;
+
+    // Particles
+    const p = ex.particles.geometry.attributes.position.array;
+    for (let j = 0; j < ex.vel.length; j++) {
+      p[j*3]   += ex.vel[j].x * dt;
+      p[j*3+1] += ex.vel[j].y * dt;
+      p[j*3+2] += ex.vel[j].z * dt;
+      // damping
+      ex.vel[j].x *= 0.96;
+      ex.vel[j].y *= 0.96;
+      ex.vel[j].z *= 0.96;
+    }
+    ex.particles.geometry.attributes.position.needsUpdate = true;
+    ex.particles.material.opacity = Math.max(0, 1 - ex.age / ex.maxAge);
+    ex.particles.material.size    = 0.9 * (1 - ex.age / ex.maxAge) + 0.3;
+
+    // Shockwave
+    if (ex.age < ex.shockMaxAge) {
+      const sp = ex.age / ex.shockMaxAge;
+      const s = 1 + sp * 8;
+      ex.shock.scale.setScalar(s);
+      ex.shock.material.opacity = 0.85 * (1 - sp);
+    } else if (ex.shock) {
+      scene.remove(ex.shock);
+      ex.shock.geometry.dispose();
+      ex.shock.material.dispose();
+      ex.shock = null;
+    }
+
+    if (ex.age >= ex.maxAge) {
+      scene.remove(ex.particles);
+      ex.particles.geometry.dispose();
+      ex.particles.material.dispose();
+      activeExplosions.splice(i, 1);
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HOME PLANET (final destination)
+// ═══════════════════════════════════════════════════════════════
+let homePlanet = null;
+
+function createHomePlanet() {
+  const g = new THREE.Group();
+
+  // Ocean base
+  const body = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(18, 3),
+    new THREE.MeshStandardMaterial({ color: 0x2d5aa0, roughness: 0.7, metalness: 0.1 })
+  );
+  g.add(body);
+
+  // Continents
+  const contMat = new THREE.MeshStandardMaterial({ color: 0x4a9f55, roughness: 0.9 });
+  const continents = [
+    { lat:  0.4, lon:  0.0, scale: [4.5, 4.5, 0.7] },
+    { lat: -0.3, lon:  2.1, scale: [3.5, 3.0, 0.6] },
+    { lat:  1.1, lon:  4.0, scale: [3.0, 2.8, 0.5] },
+    { lat: -0.8, lon:  3.4, scale: [4.0, 3.5, 0.7] },
+    { lat:  0.2, lon: -1.6, scale: [2.8, 2.3, 0.5] },
+  ];
+  continents.forEach(c => {
+    const cont = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), contMat);
+    cont.scale.set(...c.scale);
+    const phi = Math.PI / 2 - c.lat;
+    const theta = c.lon;
+    cont.position.setFromSphericalCoords(17.6, phi, theta);
+    cont.lookAt(0, 0, 0);
+    body.add(cont);
+  });
+
+  // Cloud wisps
+  const cloudMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    transparent: true, opacity: 0.55,
+    roughness: 0.8,
+  });
+  for (let i = 0; i < 8; i++) {
+    const cloud = new THREE.Mesh(new THREE.SphereGeometry(1, 10, 10), cloudMat);
+    cloud.scale.set(2 + Math.random() * 1.5, 0.6, 1.5 + Math.random());
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    cloud.position.setFromSphericalCoords(18.5, phi, theta);
+    cloud.lookAt(0, 0, 0);
+    body.add(cloud);
+  }
+
+  // Atmosphere glow
+  const atm = new THREE.Mesh(
+    new THREE.SphereGeometry(19.8, 32, 32),
+    new THREE.MeshBasicMaterial({
+      color: 0x88ccff,
+      transparent: true, opacity: 0.22,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  g.add(atm);
+
+  g.userData = { body, startZ: -700, targetZ: -60, startY: -15, targetY: 1.5 };
+  return g;
+}
+
+function startArrival() {
+  state = STATE.ARRIVING;
+  arrivingT = 0;
+  homePlanet = createHomePlanet();
+  homePlanet.position.set(0, homePlanet.userData.startY, homePlanet.userData.startZ);
+  scene.add(homePlanet);
+  targetWarpSpeed = 200; // brief warp boost on arrival
+  // HUD clear during arrival
+  promptEl.textContent = 'You made it home!';
+  mathEl.textContent = '🌍';
+  choicesEl.innerHTML = '';
+  feedbackEl.textContent = '\u00A0';
+  reticleEl.classList.remove('visible');
+}
+
+function updateArrival(dt) {
+  arrivingT += dt / 5.0; // 5 s journey home
+  const p = Math.min(arrivingT, 1);
+  // First half: warp speed boost, planet not yet visible
+  if (p < 0.35) {
+    targetWarpSpeed = 260;
+  } else {
+    // Second half: slow down, planet rises into view
+    targetWarpSpeed = 40 - (p - 0.35) / 0.65 * 40; // 40 → 0
+    const vis = (p - 0.35) / 0.65;
+    const eased = 1 - Math.pow(1 - vis, 2);
+    const ud = homePlanet.userData;
+    homePlanet.position.z = ud.startZ + (ud.targetZ - ud.startZ) * eased;
+    homePlanet.position.y = ud.startY + (ud.targetY - ud.startY) * eased;
+  }
+  if (homePlanet) homePlanet.userData.body.rotation.y += 0.08 * dt;
+
+  if (p >= 1) {
+    state = STATE.VICTORY;
+    showVictory();
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SHIP IDLE / SHAKE
+// ═══════════════════════════════════════════════════════════════
+function updateShip(dt, t) {
+  // Bob + bank
+  ship.position.y = 1.2 + Math.sin(t * 1.3) * 0.18;
+  ship.rotation.z = Math.sin(t * 0.75) * 0.07;
+  ship.rotation.x = Math.sin(t * 0.9)  * 0.035;
+
+  // Shake (wrong-answer feedback)
+  if (shipShakeMag > 0) {
+    ship.position.x = (Math.random() - 0.5) * shipShakeMag;
+    shipShakeMag = Math.max(0, shipShakeMag - dt * 3);
+  } else {
+    ship.position.x = 0;
+  }
+
+  // Engine pulse
+  const pulse = 0.9 + Math.sin(t * 7) * 0.1;
+  engineGlowL.scale.setScalar(pulse);
+  engineGlowR.scale.setScalar(pulse);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PASSING (ship zooms past destroyed obstacle)
+// ═══════════════════════════════════════════════════════════════
+function startPassing() {
+  state = STATE.PASSING;
+  passingT = 0;
+  targetWarpSpeed = gameConfig.reduceMotion === 'on' ? 140 : 260;
+  disposeCurrentObstacle();
+  SFX.warp();
+}
+
+function updatePassing(dt) {
+  passingT += dt;
+  if (passingT >= 0.55) {
+    targetWarpSpeed = 80;
+    if (round >= TOTAL_ROUNDS) {
+      startArrival();
+    } else {
+      spawnObstacle();
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TARGETING RETICLE (DOM element positioned over canvas)
+// ═══════════════════════════════════════════════════════════════
+function updateReticle() {
+  if (!currentObstacle || state !== STATE.LOCKED) {
+    reticleEl.classList.remove('visible');
+    return;
+  }
+  const worldPos = new THREE.Vector3();
+  currentObstacle.getWorldPosition(worldPos);
+  const projected = worldPos.clone().project(camera);
+  const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+  const y = (-projected.y * 0.5 + 0.5) * window.innerHeight;
+  reticleEl.style.left = x + 'px';
+  reticleEl.style.top  = y + 'px';
+  reticleEl.classList.add('visible');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MAIN ANIMATION LOOP
+// ═══════════════════════════════════════════════════════════════
+let firstFrameDone = false;
+
+function animate() {
+  requestAnimationFrame(animate);
+  if (document.hidden) return;
+
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const t  = clock.elapsedTime;
+
+  // Warp speed lerp
+  warpSpeed += (targetWarpSpeed - warpSpeed) * Math.min(dt * 3, 1);
+
+  // Engine hum reacts to warp speed (cruise ≈ 80 → intensity 1)
+  SFX.setEngineIntensity(warpSpeed / 80);
+
+  // Always-on animations
+  updateZone(dt);
+  updateStars(dt);
+  updateShip(dt, t);
+  updateCameraShake(dt);
+  updateStreakAura(dt, t);
+  updateThrust(dt);
+  updateObstacleIdle(dt);
+  updateExplosions(dt);
+
+  // Laser animation is independent of state (keeps running while we transition)
+  updateLaser(dt);
+
+  // State-specific
+  if (state === STATE.APPROACHING) updateApproach(dt);
+  if (state === STATE.PASSING)     updatePassing(dt);
+  if (state === STATE.ARRIVING)    updateArrival(dt);
+
+  updateReticle();
+
+  renderer.render(scene, camera);
+
+  if (!firstFrameDone) {
+    firstFrameDone = true;
+    loadingEl.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESIZE HANDLING
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// GAME LOGIC — math, rounds, HUD bindings
+// ═══════════════════════════════════════════════════════════════
+function rand(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function pickOperation() {
+  const op = gameConfig.operations;
+  if (op === 'mixed') {
+    // Mixed: 40% add, 40% sub, 20% mul — but in easy/medium, skip mul unless selected
+    const r = Math.random();
+    if (r < 0.45) return 'add';
+    if (r < 0.85) return 'sub';
+    return 'mul';
+  }
+  return op;
+}
+
+function generateQuestion() {
+  const op = pickOperation();
+  const tier = DIFFICULTY_TIERS[gameConfig.difficulty] || DIFFICULTY_TIERS.medium;
+
+  if (op === 'add') {
+    const r = tier.add;
+    const a = rand(r.aMin, r.aMax), b = rand(r.bMin, r.bMax);
+    return { text: `${a} + ${b} = ?`, answer: a + b, speech: `${a} plus ${b}` };
+  } else if (op === 'sub') {
+    const r = tier.sub;
+    const a = rand(r.aMin, r.aMax);
+    const b = rand(r.bMin, a); // guarantees non-negative result
+    return { text: `${a} − ${b} = ?`, answer: a - b, speech: `${a} minus ${b}` };
+  } else {
+    // multiplication
+    const r = tier.mul;
+    const a = rand(r.aMin, r.aMax), b = rand(r.bMin, r.bMax);
+    return { text: `${a} × ${b} = ?`, answer: a * b, speech: `${a} times ${b}` };
+  }
+}
+
+function buildChoices(ans) {
+  const target = parseInt(gameConfig.choices, 10) || 4;
+  const tier = DIFFICULTY_TIERS[gameConfig.difficulty] || DIFFICULTY_TIERS.medium;
+  const range = tier.distractorRange;
+
+  const pool = new Set([ans]);
+  let tries = 0;
+  while (pool.size < target && tries < 400) {
+    tries++;
+    const offset = rand(1, range) * (Math.random() < 0.5 ? 1 : -1);
+    const c = ans + offset;
+    if (c >= 0) pool.add(c);
+  }
+  // Backfill if still short (can happen if ans is very small with small range)
+  while (pool.size < target) {
+    pool.add(ans + pool.size * 2);
+  }
+  return [...pool].sort(() => Math.random() - 0.5);
+}
+
+function updateScore() {
+  scoreEl.textContent = `${correctCount} / ${round}`;
+}
+
+// ─── Streak management ────────────────────────────────────────
+function setStreak(n, bump) {
+  streak = n;
+  if (n > maxStreakThisRun) maxStreakThisRun = n;
+  streakCountEl.textContent = n;
+  if (n >= 2) {
+    streakPillEl.classList.add('visible');
+    if (bump) {
+      streakPillEl.classList.remove('bump');
+      void streakPillEl.offsetWidth; // restart animation
+      streakPillEl.classList.add('bump');
+    }
+  } else {
+    streakPillEl.classList.remove('visible');
+  }
+  // Color shift at higher streaks
+  if (n >= 10)      streakPillEl.style.color = '#ff66cc';
+  else if (n >= 7)  streakPillEl.style.color = '#ff9966';
+  else if (n >= 5)  streakPillEl.style.color = '#ffaa33';
+  else              streakPillEl.style.color = '#ffcc66';
+}
+
+function updateStreakAura(dt, t) {
+  // Base intensity grows with streak; visible from 2+
+  const k = Math.min(streak / 10, 1);
+  const targetOpacity = streak >= 2 ? 0.35 + k * 0.45 : 0;
+  // Smoothly approach target
+  streakAura.material.opacity  += (targetOpacity - streakAura.material.opacity)  * Math.min(dt * 4, 1);
+  streakAura2.material.opacity += (targetOpacity * 0.8 - streakAura2.material.opacity) * Math.min(dt * 4, 1);
+
+  // Rotate (counter-rotating rings)
+  streakAura.rotation.z  += dt * (0.6 + k * 1.2);
+  streakAura2.rotation.z -= dt * (0.9 + k * 1.5);
+
+  // Pulse scale
+  const pulse = 1 + Math.sin(t * 4) * 0.05 * k;
+  streakAura.scale.setScalar(pulse);
+  streakAura2.scale.setScalar(pulse);
+
+  // Color shift at high streaks — lerp to hotter hue
+  if (streak >= 10) streakAura.material.color.setHex(0xff66cc);
+  else if (streak >= 7) streakAura.material.color.setHex(0xff9966);
+  else streakAura.material.color.setHex(0xffaa33);
+}
+
+// Milestone chime — rising pitch per milestone level
+function streakMilestoneChime(level) {
+  const ctx = SFX.ensure();
+  if (!ctx) return;
+  SFX.resume();
+  const now = ctx.currentTime;
+  const baseFreq = 440 * Math.pow(1.2, level); // rises with streak
+  const notes = [baseFreq, baseFreq * 1.25, baseFreq * 1.5];
+  notes.forEach((f, i) => {
+    const t0 = now + i * 0.07;
+    const osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.28, t0 + 0.015);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.35);
+    osc.connect(g).connect(ctx.destination);
+    osc.start(t0); osc.stop(t0 + 0.4);
+  });
+}
+
+// ─── Camera shake ─────────────────────────────────────────────
+function triggerCameraShake(mag) {
+  // Dampen (or skip) shake when reduce-motion is enabled
+  const scaled = gameConfig.reduceMotion === 'on' ? mag * 0.25 : mag;
+  cameraShakeMag = Math.max(cameraShakeMag, scaled);
+}
+
+const cameraBasePos = new THREE.Vector3(0, 2.5, 8);
+function updateCameraShake(dt) {
+  if (cameraShakeMag <= 0.001) {
+    camera.position.copy(cameraBasePos);
+    return;
+  }
+  camera.position.x = cameraBasePos.x + (Math.random() - 0.5) * cameraShakeMag;
+  camera.position.y = cameraBasePos.y + (Math.random() - 0.5) * cameraShakeMag * 0.8;
+  camera.position.z = cameraBasePos.z + (Math.random() - 0.5) * cameraShakeMag * 0.4;
+  cameraShakeMag = Math.max(0, cameraShakeMag - dt * cameraShakeMag * 5);
+}
+
+function updateBar() {
+  barEl.style.width = `${((round - 1) / TOTAL_ROUNDS) * 100}%`;
+}
+
+let lastZoneName = null;
+function showZoneBanner(zone) {
+  zoneBannerTextEl.textContent = zone.name;
+  zoneBannerEl.classList.add('show');
+  clearTimeout(showZoneBanner._h);
+  showZoneBanner._h = setTimeout(() => {
+    zoneBannerEl.classList.remove('show');
+  }, 2600);
+}
+
+function onObstacleLocked() {
+  round++;
+  firstAttempt = true;
+  locked = false;
+  feedbackEl.textContent = '\u00A0';
+  feedbackEl.className = 'feedback';
+
+  // Zone-entry banner (fires on rounds 1, 3, 5, 7, 9)
+  const zone = zoneForRound(round);
+  if (zone.name !== lastZoneName) {
+    lastZoneName = zone.name;
+    showZoneBanner(zone);
+  }
+
+  const info = currentObstacleInfo;
+  promptEl.textContent = `A ${info.label} is blocking your path! Solve to fire!`;
+
+  const q = generateQuestion();
+  answer = q.answer;
+  mathEl.textContent = q.text;
+  narrate(q.speech);
+
+  choicesEl.innerHTML = '';
+  buildChoices(answer).forEach(v => {
+    const btn = document.createElement('button');
+    btn.className = 'choice space-btn';
+    btn.textContent = v;
+    btn.setAttribute('aria-label', `Answer ${v}`);
+    btn.onclick = () => onPick(btn, v);
+    choicesEl.appendChild(btn);
+  });
+  updateScore();
+}
+
+function onPick(btn, v) {
+  if (locked || state !== STATE.LOCKED) return;
+  locked = true;
+
+  if (v === answer) {
+    // ── Correct ──
+    btn.classList.add('correct');
+    let milestoneHit = false;
+    if (firstAttempt) {
+      correctCount++;
+      const newStreak = streak + 1;
+      // Milestone at 3, 5, 7, 10
+      if (newStreak === 3 || newStreak === 5 || newStreak === 7 || newStreak === 10) {
+        milestoneHit = true;
+        streakMilestoneChime(Math.floor(newStreak / 3));
+      }
+      setStreak(newStreak, true);
+    } else {
+      // Non-first-attempt correct doesn't extend streak, but doesn't reset either
+      // (streak was already reset when they got it wrong)
+    }
+    const streakMsg = milestoneHit
+      ? `🔥 ${streak}× STREAK! Direct hit!`
+      : (firstAttempt ? '🎉 Direct hit! Firing laser!' : '✓ Got it!');
+    feedbackEl.textContent = streakMsg;
+    feedbackEl.className   = 'feedback good';
+    narrate(milestoneHit ? `${streak} in a row!` : (firstAttempt ? 'Direct hit!' : 'Got it'));
+    SFX.correct();
+    updateScore();
+    barEl.style.width = `${(round / TOTAL_ROUNDS) * 100}%`; // progress on completed round
+    reticleEl.classList.remove('visible');
+
+    // Animation sequence
+    fireLasers();
+    setTimeout(() => {
+      if (currentObstacle) {
+        const wp = new THREE.Vector3();
+        currentObstacle.getWorldPosition(wp);
+        createExplosion(wp);
+        currentObstacle.visible = false; // debris covers it
+      }
+    }, 170);
+
+    setTimeout(() => startPassing(), 700);
+
+  } else {
+    // ── Wrong ──
+    firstAttempt = false;
+    btn.classList.add('wrong');
+    feedbackEl.textContent = 'Try again! 🚀';
+    feedbackEl.className   = 'feedback bad';
+    narrate('Try again');
+    SFX.wrong();
+    shipShakeMag = 0.25;
+    triggerCameraShake(0.2);
+    // Reset streak on first wrong answer this round
+    if (streak > 0) setStreak(0, false);
+    flashEl.classList.remove('active');
+    void flashEl.offsetWidth;
+    flashEl.classList.add('active');
+    setTimeout(() => {
+      btn.classList.remove('wrong');
+      locked = false;
+    }, 550);
+  }
+}
+
+function showVictory() {
+  const pct = Math.round((correctCount / TOTAL_ROUNDS) * 100);
+  if (window.Hub?.endSession) Hub.endSession(pct);
+  $('final-score').textContent = pct;
+  const msg =
+    pct === 100 ? 'Perfect mission! You saved the galaxy! 🌟' :
+    pct >= 80   ? 'Amazing piloting! Welcome home! 🚀'       :
+    pct >= 60   ? 'Great work, Space Cadet!'                  :
+    pct >= 40   ? 'You made it — keep practicing!'            :
+                  'Mission complete. Keep training, pilot!';
+  const streakLine = maxStreakThisRun >= 3
+    ? ` Best streak: 🔥 ${maxStreakThisRun}×!`
+    : '';
+  $('final-msg').textContent = msg + streakLine;
+  overlayEl.classList.remove('hidden');
+  SFX.fanfare();
+  narrate(msg);
+}
+
+// Narration helper — respects the narration setting
+function narrate(text) {
+  if (gameConfig.narration === 'off') return;
+  if (window.Hub?.speak) Hub.speak(text);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RESTART / PLAY AGAIN
+// ═══════════════════════════════════════════════════════════════
+function resetAndStart() {
+  round = 0;
+  correctCount = 0;
+  answer = 0;
+  locked = false;
+  firstAttempt = true;
+  shipShakeMag = 0;
+  cameraShakeMag = 0;
+  targetWarpSpeed = 80;
+  lastZoneName = null;
+  setStreak(0, false);
+  maxStreakThisRun = 0;
+  disposeCurrentObstacle();
+  if (homePlanet) {
+    scene.remove(homePlanet);
+    homePlanet.traverse(o => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (Array.isArray(o.material)) o.material.forEach(m => m.dispose());
+        else o.material.dispose();
+      }
+    });
+    homePlanet = null;
+  }
+  activeExplosions.forEach(ex => {
+    scene.remove(ex.particles);
+    if (ex.shock) scene.remove(ex.shock);
+  });
+  activeExplosions.length = 0;
+  overlayEl.classList.add('hidden');
+  updateScore();
+  updateBar();
+  feedbackEl.textContent = '\u00A0';
+  promptEl.textContent = '\u00A0';
+  mathEl.textContent = '\u00A0';
+  choicesEl.innerHTML = '';
+  if (window.Hub?.startSession) Hub.startSession('space-adventure');
+  spawnObstacle();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+function showWebGLError() {
+  loadingEl.style.display = 'none';
+  errorEl.classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS PANEL
+// ═══════════════════════════════════════════════════════════════
+function renderSettingsPanel(config) {
+  // Reflect current values in the segmented buttons
+  settingsOverlayEl.querySelectorAll('.seg-group').forEach(group => {
+    const key = group.dataset.setting;
+    const val = String(config[key] ?? '');
+    group.querySelectorAll('.seg').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.value === val);
+    });
+  });
+}
+
+function bindSettingsPanel() {
+  // Segmented-control click: toggle active within a group
+  settingsOverlayEl.querySelectorAll('.seg-group').forEach(group => {
+    group.addEventListener('click', (e) => {
+      const btn = e.target.closest('.seg');
+      if (!btn) return;
+      group.querySelectorAll('.seg').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+
+  $('settings-save').onclick = () => {
+    // Harvest selections
+    const next = { ...gameConfig };
+    settingsOverlayEl.querySelectorAll('.seg-group').forEach(group => {
+      const key = group.dataset.setting;
+      const active = group.querySelector('.seg.active');
+      if (active) next[key] = active.dataset.value;
+    });
+    applyConfig(next);
+    saveGameConfig(next);
+    settingsOverlayEl.classList.add('hidden');
+    resetAndStart();
+  };
+
+  $('settings-cancel').onclick = () => {
+    settingsOverlayEl.classList.add('hidden');
+    // If game hasn't started yet (first boot), start with current config
+    if (!bootStarted) {
+      bootStarted = true;
+      Hub.startSession('space-adventure');
+      spawnObstacle();
+    }
+  };
+
+  settingsBtnEl.onclick = () => {
+    renderSettingsPanel(gameConfig);
+    settingsOverlayEl.classList.remove('hidden');
+  };
+}
+
+let bootStarted = false;
+
+function boot() {
+  // Verify Hub is loaded (hub.js is deferred; module scripts run after defer)
+  if (!window.Hub) {
+    console.warn('Hub not loaded yet — retrying');
+    setTimeout(boot, 50);
+    return;
+  }
+  $('play-again').onclick = resetAndStart;
+
+  // Load saved config (or defaults) and prepare UI
+  const activeProfile = Hub.getActiveProfile?.();
+  const stored = activeProfile
+    ? Hub.getGameConfig(activeProfile.id, 'space-adventure')
+    : null;
+  applyConfig({ ...DEFAULT_CONFIG, ...(stored || {}) });
+  renderSettingsPanel(gameConfig);
+  bindSettingsPanel();
+
+  // Always start animation loop so the scene is alive behind the settings panel
+  animate();
+
+  if (stored) {
+    // Returning pilot — jump straight in
+    bootStarted = true;
+    Hub.startSession('space-adventure');
+    spawnObstacle();
+  } else {
+    // First visit — show settings panel to let them configure
+    settingsOverlayEl.classList.remove('hidden');
+  }
+}
+
+// Kick off once DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
+</script>
+
+</body>
+</html>

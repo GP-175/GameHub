@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Shape Sorter – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .shape-svg { width: 130px; height: 130px; }
+  .target-shape {
+    background: white; border-radius: 28px; padding: 18px;
+    box-shadow: var(--shadow);
+  }
+  .choice.shape-tile { background: white; padding: 18px; }
+  .choice.shape-tile.correct { background: var(--good); }
+  .choice.shape-tile.wrong   { background: var(--bad); }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🔷 Shape Sorter</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt" id="prompt">Find the matching shape!</div>
+    <div class="target-shape" id="target-shape"></div>
+    <div class="choices" id="choices" style="max-width:640px;"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const COLOR_PALETTE = ['#ef476f','#ffd166','#06d6a0','#118ab2','#8338ec','#ff7eb6','#fb8500'];
+const SHAPES = ['circle','square','triangle','star','heart','diamond','rectangle','oval'];
+const TOTAL_ROUNDS = 8;
+let round = 0, correct = 0, locked = false, target = null;
+
+function shapeSvg(name, color) {
+  switch (name) {
+    case 'circle':    return `<svg class="shape-svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="42" fill="${color}"/></svg>`;
+    case 'square':    return `<svg class="shape-svg" viewBox="0 0 100 100"><rect x="12" y="12" width="76" height="76" rx="6" fill="${color}"/></svg>`;
+    case 'rectangle': return `<svg class="shape-svg" viewBox="0 0 100 100"><rect x="6" y="28" width="88" height="44" rx="6" fill="${color}"/></svg>`;
+    case 'triangle':  return `<svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,10 90,86 10,86" fill="${color}"/></svg>`;
+    case 'star':      return `<svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,8 61,38 94,38 67,57 78,90 50,71 22,90 33,57 6,38 39,38" fill="${color}"/></svg>`;
+    case 'heart':     return `<svg class="shape-svg" viewBox="0 0 100 100"><path d="M50 86 L14 50 a20 20 0 0 1 36 -22 a20 20 0 0 1 36 22 Z" fill="${color}"/></svg>`;
+    case 'diamond':   return `<svg class="shape-svg" viewBox="0 0 100 100"><polygon points="50,8 90,50 50,92 10,50" fill="${color}"/></svg>`;
+    case 'oval':      return `<svg class="shape-svg" viewBox="0 0 100 100"><ellipse cx="50" cy="50" rx="42" ry="28" fill="${color}"/></svg>`;
+  }
+  return '';
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('shape-sorter');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('shape-sorter');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++;
+  locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+
+  const shapes = [...SHAPES].sort(() => Math.random() - 0.5).slice(0, 4);
+  target = shapes[Math.floor(Math.random() * shapes.length)];
+  const targetColor = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+
+  document.getElementById('target-shape').innerHTML = shapeSvg(target, '#1f2740');
+  document.getElementById('prompt').textContent = 'Find the ' + target + '!';
+  Hub.speak('Find the ' + target);
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  shapes.sort(() => Math.random() - 0.5).forEach(s => {
+    const color = COLOR_PALETTE[Math.floor(Math.random() * COLOR_PALETTE.length)];
+    const b = document.createElement('button');
+    b.className = 'choice shape-tile';
+    b.innerHTML = shapeSvg(s, color);
+    b.setAttribute('aria-label', s);
+    b.onclick = () => onPick(b, s);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, shape) {
+  if (locked) return;
+  locked = true;
+  if (shape === target) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Yes! ' + target + '!';
+    document.getElementById('feedback').className = 'feedback good';
+    Hub.speak('Yes! ' + target);
+    setTimeout(nextRound, 900);
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'Try again — find the ' + target;
+    document.getElementById('feedback').className = 'feedback bad';
+    setTimeout(() => { btn.classList.remove('wrong'); locked = false; }, 700);
+  }
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+  Hub.speak(msg);
+}
+</script>
+</body>
+</html>

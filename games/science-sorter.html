@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Science Sorter – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .subject-card {
+    background: white; border-radius: 22px; padding: 20px 36px;
+    box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 18px;
+  }
+  .subject-card .em { font-size: 4.6rem; line-height: 1; }
+  .subject-card .name { font-size: 1.4rem; font-weight: 800; text-transform: capitalize; }
+  .choice.cat { background: white; font-size: 1.25rem; min-height: 110px; text-transform: capitalize; }
+  .fact {
+    margin-top: 4px; max-width: 520px;
+    background: var(--accent-soft); color: var(--ink);
+    padding: 10px 16px; border-radius: 14px;
+    font-weight: 700; opacity: 0; transition: opacity .2s ease;
+  }
+  .fact.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🔬 Science Sorter</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt">What kind of animal is this?</div>
+    <div class="subject-card">
+      <span class="em" id="em">🐱</span>
+      <span class="name" id="name">cat</span>
+    </div>
+    <div class="choices" id="choices" style="max-width:560px;"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="fact" id="fact">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar"></div></div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = ['mammal', 'bird', 'fish', 'reptile', 'insect'];
+const ANIMALS = [
+  { n:'cat',    em:'🐱', cat:'mammal',  fact:'Cats have fur and drink milk as babies.' },
+  { n:'dog',    em:'🐶', cat:'mammal',  fact:'Dogs are mammals with four legs and fur.' },
+  { n:'cow',    em:'🐮', cat:'mammal',  fact:'Cows are mammals that eat grass.' },
+  { n:'whale',  em:'🐳', cat:'mammal',  fact:'Whales live in the ocean but breathe air.' },
+  { n:'horse',  em:'🐴', cat:'mammal',  fact:'Horses are mammals that run very fast.' },
+  { n:'elephant', em:'🐘', cat:'mammal', fact:'Elephants are the biggest land mammals.' },
+  { n:'eagle',  em:'🦅', cat:'bird',    fact:'Eagles have feathers and big wings.' },
+  { n:'owl',    em:'🦉', cat:'bird',    fact:'Owls are birds that hunt at night.' },
+  { n:'duck',   em:'🦆', cat:'bird',    fact:'Ducks have feathers and can swim.' },
+  { n:'penguin', em:'🐧', cat:'bird',    fact:'Penguins are birds that cannot fly but swim well.' },
+  { n:'parrot', em:'🦜', cat:'bird',    fact:'Parrots are colorful birds that can mimic sounds.' },
+  { n:'fish',   em:'🐟', cat:'fish',    fact:'Fish live in water and breathe with gills.' },
+  { n:'shark',  em:'🦈', cat:'fish',    fact:'Sharks are big fish with sharp teeth.' },
+  { n:'pufferfish', em:'🐡', cat:'fish', fact:'Pufferfish puff up when they feel scared.' },
+  { n:'tropical fish', em:'🐠', cat:'fish', fact:'Fish have scales and fins for swimming.' },
+  { n:'snake',  em:'🐍', cat:'reptile', fact:'Snakes are reptiles with scaly skin and no legs.' },
+  { n:'lizard', em:'🦎', cat:'reptile', fact:'Lizards are reptiles that like warm sunshine.' },
+  { n:'turtle', em:'🐢', cat:'reptile', fact:'Turtles are reptiles with a hard shell.' },
+  { n:'crocodile', em:'🐊', cat:'reptile', fact:'Crocodiles are big reptiles with strong jaws.' },
+  { n:'ant',    em:'🐜', cat:'insect',  fact:'Ants are insects that live together in colonies.' },
+  { n:'bee',    em:'🐝', cat:'insect',  fact:'Bees are insects that make honey.' },
+  { n:'butterfly', em:'🦋', cat:'insect', fact:'Butterflies are insects with beautiful wings.' },
+  { n:'ladybug', em:'🐞', cat:'insect', fact:'Ladybugs are tiny insects with spots.' },
+  { n:'spider', em:'🕷️', cat:'insect', fact:'Spiders have 8 legs — they are actually arachnids!' },
+];
+
+const TOTAL_ROUNDS = 10;
+let round = 0, correct = 0, locked = false, target = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('science-sorter');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('science-sorter');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++; locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('fact').classList.remove('show');
+  document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+
+  target = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  document.getElementById('em').textContent = target.em;
+  document.getElementById('name').textContent = target.n;
+
+  // 4 category choices, include the correct one
+  const others = CATEGORIES.filter(c => c !== target.cat);
+  others.sort(() => Math.random() - 0.5);
+  const options = [target.cat, ...others.slice(0, 3)].sort(() => Math.random() - 0.5);
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  options.forEach(cat => {
+    const b = document.createElement('button');
+    b.className = 'choice cat';
+    b.textContent = cat;
+    b.onclick = () => onPick(b, cat);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, cat) {
+  if (locked) return;
+  locked = true;
+  if (cat === target.cat) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Correct! A ' + target.n + ' is a ' + target.cat + '.';
+    document.getElementById('feedback').className = 'feedback good';
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'A ' + target.n + ' is actually a ' + target.cat + '.';
+    document.getElementById('feedback').className = 'feedback bad';
+  }
+  const fact = document.getElementById('fact');
+  fact.textContent = target.fact;
+  fact.classList.add('show');
+  setTimeout(nextRound, 1800);
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect — you are a scientist!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

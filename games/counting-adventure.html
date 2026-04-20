@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Counting Adventure – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .obj-stage {
+    background: white; border-radius: 22px; padding: 24px;
+    box-shadow: var(--shadow);
+    min-width: 300px; min-height: 180px;
+    display: flex; flex-wrap: wrap; gap: 14px;
+    justify-content: center; align-items: center;
+  }
+  .obj-stage .em { font-size: 3rem; line-height: 1; }
+  .math-prompt {
+    font-size: clamp(2.2rem, 6vw, 3.4rem);
+    font-weight: 900; letter-spacing: .02em;
+    background: white; padding: 16px 36px; border-radius: 20px;
+    box-shadow: var(--shadow);
+  }
+  .choice.num { font-size: 2.4rem; min-height: 110px; }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🔢 Counting Adventure</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt" id="prompt">How many?</div>
+    <div id="stage"></div>
+    <div class="choices" id="choices" style="max-width:520px;"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar"></div></div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const OBJECTS = ['🍎','🍌','🍇','🍓','⚽','🌼','🐝','⭐','🐟','🚗'];
+const TOTAL_ROUNDS = 10;
+let round = 0, correct = 0, locked = false, answer = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('counting-adventure');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('counting-adventure');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++; locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+
+  // 1st half: counting (1-10). 2nd half: addition up to 10.
+  if (round <= 5) {
+    const n = 1 + Math.floor(Math.random() * 9);
+    const obj = OBJECTS[Math.floor(Math.random() * OBJECTS.length)];
+    answer = n;
+    document.getElementById('prompt').textContent = 'How many?';
+    const stage = document.getElementById('stage');
+    stage.className = 'obj-stage';
+    stage.innerHTML = Array.from({length: n}, () => `<span class="em">${obj}</span>`).join('');
+  } else {
+    const a = 1 + Math.floor(Math.random() * 5);
+    const b = 1 + Math.floor(Math.random() * 5);
+    answer = a + b;
+    document.getElementById('prompt').textContent = 'What is the answer?';
+    const stage = document.getElementById('stage');
+    stage.className = 'math-prompt';
+    stage.textContent = `${a} + ${b} = ?`;
+  }
+
+  // build 4 choices around the answer
+  const options = new Set([answer]);
+  while (options.size < 4) {
+    const d = answer + (Math.floor(Math.random() * 5) - 2);
+    if (d > 0 && d !== answer) options.add(d);
+  }
+  const arr = [...options].sort(() => Math.random() - 0.5);
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  arr.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'choice num';
+    b.textContent = v;
+    b.onclick = () => onPick(b, v);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, v) {
+  if (locked) return;
+  locked = true;
+  if (v === answer) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Correct! ' + answer;
+    document.getElementById('feedback').className = 'feedback good';
+    setTimeout(nextRound, 800);
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'Not quite — the answer is ' + answer;
+    document.getElementById('feedback').className = 'feedback bad';
+    setTimeout(nextRound, 1400);
+  }
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect! You are a counting star!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

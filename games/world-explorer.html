@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>World Explorer – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .country-card {
+    background: white; border-radius: 22px; padding: 22px 36px;
+    box-shadow: var(--shadow);
+    display: inline-flex; align-items: center; gap: 18px;
+  }
+  .country-card .flag { font-size: 4.2rem; line-height: 1; }
+  .country-card .name { font-size: 1.6rem; font-weight: 800; }
+  .choice.cont { background: white; font-size: 1.1rem; min-height: 100px; }
+  .fact {
+    margin-top: 4px; max-width: 520px;
+    background: var(--accent-soft); color: var(--ink);
+    padding: 10px 16px; border-radius: 14px;
+    font-weight: 700; opacity: 0; transition: opacity .2s ease;
+  }
+  .fact.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🌍 World Explorer</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt" id="prompt">Which continent is this country in?</div>
+    <div class="country-card">
+      <span class="flag" id="flag">🏳️</span>
+      <span class="name" id="name">—</span>
+    </div>
+    <div class="choices" id="choices" style="max-width:700px;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));"></div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="fact" id="fact">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar"></div></div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const CONTINENTS = ['Africa','Asia','Europe','North America','South America','Oceania','Antarctica'];
+const COUNTRIES = [
+  { n:'United States', f:'🇺🇸', c:'North America', cap:'Washington, D.C.' },
+  { n:'Canada',        f:'🇨🇦', c:'North America', cap:'Ottawa' },
+  { n:'Mexico',        f:'🇲🇽', c:'North America', cap:'Mexico City' },
+  { n:'Brazil',        f:'🇧🇷', c:'South America', cap:'Brasília' },
+  { n:'Argentina',     f:'🇦🇷', c:'South America', cap:'Buenos Aires' },
+  { n:'Peru',          f:'🇵🇪', c:'South America', cap:'Lima' },
+  { n:'United Kingdom',f:'🇬🇧', c:'Europe',        cap:'London' },
+  { n:'France',        f:'🇫🇷', c:'Europe',        cap:'Paris' },
+  { n:'Germany',       f:'🇩🇪', c:'Europe',        cap:'Berlin' },
+  { n:'Italy',         f:'🇮🇹', c:'Europe',        cap:'Rome' },
+  { n:'Spain',         f:'🇪🇸', c:'Europe',        cap:'Madrid' },
+  { n:'Egypt',         f:'🇪🇬', c:'Africa',        cap:'Cairo' },
+  { n:'Kenya',         f:'🇰🇪', c:'Africa',        cap:'Nairobi' },
+  { n:'Nigeria',       f:'🇳🇬', c:'Africa',        cap:'Abuja' },
+  { n:'Ghana',         f:'🇬🇭', c:'Africa',        cap:'Accra' },
+  { n:'South Africa',  f:'🇿🇦', c:'Africa',        cap:'Pretoria' },
+  { n:'China',         f:'🇨🇳', c:'Asia',          cap:'Beijing' },
+  { n:'Japan',         f:'🇯🇵', c:'Asia',          cap:'Tokyo' },
+  { n:'India',         f:'🇮🇳', c:'Asia',          cap:'New Delhi' },
+  { n:'South Korea',   f:'🇰🇷', c:'Asia',          cap:'Seoul' },
+  { n:'Thailand',      f:'🇹🇭', c:'Asia',          cap:'Bangkok' },
+  { n:'Australia',     f:'🇦🇺', c:'Oceania',       cap:'Canberra' },
+  { n:'New Zealand',   f:'🇳🇿', c:'Oceania',       cap:'Wellington' },
+  { n:'Fiji',          f:'🇫🇯', c:'Oceania',       cap:'Suva' },
+];
+
+const TOTAL_ROUNDS = 10;
+let round = 0, correct = 0, locked = false, target = null, mode = 'continent';
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('world-explorer');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('world-explorer');
+    nextRound();
+  };
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++; locked = false;
+  document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('fact').classList.remove('show');
+  document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+
+  // alternate between "which continent" and "which capital"
+  mode = round % 2 === 1 ? 'continent' : 'capital';
+
+  target = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)];
+  document.getElementById('flag').textContent = target.f;
+  document.getElementById('name').textContent = target.n;
+
+  let options, correctVal;
+  if (mode === 'continent') {
+    document.getElementById('prompt').textContent = 'Which continent is ' + target.n + ' in?';
+    correctVal = target.c;
+    const others = CONTINENTS.filter(c => c !== target.c).sort(() => Math.random() - 0.5).slice(0, 3);
+    options = [target.c, ...others].sort(() => Math.random() - 0.5);
+  } else {
+    document.getElementById('prompt').textContent = 'What is the capital of ' + target.n + '?';
+    correctVal = target.cap;
+    const others = COUNTRIES.filter(x => x.cap !== target.cap).sort(() => Math.random() - 0.5).slice(0, 3).map(x => x.cap);
+    options = [target.cap, ...others].sort(() => Math.random() - 0.5);
+  }
+
+  const wrap = document.getElementById('choices');
+  wrap.innerHTML = '';
+  options.forEach(v => {
+    const b = document.createElement('button');
+    b.className = 'choice cont';
+    b.textContent = v;
+    b.onclick = () => onPick(b, v, correctVal);
+    wrap.appendChild(b);
+  });
+  updateScore();
+}
+
+function onPick(btn, val, correctVal) {
+  if (locked) return;
+  locked = true;
+  if (val === correctVal) {
+    btn.classList.add('correct');
+    correct++;
+    document.getElementById('feedback').textContent = 'Correct!';
+    document.getElementById('feedback').className = 'feedback good';
+  } else {
+    btn.classList.add('wrong');
+    document.getElementById('feedback').textContent = 'The answer is ' + correctVal + '.';
+    document.getElementById('feedback').className = 'feedback bad';
+  }
+  const fact = document.getElementById('fact');
+  fact.textContent = `${target.n} is in ${target.c}. Its capital is ${target.cap}.`;
+  fact.classList.add('show');
+  setTimeout(nextRound, 1900);
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect — you are a globetrotter!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep exploring!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

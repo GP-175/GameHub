@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Spelling Bee – GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  .pic-stage {
+    background: white; border-radius: 22px; padding: 18px 36px;
+    box-shadow: var(--shadow);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .pic-stage .em { font-size: 5rem; line-height: 1; }
+  .slots { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .slot {
+    width: 58px; height: 70px; border-radius: 14px;
+    background: white; box-shadow: var(--shadow);
+    display: grid; place-items: center;
+    font-size: 2rem; font-weight: 900; color: var(--ink);
+    border: 3px solid transparent;
+  }
+  .slot.active { border-color: var(--accent); }
+  .slot.filled { background: var(--accent-soft); color: var(--accent); }
+  .letter-bank { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 560px; }
+  .letter-btn {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: white; border: 0;
+    font-weight: 900; font-size: 1.5rem; color: var(--ink);
+    cursor: pointer; font-family: inherit;
+    box-shadow: var(--shadow);
+  }
+  .letter-btn:hover { transform: translateY(-2px); }
+  .letter-btn[disabled] { opacity: .25; cursor: default; }
+  .toolbar { display: flex; gap: 10px; }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>🐝 Spelling Bee</h1>
+    <span class="score-pill" id="score">0 / 0</span>
+  </header>
+
+  <main class="game-area">
+    <div class="prompt" id="prompt">Spell the word!</div>
+    <div class="pic-stage">
+      <span class="em" id="pic-em">?</span>
+    </div>
+    <div class="slots" id="slots"></div>
+    <div class="letter-bank" id="bank"></div>
+    <div class="toolbar">
+      <button class="btn btn-soft" id="back-btn">⌫ Undo</button>
+      <button class="btn btn-soft" id="hear-btn">🔊 Hear it</button>
+    </div>
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar"></div></div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden" style="position:fixed;inset:0;background:rgba(31,39,64,.55);display:grid;place-items:center;padding:20px;">
+  <div class="game-over">
+    <div class="star">⭐</div>
+    <div class="muted">All done!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  { w: 'cat', em: '🐱' },
+  { w: 'dog', em: '🐶' },
+  { w: 'sun', em: '☀️' },
+  { w: 'bed', em: '🛏️' },
+  { w: 'cup', em: '🥤' },
+  { w: 'hat', em: '🎩' },
+  { w: 'pig', em: '🐷' },
+  { w: 'bee', em: '🐝' },
+  { w: 'fish', em: '🐟' },
+  { w: 'cake', em: '🍰' },
+  { w: 'duck', em: '🦆' },
+  { w: 'frog', em: '🐸' },
+  { w: 'star', em: '⭐' },
+  { w: 'tree', em: '🌳' },
+  { w: 'moon', em: '🌙' },
+  { w: 'bird', em: '🐦' },
+  { w: 'apple', em: '🍎' },
+  { w: 'grape', em: '🍇' },
+  { w: 'horse', em: '🐴' },
+  { w: 'snake', em: '🐍' },
+];
+
+const TOTAL_ROUNDS = 8;
+let round = 0, correct = 0, target = null, filled = [];
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('spelling-bee');
+  nextRound();
+  document.getElementById('play-again').onclick = () => {
+    document.getElementById('overlay').classList.add('hidden');
+    round = 0; correct = 0;
+    Hub.startSession('spelling-bee');
+    nextRound();
+  };
+  document.getElementById('back-btn').onclick = undoLetter;
+  document.getElementById('hear-btn').onclick = () => target && Hub.speak(target.w);
+});
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++;
+  document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+  filled = [];
+
+  target = WORDS[Math.floor(Math.random() * WORDS.length)];
+  document.getElementById('pic-em').textContent = target.em;
+  Hub.speak(target.w);
+
+  // render slots
+  const slots = document.getElementById('slots');
+  slots.innerHTML = '';
+  for (let i = 0; i < target.w.length; i++) {
+    const s = document.createElement('div');
+    s.className = 'slot';
+    slots.appendChild(s);
+  }
+
+  // letter bank: correct letters + distractors, shuffled, up to 8 letters
+  const letters = target.w.split('');
+  const extras = new Set();
+  while (extras.size + letters.length < 8) {
+    const L = String.fromCharCode(97 + Math.floor(Math.random() * 26));
+    extras.add(L);
+  }
+  const bankArr = [...letters, ...extras].sort(() => Math.random() - 0.5);
+
+  const bank = document.getElementById('bank');
+  bank.innerHTML = '';
+  bankArr.forEach((L, idx) => {
+    const b = document.createElement('button');
+    b.className = 'letter-btn';
+    b.textContent = L.toUpperCase();
+    b.dataset.letter = L;
+    b.dataset.idx = idx;
+    b.onclick = () => pickLetter(b, L);
+    bank.appendChild(b);
+  });
+  updateScore();
+  highlightNext();
+}
+
+function highlightNext() {
+  const slots = document.querySelectorAll('.slot');
+  slots.forEach((s, i) => {
+    s.classList.toggle('active', i === filled.length);
+  });
+}
+
+function pickLetter(btn, L) {
+  if (filled.length >= target.w.length) return;
+  filled.push({ L, btn });
+  btn.disabled = true;
+  const slots = document.querySelectorAll('.slot');
+  slots[filled.length - 1].textContent = L.toUpperCase();
+  slots[filled.length - 1].classList.add('filled');
+  highlightNext();
+  if (filled.length === target.w.length) checkWord();
+}
+
+function undoLetter() {
+  if (filled.length === 0) return;
+  const last = filled.pop();
+  last.btn.disabled = false;
+  const slots = document.querySelectorAll('.slot');
+  slots[filled.length].textContent = '';
+  slots[filled.length].classList.remove('filled');
+  highlightNext();
+}
+
+function checkWord() {
+  const attempt = filled.map(f => f.L).join('');
+  if (attempt === target.w) {
+    correct++;
+    document.getElementById('feedback').textContent = 'Perfect spelling!';
+    document.getElementById('feedback').className = 'feedback good';
+    Hub.speak('Yes! ' + target.w);
+    setTimeout(nextRound, 900);
+  } else {
+    document.getElementById('feedback').textContent = `Not quite — it was "${target.w}"`;
+    document.getElementById('feedback').className = 'feedback bad';
+    // reveal correct word in slots
+    const slots = document.querySelectorAll('.slot');
+    target.w.split('').forEach((L, i) => {
+      slots[i].textContent = L.toUpperCase();
+      slots[i].classList.add('filled');
+    });
+    setTimeout(nextRound, 1600);
+  }
+  updateScore();
+}
+
+function updateScore() {
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  const msg = pct === 100 ? 'Perfect speller!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
+  document.getElementById('final-msg').textContent = msg;
+  document.getElementById('overlay').classList.remove('hidden');
+}
+</script>
+</body>
+</html>

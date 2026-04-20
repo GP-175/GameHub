@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+<meta name="description" content="GameHub - Premium educational games and activities for kids." />
+<title>GameHub – Learning Games for Kids</title>
+
+<!-- PWA manifest + theme -->
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#6c5ce7" />
+
+<!-- iOS / iPad home-screen app -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css" />
+<script src="assets/hub.js" defer></script>
+
+<!-- Register the service worker (enables offline play after first visit) -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW registration failed:', err));
+    });
+  }
+</script>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">G</span> GameHub
+  </div>
+  <nav>
+    <a href="#" id="nav-switch" class="hidden">Switch kid</a>
+    <a href="parent.html">Parent</a>
+  </nav>
+</header>
+
+<main class="container">
+
+  <!-- View 1: Profile Picker -->
+  <section id="view-profiles" class="hidden">
+    <h1>Who's playing?</h1>
+    <p class="muted">Pick a profile to see the games available.</p>
+    <div id="profile-grid" class="profile-grid"></div>
+  </section>
+
+  <!-- View 2: First Run -->
+  <section id="view-empty" class="hidden">
+    <div class="card" style="max-width:520px;margin:40px auto;text-align:center;">
+      <h1>Welcome to GameHub</h1>
+      <p>Let's create a profile for your first kid. You can add more anytime.</p>
+      <div class="form-row" style="text-align:left;">
+        <label for="first-name">Kid's name</label>
+        <input class="input" id="first-name" placeholder="e.g. Ada" maxlength="24" />
+      </div>
+      <div class="form-row" style="text-align:left;">
+        <label for="first-age">Age group</label>
+        <select id="first-age">
+          <option value="toddler">Toddler (2–4)</option>
+          <option value="early-elem" selected>Early Elementary (5–7)</option>
+        </select>
+      </div>
+      <button class="btn btn-big" id="first-create">Create profile</button>
+    </div>
+  </section>
+
+  <!-- View 3: Game Grid -->
+  <section id="view-games" class="hidden">
+    <div class="row" style="margin-bottom:18px;">
+      <div>
+        <h1 id="hello-title">Hi!</h1>
+        <p class="muted" id="hello-sub">Pick a game to play.</p>
+      </div>
+      <div class="spacer"></div>
+    </div>
+    <div id="game-grid" class="game-grid"></div>
+    <p id="no-games" class="muted center hidden" style="margin-top:32px;">
+      No games are enabled for this profile yet. Ask a grown-up to enable some in the
+      <a href="parent.html">Parent</a> area.
+    </p>
+  </section>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+  // Wait for Hub to be ready (deferred script).
+  window.addEventListener('DOMContentLoaded', init);
+
+
+
+  function init() {
+    const profiles = Hub.getProfiles();
+    if (profiles.length === 0) { show('view-empty'); bindFirstRun(); return; }
+    const active = Hub.getActiveProfile();
+    if (!active) { renderProfiles(); show('view-profiles'); return; }
+    renderGames(active);
+    show('view-games');
+    $('nav-switch').classList.remove('hidden');
+    $('nav-switch').onclick = (e) => {
+      e.preventDefault();
+      Hub.setActiveProfile(null);
+      renderProfiles();
+      show('view-profiles');
+      $('nav-switch').classList.add('hidden');
+    };
+  }
+
+  function bindFirstRun() {
+    $('first-create').onclick = () => {
+      const name = $('first-name').value.trim() || 'Kid';
+      const ageGroup = $('first-age').value;
+      const p = Hub.addProfile({ name, ageGroup });
+      Hub.setActiveProfile(p.id);
+      init();
+    };
+    $('first-name').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') $('first-create').click();
+    });
+  }
+
+  function renderProfiles() {
+    const grid = $('profile-grid');
+    grid.innerHTML = '';
+    Hub.getProfiles().forEach(p => {
+      const card = document.createElement('div');
+      card.className = 'profile-card';
+      card.innerHTML = `
+        <div class="profile-avatar" style="background:${p.color}">${initials(p.name)}</div>
+        <div class="profile-name">${escapeHtml(p.name)}</div>
+        <div class="profile-age">${ageLabel(p.ageGroup)}</div>
+      `;
+      card.onclick = () => {
+        Hub.setActiveProfile(p.id);
+        init();
+      };
+      grid.appendChild(card);
+    });
+    // add card
+    const add = document.createElement('div');
+    add.className = 'profile-card add';
+    add.innerHTML = '+ Add a kid';
+    add.onclick = () => { window.location.href = 'parent.html#profiles'; };
+    grid.appendChild(add);
+  }
+
+  function renderGames(profile) {
+    $('hello-title').textContent = `Hi, ${profile.name}!`;
+    $('hello-sub').textContent = `Pick a game. ${ageLabel(profile.ageGroup)}.`;
+
+    const grid = $('game-grid');
+    grid.innerHTML = '';
+
+    const games = Hub.GAMES.filter(g =>
+      g.ageGroups.includes(profile.ageGroup) && Hub.isGameEnabled(profile.id, g.id)
+    );
+
+    if (games.length === 0) { $('no-games').classList.remove('hidden'); return; }
+    $('no-games').classList.add('hidden');
+
+    games.forEach(g => {
+      const prog = Hub.getProgress(profile.id, g.id);
+      const a = document.createElement('a');
+      a.className = 'game-card';
+      a.href = g.path;
+      a.style.borderTopColor = g.accent;
+      a.innerHTML = `
+        <div class="game-icon" style="background:${hexAlpha(g.accent, 0.15)};color:${g.accent}">${g.icon}</div>
+        <div class="game-title">${escapeHtml(g.title)}</div>
+        <div class="game-tag">${escapeHtml(g.tagline)}</div>
+        <div class="game-meta">
+          <span class="badge" style="background:${hexAlpha(g.accent,0.15)};color:${g.accent}">${escapeHtml(g.subject)}</span>
+          <span>${prog.bestScore ? '★ ' + prog.bestScore + '%' : 'New!'}</span>
+        </div>
+      `;
+      grid.appendChild(a);
+    });
+  }
+
+  // ---------- helpers ----------
+  function hexAlpha(hex, a) {
+    const h = hex.replace('#','');
+    const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
+    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    return `rgba(${r},${g},${b},${a})`;
+  }
+</script>
+
+</body>
+</html>
