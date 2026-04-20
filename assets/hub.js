@@ -339,7 +339,7 @@
   ];
 
   function pickBestVoice() {
-    if (!('speechSynthesis' in window)) return null;
+    if (!window.speechSynthesis) return null;
     const voices = window.speechSynthesis.getVoices();
     if (!voices || voices.length === 0) return null;
 
@@ -363,7 +363,7 @@
     _voicesReady = !!_cachedVoice;
   }
 
-  if ('speechSynthesis' in window) {
+  if (window.speechSynthesis) {
     // Chrome loads voices asynchronously — listen for the event
     refreshVoice();
     if (typeof window.speechSynthesis.addEventListener === 'function') {
@@ -375,7 +375,7 @@
 
   function speak(text, opts) {
     try {
-      if (!('speechSynthesis' in window)) return;
+      if (!window.speechSynthesis) return;
       window.speechSynthesis.cancel();
       const u = new SpeechSynthesisUtterance(String(text));
 
