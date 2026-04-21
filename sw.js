@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v3';
+const CACHE_VERSION = 'gamehub-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -33,12 +33,20 @@ async function cacheOne(cache, url) {
   try {
     const resp = await fetch(url, { redirect: 'follow', cache: 'reload' });
     if (!resp || !resp.ok) throw new Error('bad status ' + (resp && resp.status));
-    // The response's `.redirected` flag tells us if we went through a redirect.
-    // Cache under the requested URL (what the browser will ask for).
-    await cache.put(url, resp.clone());
+    // Rebuild the Response so the `redirected` flag is cleared. Browsers
+    // refuse to use a redirected cached response for navigation requests
+    // (whose redirect mode is "manual"), which would fail with ERR_FAILED.
+    const body = await resp.blob();
+    const clean = new Response(body, {
+      status: resp.status,
+      statusText: resp.statusText,
+      headers: resp.headers,
+    });
+    await cache.put(url, clean.clone());
     // Also cache under the final URL in case links ever use the canonical form.
-    if (resp.redirected && resp.url) {
-      await cache.put(resp.url, resp.clone());
+    const absUrl = new URL(url, self.location).href;
+    if (resp.redirected && resp.url && resp.url !== absUrl) {
+      await cache.put(resp.url, clean.clone());
     }
   } catch (err) {
     console.warn('[SW] skip', url, err);
@@ -86,10 +94,12 @@ self.addEventListener('fetch', (event) => {
       cached = await caches.match(alt);
       if (cached) return cached;
 
-      // 3. Go to the network and opportunistically cache the response
+      // 3. Go to the network and opportunistically cache the response.
+      //    Skip caching redirected responses — they can't be served back for
+      //    navigation requests (redirect mode "manual" rejects them).
       try {
         const resp = await fetch(req);
-        if (resp && resp.ok) {
+        if (resp && resp.ok && !resp.redirected) {
           const copy = resp.clone();
           caches.open(CACHE_VERSION).then((c) => c.put(req, copy));
         }
@@ -106,7 +116,7 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(req)
       .then((resp) => {
-        if (resp && resp.ok) {
+        if (resp && resp.ok && !resp.redirected) {
           const copy = resp.clone();
           caches.open(CACHE_VERSION).then((cache) => cache.put(req, copy));
         }
