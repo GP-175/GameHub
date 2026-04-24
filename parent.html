@@ -308,7 +308,7 @@
         .sort((a, b) => a[1].mastery - b[1].mastery)
         .slice(0, 5);
       const weakHtml = masteryEntries.length
-        ? masteryEntries.map(([topicId, data]) => `<li><strong>${topicId}</strong>: ${data.mastery}</li>`).join('')
+        ? masteryEntries.map(([topicId, data]) => `<li><strong>${topicId}</strong>: ${data.mastery} (conf ${data.confidence || 0}, stab ${data.stability || 0})</li>`).join('')
         : '<li>No topic history yet.</li>';
       return `<div class="card" style="margin-bottom:14px;">
         <div class="row">
@@ -328,7 +328,9 @@
           <div class="spacer"></div>
           <div>
             <strong>Last quiz day</strong><br>
-            <span class="muted">${quizState.lastQuizDate || 'Not yet played'}</span>
+            <span class="muted">${quizState.lastQuizDate || 'Not yet played'}</span><br><br>
+            <strong>Mode stats</strong><br>
+            <span class="muted">${Object.keys(quizState.modeStats || {}).length ? Object.entries(quizState.modeStats).map(([mode, stat]) => `${mode}: ${stat.avgScore}% avg over ${stat.plays}`).join(' • ') : 'No mode stats yet'}</span>
           </div>
         </div>
       </div>`;

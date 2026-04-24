@@ -12,6 +12,7 @@
   .quiz-side .card, .quiz-main .card { margin-bottom: 16px; }
   .quiz-stat { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #efeafa; }
   .quiz-stat:last-child { border-bottom: 0; }
+  .answer-box { width: 100%; min-height: 120px; resize: vertical; }
   .pill-row { display: flex; flex-wrap: wrap; gap: 8px; }
   .topic-pill { border: 0; border-radius: 999px; padding: 8px 12px; font-weight: 700; cursor: pointer; background: var(--accent-soft); color: var(--accent); }
   .topic-pill.active { background: var(--accent); color: white; }
@@ -96,12 +97,19 @@
           <h3 style="margin-top:0;">Weak areas</h3>
           <div id="weak-area-list" class="muted">No weak areas yet.</div>
         </div>
+        <div class="card">
+          <h3 style="margin-top:0;">Dashboard</h3>
+          <div id="quiz-dashboard-mini" class="muted">No data yet.</div>
+        </div>
       </aside>
       <section class="quiz-main">
         <div class="card">
           <div class="badge" id="question-topic">Topic</div>
           <h1 id="question-prompt" style="margin-top:12px;">Question</h1>
           <div id="option-list" class="option-list"></div>
+          <div id="text-answer-wrap" class="hidden" style="margin-top:16px;">
+            <textarea id="text-answer" class="input answer-box" placeholder="Type your answer here"></textarea>
+          </div>
           <div class="confidence-row">
             <button class="confidence-btn" data-confidence="guessed">Guessed</button>
             <button class="confidence-btn" data-confidence="somewhat-sure">Somewhat sure</button>
@@ -218,10 +226,7 @@ function renderTopicPills(unit) {
 function renderSetupSummary(unit) {
   const state = Hub.getQuizState(activeProfile.id);
   const topics = Hub.getQuizTopics(unit);
-  const weak = topics
-    .map(t => ({ topic: t, mastery: Hub.getTopicMastery(activeProfile.id, t.id) }))
-    .filter(x => x.mastery.mastery < 50)
-    .sort((a, b) => a.mastery.mastery - b.mastery.mastery);
+  const dashboard = Hub.getQuizDashboard(activeProfile.id, unit);
 
   $('setup-summary').innerHTML = `
     <div class="card" style="box-shadow:none;background:#f8f6ff;">
@@ -234,7 +239,7 @@ function renderSetupSummary(unit) {
       <strong>${topics.length}</strong><br><span class="muted">Topics in scope</span>
     </div>
     <div class="card" style="box-shadow:none;background:#f8f6ff;">
-      <strong>${weak[0] ? weak[0].topic.name : 'None yet'}</strong><br><span class="muted">Weakest topic</span>
+      <strong>${dashboard.averageMastery || 0}</strong><br><span class="muted">Average mastery</span>
     </div>
   `;
 }
@@ -263,6 +268,8 @@ function startQuiz() {
 
 function loadCurrentQuestion() {
   currentSelectedAnswer = null;
+  $('text-answer').value = '';
+  $('text-answer').disabled = false;
   $('answer-explanation').classList.add('hidden');
   $('next-question').classList.add('hidden');
   $('submit-answer').disabled = false;
@@ -276,25 +283,36 @@ function loadCurrentQuestion() {
   $('question-prompt').textContent = currentQuestion.prompt;
   const optionList = $('option-list');
   optionList.innerHTML = '';
-  (currentQuestion.options || []).forEach(option => {
-    const btn = document.createElement('button');
-    btn.className = 'option-btn';
-    btn.textContent = option;
-    btn.onclick = () => {
-      currentSelectedAnswer = option;
-      optionList.querySelectorAll('.option-btn').forEach(x => x.classList.remove('selected'));
-      btn.classList.add('selected');
-    };
-    optionList.appendChild(btn);
-  });
+  if (currentQuestion.question_type === 'mcq') {
+    $('text-answer-wrap').classList.add('hidden');
+    (currentQuestion.options || []).forEach(option => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      btn.textContent = option;
+      btn.onclick = () => {
+        currentSelectedAnswer = option;
+        optionList.querySelectorAll('.option-btn').forEach(x => x.classList.remove('selected'));
+        btn.classList.add('selected');
+      };
+      optionList.appendChild(btn);
+    });
+  } else {
+    $('text-answer-wrap').classList.remove('hidden');
+    const hint = document.createElement('div');
+    hint.className = 'muted';
+    hint.textContent = currentQuestion.question_type === 'scenario' ? 'Write the best diagnosis or concept.' : 'Type a short answer.';
+    optionList.appendChild(hint);
+  }
+  renderDashboardMini(session.unit);
 }
 
 function submitAnswer() {
-  if (!currentSelectedAnswer) {
-    toast('Pick an answer first');
+  const answer = currentQuestion.question_type === 'mcq' ? currentSelectedAnswer : $('text-answer').value.trim();
+  if (!answer) {
+    toast(currentQuestion.question_type === 'mcq' ? 'Pick an answer first' : 'Write an answer first');
     return;
   }
-  const result = Hub.answerQuizQuestion(activeProfile.id, session.id, currentSelectedAnswer, selectedConfidence);
+  const result = Hub.answerQuizQuestion(activeProfile.id, session.id, answer, selectedConfidence);
   if (!result) {
     toast('Could not save answer');
     return;
@@ -303,19 +321,23 @@ function submitAnswer() {
   const buttons = Array.from($('option-list').querySelectorAll('.option-btn'));
   buttons.forEach(btn => {
     if (btn.textContent === result.correctAnswer) btn.classList.add('correct');
-    if (btn.textContent === currentSelectedAnswer && !result.isCorrect) btn.classList.add('wrong');
+    if (btn.textContent === answer && !result.isCorrect) btn.classList.add('wrong');
     btn.disabled = true;
   });
+  $('text-answer').disabled = true;
   $('submit-answer').disabled = true;
   const correctCount = session.answers.filter(a => a.isCorrect).length;
   $('stat-correct').textContent = String(correctCount);
   $('answer-explanation').innerHTML = `
     <strong>${result.isCorrect ? 'Correct' : 'Not quite'}</strong><br>
     ${escapeHtml(result.explanation)}<br><br>
-    <span class="muted">Topic mastery now: ${result.mastery.mastery}</span>
+    <span class="muted">Correct answer: ${escapeHtml(result.correctAnswer)}</span><br>
+    <span class="muted">Topic mastery now: ${result.mastery.mastery}, confidence ${result.mastery.confidence || 0}, stability ${result.mastery.stability || 0}</span>
   `;
   $('answer-explanation').classList.remove('hidden');
   $('next-question').classList.remove('hidden');
+  renderWeakAreas(session.unit);
+  renderDashboardMini(session.unit);
 }
 
 function goNext() {
@@ -327,11 +349,22 @@ function goNext() {
 }
 
 function renderWeakAreas(unit) {
-  const weak = Hub.getQuizTopics(unit)
-    .map(topic => ({ topic, mastery: Hub.getTopicMastery(activeProfile.id, topic.id) }))
-    .sort((a, b) => a.mastery.mastery - b.mastery.mastery)
-    .slice(0, 3);
-  $('weak-area-list').innerHTML = weak.map(x => `${x.topic.name}: ${x.mastery.mastery}`).join('<br>');
+  const weak = Hub.getWeakTopics(activeProfile.id, unit).slice(0, 4);
+  $('weak-area-list').innerHTML = weak.length
+    ? weak.map(x => `${x.topic.name}: ${x.mastery.mastery} (conf ${x.mastery.confidence || 0})`).join('<br>')
+    : 'No weak areas yet.';
+}
+
+function renderDashboardMini(unit) {
+  const dash = Hub.getQuizDashboard(activeProfile.id, unit);
+  const weak = dash.weakTopics[0];
+  const strong = dash.strongTopics[0];
+  $('quiz-dashboard-mini').innerHTML = `
+    Average mastery: <strong>${dash.averageMastery}</strong><br>
+    Weakest: <strong>${weak ? weak.topic.name : 'None'}</strong><br>
+    Strongest: <strong>${strong ? strong.topic.name : 'None yet'}</strong><br>
+    Streak: <strong>${dash.streak}</strong>
+  `;
 }
 
 function showSummary() {
@@ -339,20 +372,21 @@ function showSummary() {
   const correct = answers.filter(a => a.isCorrect).length;
   const score = Math.round((correct / Math.max(1, answers.length)) * 100);
   const unit = session.unit;
-  const weakest = Hub.getQuizTopics(unit)
-    .map(topic => ({ topic, mastery: Hub.getTopicMastery(activeProfile.id, topic.id) }))
-    .sort((a, b) => a.mastery.mastery - b.mastery.mastery)[0];
+  const weakest = Hub.getWeakTopics(activeProfile.id, unit)[0];
+  const dashboard = Hub.getQuizDashboard(activeProfile.id, unit);
 
   $('summary-grid').innerHTML = `
     <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${score}%</strong><br><span class="muted">Session score</span></div>
     <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${correct}/${answers.length}</strong><br><span class="muted">Correct answers</span></div>
     <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${Hub.getQuizState(activeProfile.id).streak || 0}</strong><br><span class="muted">Daily streak</span></div>
+    <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${dashboard.averageMastery}</strong><br><span class="muted">Average mastery</span></div>
     <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${weakest ? weakest.topic.name : 'None'}</strong><br><span class="muted">Weakest topic</span></div>
   `;
 
   $('summary-recommendations').innerHTML = weakest
     ? `<p><strong>Recommended next step:</strong> run a topic focus quiz on <em>${escapeHtml(weakest.topic.name)}</em>.</p>
-       <p class="muted">The game is already tracking this as a weaker area and will bias future question selection toward it.</p>`
+       <p class="muted">The game is already tracking this as a weaker area and will bias future question selection toward it.</p>
+       <p class="muted">Current weak mastery: ${weakest.mastery.mastery}, confidence ${weakest.mastery.confidence || 0}, stability ${weakest.mastery.stability || 0}.</p>`
     : '<p class="muted">No clear weak area yet. Keep going with mixed quizzes.</p>';
 
   show('view-summary');

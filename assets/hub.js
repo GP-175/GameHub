@@ -190,6 +190,7 @@
       sessions: {},
       streak: 0,
       lastQuizDate: null,
+      modeStats: {},
     };
   }
 
@@ -317,15 +318,24 @@
     questions: [
       { id: 'U1-T5-Q001', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'mcq', difficulty: 'easy', prompt: 'Which definition best matches leadership in Unit 1?', options: ['The ability to enforce compliance through punishment', 'The ability to influence people toward shared goals', 'The formal right to allocate budgets', 'The process of monitoring output only'], correct_answer: 'The ability to influence people toward shared goals', explanation: 'Unit 1 treats leadership as influence toward goals, not just authority or control.' },
       { id: 'U1-T5-Q002', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'mcq', difficulty: 'easy', prompt: 'Which statement best captures the difference between leadership and management in Unit 1?', options: ['Leadership is only informal, while management is only formal', 'Management is mainly about influence, while leadership is mainly about budgeting', 'Management relies more on coordination and formal role, while leadership relies more on influence and commitment', 'There is no meaningful difference between the two'], correct_answer: 'Management relies more on coordination and formal role, while leadership relies more on influence and commitment', explanation: 'Unit 1 distinguishes management from leadership, while also showing they often overlap in practice.' },
+      { id: 'U1-T5-Q005', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'mcq', difficulty: 'medium', prompt: 'A team follows a supervisor mainly because they respect her expertise and judgment. Which power base is most evident?', options: ['Coercive power', 'Legitimate power', 'Expert power', 'Reward power'], correct_answer: 'Expert power', explanation: 'Expert power comes from perceived knowledge, skill, or competence.' },
+      { id: 'U1-T5-Q007', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'scenario', difficulty: 'hard', prompt: 'A department head has formal authority and sets clear targets, but staff do only the minimum, avoid speaking up, and show little commitment to the shared mission. What is the strongest diagnosis?', correct_answer: 'The manager has authority but weak leadership effectiveness, because shared-goal influence and trust are missing.', explanation: 'Unit 1 distinguishes authority from real leadership. Formal control can produce compliance without commitment.' },
       { id: 'U1-T6-Q004', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'mcq', difficulty: 'medium', prompt: 'Which description best fits transformational leadership?', options: ['Leadership based mainly on exchange, compliance, and routine monitoring', 'Leadership based mainly on vision, inspiration, development, and commitment beyond self-interest', 'Leadership based only on job descriptions and formal procedures', 'Leadership based mainly on fear of penalties'], correct_answer: 'Leadership based mainly on vision, inspiration, development, and commitment beyond self-interest', explanation: 'Transformational leadership emphasizes vision, higher commitment, and follower development.' },
       { id: 'U1-T6-Q005', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'mcq', difficulty: 'medium', prompt: 'Which feature is most characteristic of transactional leadership?', options: ['Shared meaning and inspiration beyond self-interest', 'Exchange relationships, compliance, and role-based expectations', 'Total rejection of formal authority', 'Leadership through ambiguity and spontaneity'], correct_answer: 'Exchange relationships, compliance, and role-based expectations', explanation: 'Transactional leadership is more strongly tied to exchange and formal performance expectations.' },
+      { id: 'U1-T6-Q008', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'scenario', difficulty: 'hard', prompt: 'A leader communicates a compelling future vision, encourages employees to grow, and gets people to commit to goals larger than their personal gain. Which theory best fits this case?', correct_answer: 'Transformational leadership.', explanation: 'The case centers on inspiration, development, and commitment beyond self-interest, which is the core of transformational leadership.' },
+      { id: 'U1-T6-Q010', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'short_answer', difficulty: 'medium', prompt: 'Why are contingency theories useful when judging leadership effectiveness?', correct_answer: 'Because they show that leadership effectiveness depends on the situation, not just on fixed traits or one universally best style.', explanation: 'Unit 1 uses contingency logic to avoid simplistic judgments about leaders.' },
       { id: 'U2-T4-Q001', unit: 'unit2', topic_id: 'U2-T4', topic_name: '7-S and expanded 7-S alignment diagnostics', question_type: 'mcq', difficulty: 'easy', prompt: 'Which of the following is a hard element in the basic 7-S framework?', options: ['Shared values', 'Style', 'Structure', 'Staff'], correct_answer: 'Structure', explanation: 'The hard elements are strategy, structure, and systems.' },
       { id: 'U2-T4-Q004', unit: 'unit2', topic_id: 'U2-T4', topic_name: '7-S and expanded 7-S alignment diagnostics', question_type: 'mcq', difficulty: 'medium', prompt: 'What is the best distinction between superordinate goals and shared values in the expanded 7-S perspective?', options: ['Superordinate goals are enduring beliefs, while shared values are financial targets', 'Superordinate goals concern future aspiration, while shared values concern enduring beliefs and principles', 'They are exactly the same concept with different labels', 'Shared values are external, while superordinate goals are internal'], correct_answer: 'Superordinate goals concern future aspiration, while shared values concern enduring beliefs and principles', explanation: 'Unit 2 treats one as where the organization is trying to go and the other as what it stands for.' },
+      { id: 'U2-T4-Q006', unit: 'unit2', topic_id: 'U2-T4', topic_name: '7-S and expanded 7-S alignment diagnostics', question_type: 'scenario', difficulty: 'hard', prompt: 'An organization announces a new customer-focused strategy and redraws the org chart, but incentives, reporting routines, and performance measures still reward old behaviour. Which 7-S diagnosis is strongest?', correct_answer: 'The organization has misalignment between strategy and systems, and probably structure as well, so the new strategy is unlikely to be executed well.', explanation: 'Unit 2 stresses that changing strategy and structure without changing systems creates failure.' },
       { id: 'U2-T7-Q001', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'easy', prompt: 'What does diversity in organizations primarily refer to?', options: ['Making everyone think the same way', 'Differences among people in a workforce', 'Having no conflict at work', 'Reducing all jobs to one standard design'], correct_answer: 'Differences among people in a workforce', explanation: 'Diversity refers to differences among people, not automatic harmony or uniformity.' },
       { id: 'U2-T7-Q002', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'easy', prompt: 'Which statement best describes inclusion?', options: ['Having demographic variety only', 'Ensuring people feel valued, heard, and able to participate fully', 'Avoiding every disagreement in teams', 'Giving all employees identical backgrounds'], correct_answer: 'Ensuring people feel valued, heard, and able to participate fully', explanation: 'Inclusion concerns whether difference is respected and integrated into real participation.' },
       { id: 'U2-T7-Q006', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'medium', prompt: 'Which is the strongest Unit 2 claim about diversity in organizations?', options: ['Diversity automatically improves performance with no management effort', 'Diversity is always harmful to team cohesion', 'Diversity can create value, but outcomes depend on how it is managed and whether inclusion is present', 'Diversity matters only in global firms'], correct_answer: 'Diversity can create value, but outcomes depend on how it is managed and whether inclusion is present', explanation: 'Unit 2 treats diversity as potentially valuable but not self-executing.' },
+      { id: 'U2-T7-Q007', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'scenario', difficulty: 'hard', prompt: 'A company recruits a more diverse workforce but keeps promotion decisions informal, tolerates biased jokes, and rarely listens to minority voices in meetings. What is the strongest diagnosis?', correct_answer: 'The company has increased diversity numbers without building inclusion, fairness, or effective diversity management.', explanation: 'This is a classic distinction problem: representation is not the same as inclusion.' },
+      { id: 'U2-T7-Q009', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'short_answer', difficulty: 'medium', prompt: 'Correct this statement: If an organization is diverse, it is automatically inclusive.', correct_answer: 'Diversity means difference is present, while inclusion means people are genuinely valued, heard, and able to participate fully. One does not automatically create the other.', explanation: 'This is one of the most important distinction questions in the topic.' },
       { id: 'U2-T9-Q001', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'mcq', difficulty: 'easy', prompt: 'In Unit 2, stress is best understood as:', options: ['any form of hard work', 'a response to demands or pressures that can affect well-being and performance', 'a synonym for laziness', 'something caused only by personal weakness'], correct_answer: 'a response to demands or pressures that can affect well-being and performance', explanation: 'Unit 2 treats stress as a real organizational and human issue, not a character flaw.' },
-      { id: 'U2-T9-Q002', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'mcq', difficulty: 'easy', prompt: 'Which distinction is correct?', options: ['Stressors are outcomes, while strain is the demand causing them', 'Stressors are demands or pressures, while strain is the reaction or effect', 'Stressors and strain mean exactly the same thing', 'Strain only exists outside work'], correct_answer: 'Stressors are demands or pressures, while strain is the reaction or effect', explanation: 'This distinction matters because the source of pressure is not the same as the human response to it.' }
+      { id: 'U2-T9-Q002', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'mcq', difficulty: 'easy', prompt: 'Which distinction is correct?', options: ['Stressors are outcomes, while strain is the demand causing them', 'Stressors are demands or pressures, while strain is the reaction or effect', 'Stressors and strain mean exactly the same thing', 'Strain only exists outside work'], correct_answer: 'Stressors are demands or pressures, while strain is the reaction or effect', explanation: 'This distinction matters because the source of pressure is not the same as the human response to it.' },
+      { id: 'U2-T9-Q007', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'scenario', difficulty: 'hard', prompt: 'A new employee receives vague instructions, unclear priorities, and conflicting signals about how success will be judged. Which concept is most central to the case?', correct_answer: 'Role ambiguity.', explanation: 'The key issue is unclear expectations and unclear standards, which defines role ambiguity.' },
+      { id: 'U2-T9-Q010', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'short_answer', difficulty: 'medium', prompt: 'Why should managers care about work adjustment and coping, not just raw output?', correct_answer: 'Because how employees adjust to work pressures affects well-being, sustained performance, engagement, and retention over time.', explanation: 'Unit 2 does not treat people as output machines. Human adjustment affects organizational performance too.' }
     ]
   };
 
@@ -339,7 +349,7 @@
     ensureProfileBuckets(profileId);
     const qs = state.quizState[profileId];
     if (!qs.mastery[topicId]) {
-      qs.mastery[topicId] = { mastery: 50, correct: 0, wrong: 0, seen: 0, lastSeen: null };
+      qs.mastery[topicId] = { mastery: 50, confidence: 40, stability: 30, correct: 0, wrong: 0, seen: 0, lastSeen: null, weak: false, recent: [] };
       save(state);
     }
     return JSON.parse(JSON.stringify(qs.mastery[topicId]));
@@ -363,18 +373,38 @@
     const topicId = opts?.topic_id || null;
     const mode = opts?.mode || 'daily';
     const pool = getQuizQuestions({ unit, topic_id: topicId });
-    const shuffled = pool
-      .map(q => ({ q, sort: Math.random() + questionPriority(profileId, q, mode) }))
+    const used = new Set();
+    const ordered = pool
+      .map(q => ({ q, sort: Math.random() * 0.35 + questionPriority(profileId, q, mode) }))
       .sort((a, b) => b.sort - a.sort)
       .map(x => x.q);
-    return shuffled.slice(0, Math.min(count, shuffled.length));
+
+    const picks = [];
+    for (const q of ordered) {
+      if (picks.length >= count) break;
+      const familyKey = `${q.topic_id}:${q.question_type}:${q.difficulty}`;
+      if (mode !== 'topic' && used.has(familyKey) && q.question_type !== 'scenario') continue;
+      picks.push(q);
+      used.add(familyKey);
+    }
+    if (picks.length < count) {
+      ordered.forEach(q => {
+        if (picks.length >= count) return;
+        if (!picks.find(x => x.id === q.id)) picks.push(q);
+      });
+    }
+    return picks.slice(0, Math.min(count, ordered.length));
   }
 
   function questionPriority(profileId, question, mode) {
     const mastery = getTopicMastery(profileId, question.topic_id);
     const weaknessBoost = (100 - mastery.mastery) / 100;
-    const base = mode === 'daily' ? 0.35 : 0.2;
-    return base + weaknessBoost;
+    const stabilityBoost = (100 - (mastery.stability || 30)) / 200;
+    const confidenceBoost = (100 - (mastery.confidence || 40)) / 200;
+    const difficultyWeight = question.difficulty === 'hard' ? 0.08 : question.difficulty === 'medium' ? 0.04 : 0;
+    const typeWeight = question.question_type === 'scenario' || question.question_type === 'short_answer' ? 0.08 : 0.02;
+    const base = mode === 'daily' ? 0.35 : mode === 'weakness' ? 0.5 : 0.2;
+    return base + weaknessBoost + stabilityBoost + confidenceBoost + difficultyWeight + typeWeight;
   }
 
   function createQuizSession(profileId, opts) {
@@ -414,27 +444,46 @@
     const questionId = session.questionIds[session.currentIndex];
     const question = getQuizQuestionById(questionId);
     if (!question) return null;
-    const isCorrect = String(answer).trim() === String(question.correct_answer).trim();
-    const mastery = state.quizState[profileId].mastery[question.topic_id] || { mastery: 50, correct: 0, wrong: 0, seen: 0, lastSeen: null };
+    const normalizedAnswer = String(answer).trim().toLowerCase();
+    const normalizedCorrect = String(question.correct_answer).trim().toLowerCase();
+    const isCorrect = normalizedAnswer === normalizedCorrect || normalizedCorrect.includes(normalizedAnswer) || normalizedAnswer.includes(normalizedCorrect);
+    const mastery = state.quizState[profileId].mastery[question.topic_id] || { mastery: 50, confidence: 40, stability: 30, correct: 0, wrong: 0, seen: 0, lastSeen: null, weak: false, recent: [] };
     mastery.seen += 1;
     mastery.lastSeen = new Date().toISOString();
+    mastery.recent = mastery.recent || [];
+    mastery.recent.push(isCorrect ? 1 : 0);
+    mastery.recent = mastery.recent.slice(-8);
+    const conf = confidence || 'confident';
+
     if (isCorrect) {
       mastery.correct += 1;
-      mastery.mastery = Math.min(100, mastery.mastery + (confidence === 'confident' ? 6 : 5));
+      mastery.mastery = Math.min(100, mastery.mastery + (question.difficulty === 'hard' ? 7 : question.difficulty === 'medium' ? 5 : 4) + (conf === 'confident' ? 1 : 0));
+      mastery.confidence = Math.min(100, (mastery.confidence || 40) + (conf === 'confident' ? 4 : conf === 'somewhat-sure' ? 2 : 1));
     } else {
       mastery.wrong += 1;
-      mastery.mastery = Math.max(0, mastery.mastery - (confidence === 'confident' ? 8 : 6));
+      mastery.mastery = Math.max(0, mastery.mastery - (question.difficulty === 'hard' ? 7 : question.difficulty === 'medium' ? 6 : 5) - (conf === 'confident' ? 2 : 0));
+      mastery.confidence = Math.max(0, (mastery.confidence || 40) - (conf === 'confident' ? 5 : 2));
     }
+
+    const variance = mastery.recent.filter(x => x === 1).length / Math.max(1, mastery.recent.length);
+    mastery.stability = Math.max(0, Math.min(100, Math.round(variance * 100)));
+    mastery.weak = mastery.mastery < 45 || mastery.confidence < 35;
+
     state.quizState[profileId].mastery[question.topic_id] = mastery;
-    session.answers.push({ questionId, answer, confidence: confidence || null, isCorrect, answeredAt: new Date().toISOString() });
+    session.answers.push({ questionId, answer, confidence: conf, isCorrect, answeredAt: new Date().toISOString(), question_type: question.question_type });
     session.currentIndex += 1;
     if (session.currentIndex >= session.questionIds.length) {
       session.completed = true;
       updateQuizStreak(profileId);
       const correctCount = session.answers.filter(a => a.isCorrect).length;
       recordPlay('mba-mastery-quiz', Math.round((correctCount / Math.max(1, session.questionIds.length)) * 100), session.questionIds.length * 12);
+      const stats = state.quizState[profileId].modeStats || {};
+      stats[session.mode] = stats[session.mode] || { plays: 0, avgScore: 0 };
+      stats[session.mode].plays += 1;
+      stats[session.mode].avgScore = Math.round((((stats[session.mode].avgScore || 0) * (stats[session.mode].plays - 1)) + Math.round((correctCount / Math.max(1, session.questionIds.length)) * 100)) / stats[session.mode].plays);
+      state.quizState[profileId].modeStats = stats;
     }
-    state.quizState[profileId].attempts.push({ sessionId, questionId, topic_id: question.topic_id, isCorrect, confidence: confidence || null, answeredAt: new Date().toISOString() });
+    state.quizState[profileId].attempts.push({ sessionId, questionId, topic_id: question.topic_id, isCorrect, confidence: conf, question_type: question.question_type, answeredAt: new Date().toISOString() });
     save(state);
     return {
       question,
@@ -462,11 +511,31 @@
     const key = `${day}:${unit || 'unit2'}`;
     const qs = state.quizState[profileId];
     if (!qs.daily[key]) {
-      const session = createQuizSession(profileId, { mode: 'daily', unit: unit || 'unit2', count: 6 });
+      const session = createQuizSession(profileId, { mode: 'daily', unit: unit || 'unit2', count: 8 });
       qs.daily[key] = { sessionId: session.id, createdAt: new Date().toISOString(), unit: unit || 'unit2' };
       save(state);
     }
     return JSON.parse(JSON.stringify(qs.daily[key]));
+  }
+
+  function getWeakTopics(profileId, unit) {
+    const topics = getQuizTopics(unit).map(t => ({ topic: t, mastery: getTopicMastery(profileId, t.id) }));
+    return topics.filter(x => x.mastery.weak || x.mastery.mastery < 50).sort((a, b) => a.mastery.mastery - b.mastery.mastery);
+  }
+
+  function getQuizDashboard(profileId, unit) {
+    ensureProfileBuckets(profileId);
+    const topics = getQuizTopics(unit).map(t => ({ topic: t, mastery: getTopicMastery(profileId, t.id) }));
+    const weak = topics.filter(x => x.mastery.weak || x.mastery.mastery < 50).sort((a, b) => a.mastery.mastery - b.mastery.mastery);
+    const strong = topics.filter(x => x.mastery.mastery >= 70).sort((a, b) => b.mastery.mastery - a.mastery.mastery);
+    const avg = topics.length ? Math.round(topics.reduce((sum, x) => sum + x.mastery.mastery, 0) / topics.length) : 0;
+    return {
+      averageMastery: avg,
+      weakTopics: weak,
+      strongTopics: strong,
+      streak: state.quizState[profileId].streak || 0,
+      modeStats: JSON.parse(JSON.stringify(state.quizState[profileId].modeStats || {})),
+    };
   }
 
   function recordPlay(gameId, score, seconds) {
@@ -651,7 +720,7 @@
     startSession, endSession,
     // quiz
     getQuizState, getTopicMastery, getQuizTopics, getQuizQuestions,
-    createQuizSession, getQuizSession, getQuizQuestionById, answerQuizQuestion, getDailyQuiz,
+    createQuizSession, getQuizSession, getQuizQuestionById, answerQuizQuestion, getDailyQuiz, getWeakTopics, getQuizDashboard,
     // pin
     getPin, setPin,
     // util
