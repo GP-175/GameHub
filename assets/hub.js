@@ -433,9 +433,8 @@
     const questionId = session.questionIds[session.currentIndex];
     const question = getQuizQuestionById(questionId);
     if (!question) return null;
-    const normalizedAnswer = String(answer).trim().toLowerCase();
-    const normalizedCorrect = String(question.correct_answer).trim().toLowerCase();
-    const isCorrect = normalizedAnswer === normalizedCorrect || normalizedCorrect.includes(normalizedAnswer) || normalizedAnswer.includes(normalizedCorrect);
+    const grading = gradeQuizAnswer(question, answer);
+    const isCorrect = grading.isCorrect;
     const mastery = state.quizState[profileId].mastery[question.topic_id] || { mastery: 50, confidence: 40, stability: 30, correct: 0, wrong: 0, seen: 0, lastSeen: null, weak: false, recent: [] };
     mastery.seen += 1;
     mastery.lastSeen = new Date().toISOString();
@@ -459,7 +458,7 @@
     mastery.weak = mastery.mastery < 45 || mastery.confidence < 35;
 
     state.quizState[profileId].mastery[question.topic_id] = mastery;
-    session.answers.push({ questionId, answer, confidence: conf, isCorrect, answeredAt: new Date().toISOString(), question_type: question.question_type });
+    session.answers.push({ questionId, answer, confidence: conf, isCorrect, answeredAt: new Date().toISOString(), question_type: question.question_type, score: grading.score });
     session.currentIndex += 1;
     if (session.currentIndex >= session.questionIds.length) {
       session.completed = true;
@@ -472,7 +471,7 @@
       stats[session.mode].avgScore = Math.round((((stats[session.mode].avgScore || 0) * (stats[session.mode].plays - 1)) + Math.round((correctCount / Math.max(1, session.questionIds.length)) * 100)) / stats[session.mode].plays);
       state.quizState[profileId].modeStats = stats;
     }
-    state.quizState[profileId].attempts.push({ sessionId, questionId, topic_id: question.topic_id, isCorrect, confidence: conf, question_type: question.question_type, answeredAt: new Date().toISOString() });
+    state.quizState[profileId].attempts.push({ sessionId, questionId, topic_id: question.topic_id, isCorrect, confidence: conf, question_type: question.question_type, answeredAt: new Date().toISOString(), score: grading.score });
     save(state);
     return {
       question,
@@ -482,7 +481,59 @@
       completed: session.completed,
       nextIndex: session.currentIndex,
       mastery: JSON.parse(JSON.stringify(mastery)),
+      grading,
     };
+  }
+
+  function gradeQuizAnswer(question, answer) {
+    const rawAnswer = String(answer || '').trim();
+    const normalizedAnswer = normalizeText(rawAnswer);
+    const normalizedCorrect = normalizeText(question.correct_answer || '');
+
+    if (!rawAnswer) return { isCorrect: false, score: 0, reason: 'empty' };
+
+    if (question.question_type === 'mcq' || question.question_type === 'true_false') {
+      const ok = normalizedAnswer === normalizedCorrect;
+      return { isCorrect: ok, score: ok ? 1 : 0, reason: ok ? 'exact' : 'wrong-choice' };
+    }
+
+    if (normalizedAnswer === normalizedCorrect) {
+      return { isCorrect: true, score: 1, reason: 'exact' };
+    }
+
+    const correctTokens = keywordTokens(question.correct_answer || '');
+    const answerTokens = keywordTokens(rawAnswer);
+    const overlap = tokenOverlap(answerTokens, correctTokens);
+    const ratio = correctTokens.length ? overlap / correctTokens.length : 0;
+
+    const ok = ratio >= 0.45 || normalizedCorrect.includes(normalizedAnswer) || normalizedAnswer.includes(normalizedCorrect);
+    return {
+      isCorrect: ok,
+      score: Math.round(ratio * 100) / 100,
+      reason: ok ? 'keyword-match' : 'low-overlap',
+    };
+  }
+
+  function normalizeText(text) {
+    return String(text || '')
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function keywordTokens(text) {
+    const stop = new Set(['the','a','an','and','or','of','to','in','is','are','that','this','with','for','as','on','it','be','by','from','at','than','not','only']);
+    return normalizeText(text).split(' ').filter(t => t && t.length > 2 && !stop.has(t));
+  }
+
+  function tokenOverlap(answerTokens, correctTokens) {
+    const answerSet = new Set(answerTokens);
+    let matched = 0;
+    for (const token of correctTokens) {
+      if (answerSet.has(token)) matched += 1;
+    }
+    return matched;
   }
 
   function updateQuizStreak(profileId) {
@@ -518,12 +569,24 @@
     const weak = topics.filter(x => x.mastery.weak || x.mastery.mastery < 50).sort((a, b) => a.mastery.mastery - b.mastery.mastery);
     const strong = topics.filter(x => x.mastery.mastery >= 70).sort((a, b) => b.mastery.mastery - a.mastery.mastery);
     const avg = topics.length ? Math.round(topics.reduce((sum, x) => sum + x.mastery.mastery, 0) / topics.length) : 0;
+    const attempts = state.quizState[profileId].attempts || [];
+    const recentAttempts = attempts.slice(-12);
+    const recentAccuracy = recentAttempts.length ? Math.round((recentAttempts.filter(a => a.isCorrect).length / recentAttempts.length) * 100) : 0;
+    const typeBreakdown = {};
+    recentAttempts.forEach(a => {
+      typeBreakdown[a.question_type] = typeBreakdown[a.question_type] || { total: 0, correct: 0 };
+      typeBreakdown[a.question_type].total += 1;
+      if (a.isCorrect) typeBreakdown[a.question_type].correct += 1;
+    });
     return {
       averageMastery: avg,
       weakTopics: weak,
       strongTopics: strong,
       streak: state.quizState[profileId].streak || 0,
       modeStats: JSON.parse(JSON.stringify(state.quizState[profileId].modeStats || {})),
+      recentAccuracy,
+      recentAttempts: recentAttempts.length,
+      typeBreakdown,
     };
   }
 

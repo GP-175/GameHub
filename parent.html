@@ -310,6 +310,7 @@
       const weakHtml = masteryEntries.length
         ? masteryEntries.map(([topicId, data]) => `<li><strong>${topicId}</strong>: ${data.mastery} (conf ${data.confidence || 0}, stab ${data.stability || 0})</li>`).join('')
         : '<li>No topic history yet.</li>';
+      const dash = Hub.getQuizDashboard(p.id, 'unit2');
       return `<div class="card" style="margin-bottom:14px;">
         <div class="row">
           <div class="avatar" style="background:${p.color};width:36px;height:36px;border-radius:50%;color:white;font-weight:800;display:grid;place-items:center;">
@@ -318,7 +319,7 @@
           <h3 style="margin:0;">${escapeHtml(p.name)}</h3>
           <span class="badge">Quiz streak ${quizState.streak || 0}</span>
           <span class="spacer"></span>
-          <span class="muted">Attempts: ${(quizState.attempts || []).length}</span>
+          <span class="muted">Attempts: ${(quizState.attempts || []).length} • Recent accuracy: ${dash.recentAccuracy || 0}%</span>
         </div>
         <div class="row" style="margin-top:12px;align-items:flex-start;">
           <div style="min-width:220px;">

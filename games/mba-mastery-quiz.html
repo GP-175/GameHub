@@ -345,6 +345,7 @@ function submitAnswer() {
     <strong>${result.isCorrect ? 'Correct' : 'Not quite'}</strong><br>
     ${escapeHtml(result.explanation)}<br><br>
     <span class="muted">Correct answer: ${escapeHtml(result.correctAnswer)}</span><br>
+    <span class="muted">Grading: ${escapeHtml(result.grading.reason || 'n/a')} (${Math.round((result.grading.score || 0) * 100)}%)</span><br>
     <span class="muted">Topic mastery now: ${result.mastery.mastery}, confidence ${result.mastery.confidence || 0}, stability ${result.mastery.stability || 0}</span>
   `;
   $('answer-explanation').classList.remove('hidden');
@@ -377,6 +378,8 @@ function renderDashboardMini(unit) {
     Weakest: <strong>${weak ? weak.topic.name : 'None'}</strong><br>
     Strongest: <strong>${strong ? strong.topic.name : 'None yet'}</strong><br>
     Streak: <strong>${dash.streak}</strong><br>
+    Recent accuracy: <strong>${dash.recentAccuracy}%</strong><br>
+    Recent attempts: <strong>${dash.recentAttempts}</strong><br>
     Modes: <strong>${Object.keys(dash.modeStats || {}).length}</strong>
   `;
 }
@@ -415,11 +418,13 @@ function showSummary() {
     <div class="card" style="box-shadow:none;background:#f8f6ff;"><strong>${weakest ? weakest.topic.name : 'None'}</strong><br><span class="muted">Weakest topic</span></div>
   `;
 
+  const breakdown = Object.entries(dashboard.typeBreakdown || {}).map(([type, stat]) => `${formatQuestionType(type)}: ${Math.round((stat.correct / Math.max(1, stat.total)) * 100)}%`).join('<br>');
   $('summary-recommendations').innerHTML = weakest
     ? `<p><strong>Recommended next step:</strong> run a topic focus quiz on <em>${escapeHtml(weakest.topic.name)}</em>.</p>
        <p class="muted">The game is already tracking this as a weaker area and will bias future question selection toward it.</p>
-       <p class="muted">Current weak mastery: ${weakest.mastery.mastery}, confidence ${weakest.mastery.confidence || 0}, stability ${weakest.mastery.stability || 0}.</p>`
-    : '<p class="muted">No clear weak area yet. Keep going with mixed quizzes.</p>';
+       <p class="muted">Current weak mastery: ${weakest.mastery.mastery}, confidence ${weakest.mastery.confidence || 0}, stability ${weakest.mastery.stability || 0}.</p>
+       <p><strong>Recent question-type performance</strong><br>${breakdown || 'Not enough data yet'}</p>`
+    : `<p class="muted">No clear weak area yet. Keep going with mixed quizzes.</p><p><strong>Recent question-type performance</strong><br>${breakdown || 'Not enough data yet'}</p>`;
 
   show('view-summary');
 }
