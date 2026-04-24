@@ -1,0 +1,856 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Gem Quest - GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#0f766e" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GameHub" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<link rel="stylesheet" href="../assets/styles.css" />
+<script src="../assets/hub.js" defer></script>
+<style>
+  :root {
+    --quest-ink: #17324d;
+    --quest-teal: #0f766e;
+    --quest-gold: #f59e0b;
+    --quest-sky: #38bdf8;
+    --quest-coral: #f97373;
+    --quest-floor: #d9f2de;
+    --quest-floor-alt: #c9ecdb;
+    --quest-wall: #7c5f43;
+  }
+
+  html, body {
+    min-height: 100%;
+    background:
+      linear-gradient(180deg, #f6fbff 0%, #fff6df 100%);
+  }
+
+  .game-header {
+    background: rgba(255, 255, 255, .9);
+    border-bottom: 1px solid rgba(15, 118, 110, .16);
+  }
+
+  .gem-hud {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .shield-pill {
+    background: #fff3c4;
+    color: #9a5b00;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-weight: 900;
+    min-width: 92px;
+    text-align: center;
+  }
+
+  .game-header .score-pill {
+    background: #dff7f4;
+    color: var(--quest-teal);
+  }
+
+  .gem-area {
+    justify-content: flex-start;
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .quest-panel {
+    width: min(900px, 100%);
+    background: rgba(255, 255, 255, .92);
+    border: 2px solid rgba(15, 118, 110, .14);
+    border-radius: 20px;
+    box-shadow: var(--shadow);
+    padding: 14px 18px 16px;
+    display: grid;
+    gap: 8px;
+  }
+
+  .quest-top {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .quest-round {
+    display: inline-flex;
+    align-items: center;
+    min-height: 30px;
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: #e0f2fe;
+    color: #075985;
+    font-weight: 900;
+    font-size: .9rem;
+  }
+
+  .sound-btn {
+    margin-left: auto;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    border-radius: 14px;
+    background: #eef6ff;
+    color: var(--quest-ink);
+    box-shadow: none;
+    cursor: pointer;
+    font-size: 1.15rem;
+    display: grid;
+    place-items: center;
+  }
+
+  .sound-btn:active {
+    transform: translateY(1px);
+  }
+
+  .quest-panel .prompt {
+    color: var(--quest-ink);
+    font-size: 1.7rem;
+    line-height: 1.15;
+    min-height: 2.3em;
+    display: grid;
+    place-items: center;
+  }
+
+  .board-wrap {
+    width: min(94vw, 740px);
+  }
+
+  .gem-board {
+    width: 100%;
+    aspect-ratio: 9 / 7;
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    grid-template-rows: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    padding: 8px;
+    border-radius: 24px;
+    background:
+      linear-gradient(145deg, #2f8f66 0%, #1f6e63 100%);
+    box-shadow:
+      0 18px 42px rgba(23, 50, 77, .18),
+      inset 0 0 0 2px rgba(255, 255, 255, .24);
+    touch-action: none;
+  }
+
+  .gem-board.bump {
+    animation: board-bump .18s ease;
+  }
+
+  .cell {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .cell.floor {
+    background: var(--quest-floor);
+    box-shadow: inset 0 -3px 0 rgba(31, 77, 59, .08);
+  }
+
+  .cell.floor.alt {
+    background: var(--quest-floor-alt);
+  }
+
+  .cell.wall {
+    background:
+      linear-gradient(145deg, #9d7d58 0%, #6f5137 100%);
+    box-shadow:
+      inset 0 3px 0 rgba(255, 255, 255, .18),
+      inset 0 -4px 0 rgba(57, 35, 19, .2);
+  }
+
+  .cell.wall::before {
+    content: "";
+    width: 48%;
+    height: 48%;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .16);
+    transform: rotate(12deg);
+  }
+
+  .gem-token {
+    width: 86%;
+    height: 86%;
+    border: 0;
+    border-radius: 18px;
+    background: #ffffff;
+    color: var(--quest-ink);
+    font-family: inherit;
+    font-weight: 900;
+    cursor: pointer;
+    display: grid;
+    grid-template-rows: 1fr auto;
+    place-items: center;
+    padding: 5px;
+    box-shadow:
+      0 9px 18px rgba(23, 50, 77, .15),
+      inset 0 0 0 2px rgba(15, 118, 110, .08);
+    transition: transform .1s ease, box-shadow .16s ease, background .16s ease;
+  }
+
+  .gem-token:hover {
+    transform: translateY(-2px);
+  }
+
+  .gem-token[disabled] {
+    cursor: default;
+    opacity: 1;
+  }
+
+  .gem-token[disabled]:hover {
+    transform: none;
+  }
+
+  .gem-token .gem-shape {
+    width: 28px;
+    height: 28px;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    border-radius: 9px;
+    transform: rotate(45deg);
+    background:
+      linear-gradient(135deg, var(--quest-sky), #2563eb);
+    box-shadow: 0 4px 10px rgba(37, 99, 235, .25);
+  }
+
+  .gem-token .gem-shape::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, .72);
+    transform: translate(-4px, -4px);
+  }
+
+  .gem-token .gem-label {
+    width: 100%;
+    min-width: 0;
+    font-size: .95rem;
+    line-height: 1;
+    overflow-wrap: anywhere;
+  }
+
+  .gem-token.pick-correct {
+    background: #dcfce7;
+    box-shadow:
+      0 0 0 4px rgba(6, 214, 160, .35),
+      0 12px 22px rgba(6, 214, 160, .24);
+    animation: found-pop .38s ease;
+  }
+
+  .gem-token.pick-wrong {
+    background: #ffe4ec;
+    box-shadow:
+      0 0 0 4px rgba(239, 71, 111, .28),
+      0 12px 22px rgba(239, 71, 111, .2);
+    animation: shake .35s ease;
+  }
+
+  .gem-token.reveal-answer {
+    box-shadow:
+      0 0 0 4px rgba(245, 158, 11, .36),
+      0 12px 22px rgba(245, 158, 11, .2);
+  }
+
+  .hero-token {
+    position: absolute;
+    z-index: 3;
+    width: 72%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      linear-gradient(145deg, #ffffff 0%, #e0f2fe 48%, #38bdf8 100%);
+    box-shadow:
+      0 9px 18px rgba(23, 50, 77, .22),
+      inset 0 0 0 3px rgba(255, 255, 255, .82);
+    display: grid;
+    place-items: center;
+    animation: hero-idle 1.8s ease-in-out infinite;
+  }
+
+  .hero-token::before {
+    content: "";
+    width: 44%;
+    height: 44%;
+    border-radius: 50%;
+    background:
+      linear-gradient(145deg, #17324d 0%, #0f766e 100%);
+    box-shadow:
+      13px -6px 0 -8px #fff,
+      -11px 8px 0 -8px #fff;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(3, 52px);
+    grid-template-rows: repeat(2, 52px);
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .move-btn {
+    width: 52px;
+    height: 52px;
+    border: 0;
+    border-radius: 16px;
+    background: #ffffff;
+    color: var(--quest-ink);
+    box-shadow: var(--shadow);
+    font-size: 1.25rem;
+    font-weight: 900;
+    cursor: pointer;
+    font-family: inherit;
+  }
+
+  .move-btn:active {
+    transform: translateY(1px);
+  }
+
+  .move-btn.up { grid-column: 2; grid-row: 1; }
+  .move-btn.left { grid-column: 1; grid-row: 2; }
+  .move-btn.down { grid-column: 2; grid-row: 2; }
+  .move-btn.right { grid-column: 3; grid-row: 2; }
+
+  .gem-area .feedback {
+    min-height: 1.5em;
+    color: var(--quest-ink);
+  }
+
+  .gem-area .progress-bar .fill {
+    background: linear-gradient(90deg, var(--quest-teal), var(--quest-gold));
+  }
+
+  #overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(23, 50, 77, .55);
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+
+  .game-over {
+    border: 2px solid rgba(15, 118, 110, .14);
+  }
+
+  @keyframes hero-idle {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  @keyframes found-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes board-bump {
+    0%, 100% { transform: translateX(0); }
+    35% { transform: translateX(-5px); }
+    70% { transform: translateX(5px); }
+  }
+
+  @media (max-width: 640px) {
+    .game-header {
+      padding: 10px 12px;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .game-header h1 {
+      font-size: 1.05rem;
+    }
+
+    .gem-area {
+      padding: 12px;
+      gap: 10px;
+    }
+
+    .quest-panel {
+      padding: 12px;
+      border-radius: 16px;
+    }
+
+    .quest-panel .prompt {
+      font-size: 1.28rem;
+      min-height: 2.7em;
+    }
+
+    .board-wrap {
+      width: min(96vw, 560px);
+    }
+
+    .gem-board {
+      gap: 4px;
+      padding: 5px;
+      border-radius: 18px;
+    }
+
+    .cell {
+      border-radius: 10px;
+    }
+
+    .gem-token {
+      border-radius: 12px;
+      padding: 3px;
+    }
+
+    .gem-token .gem-shape {
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+    }
+
+    .gem-token .gem-label {
+      font-size: .72rem;
+    }
+
+    .controls {
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 46px);
+      gap: 7px;
+    }
+
+    .move-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+    }
+  }
+
+  @media (max-height: 720px) and (min-width: 641px) {
+    .gem-area {
+      gap: 10px;
+      padding-top: 12px;
+    }
+
+    .quest-panel {
+      padding: 10px 16px;
+    }
+
+    .quest-panel .prompt {
+      font-size: 1.4rem;
+      min-height: 1.35em;
+    }
+
+    .board-wrap {
+      width: min(88vw, 620px);
+    }
+
+    .controls {
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(2, 46px);
+    }
+
+    .move-btn {
+      width: 46px;
+      height: 46px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="game-shell">
+  <header class="game-header">
+    <a class="btn btn-ghost" href="../index.html">← Back</a>
+    <h1>💎 Gem Quest</h1>
+    <div class="gem-hud">
+      <span class="shield-pill" id="shields">★★★</span>
+      <span class="score-pill" id="score">0 / 0</span>
+    </div>
+  </header>
+
+  <main class="game-area gem-area">
+    <section class="quest-panel" aria-live="polite">
+      <div class="quest-top">
+        <span class="quest-round" id="round-label">Round 1</span>
+        <button class="sound-btn" id="speak-btn" type="button" title="Hear prompt" aria-label="Hear prompt">🔊</button>
+      </div>
+      <div class="prompt" id="prompt">Find the glowing answer.</div>
+    </section>
+
+    <div class="board-wrap">
+      <div class="gem-board" id="board" role="application" aria-label="Gem Quest board"></div>
+    </div>
+
+    <div class="controls" aria-label="Move">
+      <button class="move-btn up" type="button" data-move="-1,0" aria-label="Up">▲</button>
+      <button class="move-btn left" type="button" data-move="0,-1" aria-label="Left">◀</button>
+      <button class="move-btn down" type="button" data-move="1,0" aria-label="Down">▼</button>
+      <button class="move-btn right" type="button" data-move="0,1" aria-label="Right">▶</button>
+    </div>
+
+    <div class="feedback" id="feedback">&nbsp;</div>
+    <div class="progress-bar"><div class="fill" id="bar"></div></div>
+  </main>
+</div>
+
+<div id="overlay" class="hidden">
+  <div class="game-over">
+    <div class="star">💎</div>
+    <div class="muted">Quest complete!</div>
+    <div class="score-line"><span id="final-score">0</span>%</div>
+    <p id="final-msg" class="muted"></p>
+    <div class="row" style="justify-content:center;margin-top:10px;">
+      <button class="btn" id="play-again">Play again</button>
+      <a class="btn btn-soft" href="../index.html">Hub</a>
+    </div>
+  </div>
+</div>
+
+<script>
+const ROWS = 7;
+const COLS = 9;
+const TOTAL_ROUNDS = 10;
+const WALLS = new Set([
+  '1,2', '1,6',
+  '2,4', '2,7',
+  '3,1',
+  '4,4', '4,7',
+  '5,2', '5,6',
+]);
+
+const READING_BANK = [
+  { prompt: 'Find the word that rhymes with cat', answer: 'hat', options: ['hat', 'sun', 'bed', 'log'] },
+  { prompt: 'Find the word that rhymes with bug', answer: 'rug', options: ['rug', 'map', 'fish', 'red'] },
+  { prompt: 'Find the opposite of hot', answer: 'cold', options: ['cold', 'fast', 'up', 'dry'] },
+  { prompt: 'Find the opposite of tall', answer: 'short', options: ['short', 'green', 'loud', 'round'] },
+  { prompt: 'Find the word that starts with sh', answer: 'ship', options: ['ship', 'star', 'fish', 'cake'] },
+  { prompt: 'Find the word with 3 letters', answer: 'jam', options: ['jam', 'apple', 'moon', 'frog'] },
+  { prompt: 'Find the word that means very big', answer: 'huge', options: ['huge', 'tiny', 'soft', 'near'] },
+  { prompt: 'Find the word that starts with ch', answer: 'chip', options: ['chip', 'shop', 'flag', 'kite'] },
+];
+
+let round = 0;
+let correct = 0;
+let shields = 3;
+let player = { r: 3, c: 4 };
+let options = [];
+let current = null;
+let locked = false;
+let selectedId = null;
+let pointerStart = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  Hub.startSession('gem-quest');
+  bindControls();
+  nextRound();
+  document.getElementById('play-again').onclick = restart;
+  document.getElementById('speak-btn').onclick = speakPrompt;
+});
+
+function restart() {
+  document.getElementById('overlay').classList.add('hidden');
+  round = 0;
+  correct = 0;
+  shields = 3;
+  Hub.startSession('gem-quest');
+  nextRound();
+}
+
+function bindControls() {
+  document.querySelectorAll('[data-move]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const [dr, dc] = btn.dataset.move.split(',').map(Number);
+      movePlayer(dr, dc);
+    });
+  });
+
+  document.addEventListener('keydown', (event) => {
+    const keyMap = {
+      ArrowUp: [-1, 0],
+      ArrowDown: [1, 0],
+      ArrowLeft: [0, -1],
+      ArrowRight: [0, 1],
+      w: [-1, 0],
+      s: [1, 0],
+      a: [0, -1],
+      d: [0, 1],
+    };
+    const move = keyMap[event.key];
+    if (!move) return;
+    event.preventDefault();
+    movePlayer(move[0], move[1]);
+  });
+
+  const board = document.getElementById('board');
+  board.addEventListener('pointerdown', (event) => {
+    pointerStart = { x: event.clientX, y: event.clientY };
+  });
+  board.addEventListener('pointerup', (event) => {
+    if (!pointerStart) return;
+    const dx = event.clientX - pointerStart.x;
+    const dy = event.clientY - pointerStart.y;
+    pointerStart = null;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      movePlayer(0, dx > 0 ? 1 : -1);
+    } else {
+      movePlayer(dy > 0 ? 1 : -1, 0);
+    }
+  });
+}
+
+function nextRound() {
+  if (round >= TOTAL_ROUNDS) return endGame();
+  round++;
+  locked = false;
+  selectedId = null;
+  player = { r: 3, c: 4 };
+  current = makeChallenge(round);
+  options = placeOptions(current.options.map((text, index) => ({
+    id: index,
+    text,
+    correct: text === current.answer,
+  })));
+
+  document.getElementById('round-label').textContent = 'Round ' + round + ' of ' + TOTAL_ROUNDS;
+  document.getElementById('prompt').textContent = current.prompt;
+  document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
+  updateHud();
+  renderBoard();
+}
+
+function makeChallenge(roundNumber) {
+  if (roundNumber % 3 === 0) {
+    const item = READING_BANK[Math.floor(Math.random() * READING_BANK.length)];
+    return {
+      prompt: item.prompt,
+      answer: item.answer,
+      options: shuffle(item.options.slice()),
+      speak: item.prompt,
+    };
+  }
+
+  const type = Math.floor(Math.random() * 4);
+  if (type === 0) {
+    const a = rand(2, 9);
+    const b = rand(1, Math.min(9, 18 - a));
+    const answer = a + b;
+    return numberChallenge('Find ' + a + ' + ' + b, answer, 1, 20, a + ' plus ' + b);
+  }
+
+  if (type === 1) {
+    const a = rand(8, 18);
+    const b = rand(1, Math.min(9, a - 1));
+    const answer = a - b;
+    return numberChallenge('Find ' + a + ' - ' + b, answer, 1, 20, a + ' minus ' + b);
+  }
+
+  if (type === 2) {
+    const a = rand(2, 9);
+    const answer = a * 2;
+    return numberChallenge('Find double ' + a, answer, 2, 20, 'Find double ' + a);
+  }
+
+  const answer = rand(3, 9);
+  const total = answer + rand(2, 8);
+  return numberChallenge('Find the missing number: ' + answer + ' + ? = ' + total, total - answer, 1, 12, 'Find the missing number');
+}
+
+function numberChallenge(prompt, answer, min, max, speak) {
+  return {
+    prompt,
+    answer: String(answer),
+    options: makeNumberOptions(answer, min, max).map(String),
+    speak: speak || prompt,
+  };
+}
+
+function makeNumberOptions(answer, min, max) {
+  const values = new Set([answer]);
+  shuffle([-4, -3, -2, -1, 1, 2, 3, 4, 5, -5]).forEach((delta) => {
+    const value = answer + delta;
+    if (values.size < 4 && value >= min && value <= max) values.add(value);
+  });
+  while (values.size < 4) {
+    values.add(rand(min, max));
+  }
+  return shuffle(Array.from(values));
+}
+
+function placeOptions(items) {
+  const openCells = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (isWall(r, c) || (r === player.r && c === player.c)) continue;
+      openCells.push({ r, c });
+    }
+  }
+
+  const cells = shuffle(openCells)
+    .filter((cell) => Math.abs(cell.r - player.r) + Math.abs(cell.c - player.c) > 2)
+    .slice(0, items.length);
+
+  return items.map((item, index) => Object.assign({}, item, cells[index]));
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = document.createElement('div');
+      const wall = isWall(r, c);
+      cell.className = wall ? 'cell wall' : 'cell floor' + ((r + c) % 2 ? ' alt' : '');
+
+      const option = options.find((item) => item.r === r && item.c === c);
+      if (option && !wall) {
+        cell.appendChild(renderGem(option));
+      }
+
+      if (player.r === r && player.c === c) {
+        const hero = document.createElement('div');
+        hero.className = 'hero-token';
+        hero.setAttribute('aria-hidden', 'true');
+        cell.appendChild(hero);
+      }
+
+      board.appendChild(cell);
+    }
+  }
+}
+
+function renderGem(option) {
+  const gem = document.createElement('button');
+  gem.type = 'button';
+  gem.className = 'gem-token';
+  gem.setAttribute('aria-label', 'Choose ' + option.text);
+  gem.disabled = locked;
+
+  if (selectedId === option.id) {
+    gem.classList.add(option.correct ? 'pick-correct' : 'pick-wrong');
+  } else if (locked && option.correct) {
+    gem.classList.add('reveal-answer');
+  }
+
+  gem.innerHTML = '<span class="gem-shape"></span><span class="gem-label"></span>';
+  gem.querySelector('.gem-label').textContent = option.text;
+  gem.addEventListener('click', (event) => {
+    event.stopPropagation();
+    player = { r: option.r, c: option.c };
+    chooseOption(option.id);
+  });
+  return gem;
+}
+
+function movePlayer(dr, dc) {
+  if (locked) return;
+  const next = { r: player.r + dr, c: player.c + dc };
+  if (!isInside(next.r, next.c) || isWall(next.r, next.c)) {
+    bumpBoard();
+    return;
+  }
+
+  player = next;
+  const option = options.find((item) => item.r === player.r && item.c === player.c);
+  if (option) {
+    chooseOption(option.id);
+  } else {
+    renderBoard();
+  }
+}
+
+function chooseOption(optionId) {
+  if (locked) return;
+  const picked = options.find((item) => item.id === optionId);
+  if (!picked) return;
+  locked = true;
+  selectedId = optionId;
+
+  if (picked.correct) {
+    correct++;
+    setFeedback('Gem found!', 'good');
+    Hub.speak('Correct');
+  } else {
+    shields = Math.max(0, shields - 1);
+    setFeedback('The answer was ' + current.answer + '.', 'bad');
+    Hub.speak('The answer was ' + current.answer);
+  }
+
+  updateHud();
+  renderBoard();
+  setTimeout(nextRound, picked.correct ? 950 : 1550);
+}
+
+function endGame() {
+  const pct = Math.round((correct / TOTAL_ROUNDS) * 100);
+  Hub.endSession(pct);
+  document.getElementById('final-score').textContent = pct;
+  document.getElementById('final-msg').textContent =
+    pct === 100 ? 'Every gem was a perfect match!' :
+    pct >= 80 ? 'Sharp thinking and quick exploring!' :
+    pct >= 60 ? 'Nice quest. Keep building those skills!' :
+    'Good effort. Try another quest!';
+  document.getElementById('overlay').classList.remove('hidden');
+}
+
+function setFeedback(text, kind) {
+  const feedback = document.getElementById('feedback');
+  feedback.textContent = text;
+  feedback.className = 'feedback ' + kind;
+}
+
+function updateHud() {
+  const full = '★'.repeat(shields);
+  const empty = '☆'.repeat(3 - shields);
+  document.getElementById('shields').textContent = full + empty;
+  document.getElementById('score').textContent = correct + ' / ' + round;
+}
+
+function speakPrompt() {
+  if (!current) return;
+  Hub.speak(current.speak || current.prompt);
+}
+
+function bumpBoard() {
+  const board = document.getElementById('board');
+  board.classList.remove('bump');
+  void board.offsetWidth;
+  board.classList.add('bump');
+}
+
+function isInside(r, c) {
+  return r >= 0 && r < ROWS && c >= 0 && c < COLS;
+}
+
+function isWall(r, c) {
+  return WALLS.has(r + ',' + c);
+}
+
+function rand(min, max) {
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+function shuffle(items) {
+  const arr = items.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+</script>
+</body>
+</html>

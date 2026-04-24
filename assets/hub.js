@@ -105,6 +105,16 @@
       path: 'games/space-adventure.html',
       accent: '#00c9ff',
     },
+    {
+      id: 'gem-quest',
+      title: 'Gem Quest',
+      subject: 'Math + Reading',
+      icon: '💎',
+      tagline: 'Explore for the right answer',
+      ageGroups: ['early-elem'],
+      path: 'games/gem-quest.html',
+      accent: '#0f766e',
+    },
   ];
 
   const AGE_GROUPS = {
