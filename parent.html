@@ -112,9 +112,14 @@
           <div class="row">
             <input id="remote-user" class="input" placeholder="e.g. george-mba" style="max-width:260px;" />
             <button class="btn btn-soft" id="save-remote-user">Save sync key</button>
+            <button class="btn btn-ghost" id="push-remote">Push now</button>
             <button class="btn btn-ghost" id="pull-remote">Pull remote state</button>
           </div>
-          <div class="muted">Use the same sync key in another browser to load the same Gamehub data.</div>
+          <div class="muted">Use the same sync key in both browsers to share Gamehub data.</div>
+        </div>
+        <div class="form-row">
+          <label>Sync status</label>
+          <div id="remote-sync-status" class="muted">No sync activity yet.</div>
         </div>
       </div>
     </div>
@@ -355,14 +360,22 @@
 
   function bindSettings() {
     $('remote-user').value = Hub.getRemoteUser() || '';
+    renderRemoteSyncStatus();
     $('save-remote-user').onclick = () => {
       const user = $('remote-user').value.trim();
       if (!user) { toast('Enter a sync key'); return; }
       Hub.setRemoteUser(user);
+      renderRemoteSyncStatus();
       toast('Sync key saved');
+    };
+    $('push-remote').onclick = async () => {
+      const result = await Hub.syncRemoteState(Hub.debugState());
+      renderRemoteSyncStatus();
+      toast(result && result.ok ? 'Pushed to shared state' : 'Push failed');
     };
     $('pull-remote').onclick = async () => {
       const remote = await Hub.loadRemoteState();
+      renderRemoteSyncStatus();
       if (!remote) { toast('No remote state found'); return; }
       location.reload();
     };
@@ -380,6 +393,16 @@
         toast('All progress reset');
       }
     };
+  }
+
+  function renderRemoteSyncStatus() {
+    const user = Hub.getRemoteUser();
+    const meta = Hub.getRemoteSyncMeta();
+    $('remote-sync-status').innerHTML = user
+      ? `Key: <strong>${escapeHtml(user)}</strong><br>
+         Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌' : meta.lastPushOk ? '✅' : ''}<br>
+         Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌' : meta.lastPullOk ? '✅' : ''}`
+      : 'No sync key saved yet.';
   }
 
   // ---------- helpers ----------

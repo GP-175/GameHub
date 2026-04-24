@@ -9,6 +9,7 @@
   const STORAGE_KEY = 'gamehub.v1';
   const DEFAULT_PIN = '1234';
   const REMOTE_USER_KEY = 'gamehub.remoteUser';
+  const REMOTE_SYNC_META_KEY = 'gamehub.remoteSyncMeta';
 
   // ---------- Game Registry ----------
   // To add a new game, drop a new HTML file under /games/ and add an entry here.
@@ -170,12 +171,15 @@
 
   async function syncRemoteState(snapshot) {
     const user = getRemoteUser();
-    if (!user || !window.fetch) return;
-    await fetch(`/api/state`, {
+    if (!user || !window.fetch) return { ok: false, reason: 'no-user' };
+    const res = await fetch(`/api/state`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ user, state: snapshot }),
     });
+    const ok = !!res.ok;
+    setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: ok });
+    return { ok };
   }
 
   async function loadRemoteState() {
@@ -183,10 +187,15 @@
     if (!user || !window.fetch) return null;
     try {
       const res = await fetch(`/api/state?user=${encodeURIComponent(user)}`);
-      if (!res.ok) return null;
+      if (!res.ok) {
+        setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
+        return null;
+      }
       const data = await res.json();
+      setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: true });
       return data && data.state ? data.state : null;
     } catch (e) {
+      setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
       return null;
     }
   }
@@ -197,6 +206,22 @@
     } catch (_) {
       return null;
     }
+  }
+
+  function getRemoteSyncMeta() {
+    try {
+      const raw = localStorage.getItem(REMOTE_SYNC_META_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function setRemoteSyncMeta(patch) {
+    try {
+      const current = getRemoteSyncMeta();
+      localStorage.setItem(REMOTE_SYNC_META_KEY, JSON.stringify(Object.assign({}, current, patch)));
+    } catch (_) {}
   }
 
   function setRemoteUser(user) {
@@ -824,7 +849,7 @@
     // util
     speak,
     // remote sync
-    getRemoteUser, setRemoteUser, loadRemoteState,
+    getRemoteUser, setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta,
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),
   };
