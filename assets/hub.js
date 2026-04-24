@@ -10,6 +10,8 @@
   const DEFAULT_PIN = '1234';
   const REMOTE_USER_KEY = 'gamehub.remoteUser';
   const REMOTE_SYNC_META_KEY = 'gamehub.remoteSyncMeta';
+  let syncTimer = null;
+  let initPromise = null;
 
   // ---------- Game Registry ----------
   // To add a new game, drop a new HTML file under /games/ and add an entry here.
@@ -163,10 +165,17 @@
   function save(state) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      syncRemoteState(state).catch((e) => console.warn('GameHub: remote sync failed', e));
+      queueRemoteSync(state);
     } catch (e) {
       console.error('GameHub: failed to save storage.', e);
     }
+  }
+
+  function queueRemoteSync(snapshot) {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      syncRemoteState(snapshot).catch((e) => console.warn('GameHub: remote sync failed', e));
+    }, 400);
   }
 
   async function syncRemoteState(snapshot) {
@@ -228,16 +237,24 @@
     try {
       if (!user) localStorage.removeItem(REMOTE_USER_KEY);
       else localStorage.setItem(REMOTE_USER_KEY, String(user));
+      initPromise = loadRemoteState().then((remote) => {
+        if (remote && typeof remote === 'object') {
+          state = Object.assign(defaultState(), remote);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+        return state;
+      }).catch(() => state);
     } catch (_) {}
   }
 
   let state = load();
-  loadRemoteState().then((remote) => {
+  initPromise = loadRemoteState().then((remote) => {
     if (remote && typeof remote === 'object') {
       state = Object.assign(defaultState(), remote);
-      save(state);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
-  });
+    return state;
+  }).catch(() => state);
 
   // ---------- Helpers ----------
   function uid() {
@@ -850,6 +867,7 @@
     speak,
     // remote sync
     getRemoteUser, setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta,
+    whenReady: () => initPromise || Promise.resolve(state),
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),
   };

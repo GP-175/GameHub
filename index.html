@@ -96,7 +96,10 @@
 
 <script>
   // Wait for Hub to be ready (deferred script).
-  window.addEventListener('DOMContentLoaded', init);
+  window.addEventListener('DOMContentLoaded', async () => {
+    await Hub.whenReady();
+    init();
+  });
 
 
 

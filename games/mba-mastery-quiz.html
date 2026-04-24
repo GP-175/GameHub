@@ -151,7 +151,10 @@
 <div id="toast" class="toast"></div>
 
 <script>
-window.addEventListener('DOMContentLoaded', init);
+window.addEventListener('DOMContentLoaded', async () => {
+  await Hub.whenReady();
+  init();
+});
 
 let activeProfile = null;
 let selectedTopic = null;

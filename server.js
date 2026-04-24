@@ -31,7 +31,7 @@ export default {
 };
 
 async function readState(env, user) {
-  if (env.GAMEHUB_STATE) {
+  if (env.GAMEHUB_STATE && typeof env.GAMEHUB_STATE.get === 'function' && !String(env.GAMEHUB_STATE).includes('REPLACE_WITH_REAL_KV_ID')) {
     const state = await env.GAMEHUB_STATE.get(`state:${user}`, 'text');
     return state ? JSON.parse(state) : null;
   }
@@ -45,7 +45,7 @@ async function readState(env, user) {
 }
 
 async function writeState(env, user, state) {
-  if (env.GAMEHUB_STATE) {
+  if (env.GAMEHUB_STATE && typeof env.GAMEHUB_STATE.put === 'function' && !String(env.GAMEHUB_STATE).includes('REPLACE_WITH_REAL_KV_ID')) {
     await env.GAMEHUB_STATE.put(`state:${user}`, JSON.stringify(state));
     return;
   }
