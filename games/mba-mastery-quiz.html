@@ -102,6 +102,10 @@
           <h3 style="margin-top:0;">Dashboard</h3>
           <div id="quiz-dashboard-mini" class="muted">No data yet.</div>
         </div>
+        <div class="card">
+          <h3 style="margin-top:0;">Topic detail</h3>
+          <div id="topic-detail-mini" class="muted">Select a question to see detail.</div>
+        </div>
       </aside>
       <section class="quiz-main">
         <div class="card">
@@ -116,6 +120,7 @@
             <button class="confidence-btn" data-confidence="somewhat-sure">Somewhat sure</button>
             <button class="confidence-btn active" data-confidence="confident">Confident</button>
           </div>
+          <div id="question-type-hint" class="muted" style="margin-top:10px;"></div>
           <div class="row" style="margin-top:18px;">
             <button class="btn" id="submit-answer">Submit answer</button>
             <button class="btn btn-soft hidden" id="next-question">Next question</button>
@@ -282,11 +287,13 @@ function loadCurrentQuestion() {
   $('stat-progress').textContent = `${session.currentIndex + 1} / ${session.questionIds.length}`;
   $('question-topic').textContent = currentQuestion.topic_name;
   $('question-prompt').textContent = currentQuestion.prompt;
+  $('question-type-hint').textContent = `Type: ${formatQuestionType(currentQuestion.question_type)} • Difficulty: ${currentQuestion.difficulty}`;
   const optionList = $('option-list');
   optionList.innerHTML = '';
-  if (currentQuestion.question_type === 'mcq') {
+  if (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'true_false') {
     $('text-answer-wrap').classList.add('hidden');
-    (currentQuestion.options || []).forEach(option => {
+    const options = currentQuestion.question_type === 'true_false' ? ['True', 'False'] : (currentQuestion.options || []);
+    options.forEach(option => {
       const btn = document.createElement('button');
       btn.className = 'option-btn';
       btn.textContent = option;
@@ -301,14 +308,19 @@ function loadCurrentQuestion() {
     $('text-answer-wrap').classList.remove('hidden');
     const hint = document.createElement('div');
     hint.className = 'muted';
-    hint.textContent = currentQuestion.question_type === 'scenario' ? 'Write the best diagnosis or concept.' : 'Type a short answer.';
+    hint.textContent = currentQuestion.question_type === 'scenario'
+      ? 'Write the best diagnosis or concept.'
+      : currentQuestion.question_type === 'compare_correction'
+      ? 'Correct the claim in your own words.'
+      : 'Type a short answer.';
     optionList.appendChild(hint);
   }
   renderDashboardMini(session.unit);
+  renderTopicDetail(currentQuestion.topic_id);
 }
 
 function submitAnswer() {
-  const answer = currentQuestion.question_type === 'mcq' ? currentSelectedAnswer : $('text-answer').value.trim();
+  const answer = (currentQuestion.question_type === 'mcq' || currentQuestion.question_type === 'true_false') ? currentSelectedAnswer : $('text-answer').value.trim();
   if (!answer) {
     toast(currentQuestion.question_type === 'mcq' ? 'Pick an answer first' : 'Write an answer first');
     return;
@@ -364,8 +376,27 @@ function renderDashboardMini(unit) {
     Average mastery: <strong>${dash.averageMastery}</strong><br>
     Weakest: <strong>${weak ? weak.topic.name : 'None'}</strong><br>
     Strongest: <strong>${strong ? strong.topic.name : 'None yet'}</strong><br>
-    Streak: <strong>${dash.streak}</strong>
+    Streak: <strong>${dash.streak}</strong><br>
+    Modes: <strong>${Object.keys(dash.modeStats || {}).length}</strong>
   `;
+}
+
+function renderTopicDetail(topicId) {
+  const topics = Hub.getQuizTopics($('unit').value || session?.unit || 'unit2');
+  const topic = topics.find(t => t.id === topicId);
+  const mastery = Hub.getTopicMastery(activeProfile.id, topicId);
+  $('topic-detail-mini').innerHTML = topic
+    ? `<strong>${topic.name}</strong><br>Mastery: ${mastery.mastery}<br>Confidence: ${mastery.confidence || 0}<br>Stability: ${mastery.stability || 0}<br>Seen: ${mastery.seen || 0}`
+    : 'No topic detail available.';
+}
+
+function formatQuestionType(type) {
+  if (type === 'mcq') return 'Multiple choice';
+  if (type === 'true_false') return 'True / False';
+  if (type === 'short_answer') return 'Short answer';
+  if (type === 'scenario') return 'Scenario';
+  if (type === 'compare_correction') return 'Correct the claim';
+  return type;
 }
 
 function showSummary() {
