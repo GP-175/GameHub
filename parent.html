@@ -100,6 +100,11 @@
     </div>
 
     <div class="panel">
+      <h2>MBA quiz insights</h2>
+      <div id="quiz-report"></div>
+    </div>
+
+    <div class="panel">
       <h2>Settings</h2>
       <div class="card">
         <div class="form-row">
@@ -148,6 +153,7 @@
   function renderAll() {
     renderProfiles();
     renderProgress();
+    renderQuizReport();
     bindSettings();
   }
 
@@ -286,6 +292,47 @@
         }
       };
     });
+  }
+
+  function renderQuizReport() {
+    const container = $('quiz-report');
+    const profiles = Hub.getProfiles();
+    if (profiles.length === 0) {
+      container.innerHTML = '<p class="muted">No quiz learners yet.</p>';
+      return;
+    }
+
+    container.innerHTML = profiles.map(p => {
+      const quizState = Hub.getQuizState(p.id);
+      const masteryEntries = Object.entries(quizState.mastery || {})
+        .sort((a, b) => a[1].mastery - b[1].mastery)
+        .slice(0, 5);
+      const weakHtml = masteryEntries.length
+        ? masteryEntries.map(([topicId, data]) => `<li><strong>${topicId}</strong>: ${data.mastery}</li>`).join('')
+        : '<li>No topic history yet.</li>';
+      return `<div class="card" style="margin-bottom:14px;">
+        <div class="row">
+          <div class="avatar" style="background:${p.color};width:36px;height:36px;border-radius:50%;color:white;font-weight:800;display:grid;place-items:center;">
+            ${initials(p.name)}
+          </div>
+          <h3 style="margin:0;">${escapeHtml(p.name)}</h3>
+          <span class="badge">Quiz streak ${quizState.streak || 0}</span>
+          <span class="spacer"></span>
+          <span class="muted">Attempts: ${(quizState.attempts || []).length}</span>
+        </div>
+        <div class="row" style="margin-top:12px;align-items:flex-start;">
+          <div style="min-width:220px;">
+            <strong>Weakest tracked topics</strong>
+            <ul style="margin:8px 0 0 18px;">${weakHtml}</ul>
+          </div>
+          <div class="spacer"></div>
+          <div>
+            <strong>Last quiz day</strong><br>
+            <span class="muted">${quizState.lastQuizDate || 'Not yet played'}</span>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   function bindSettings() {

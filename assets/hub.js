@@ -115,6 +115,16 @@
       path: 'games/gem-quest.html',
       accent: '#0f766e',
     },
+    {
+      id: 'mba-mastery-quiz',
+      title: 'MBA Mastery Quiz',
+      subject: 'MBA Revision',
+      icon: '🧠',
+      tagline: 'Adaptive quiz practice by topic',
+      ageGroups: ['early-elem'],
+      path: 'games/mba-mastery-quiz.html',
+      accent: '#6c5ce7',
+    },
   ];
 
   const AGE_GROUPS = {
@@ -132,6 +142,7 @@
       settings: {}, // settings[profileId][gameId] = { enabled: bool }
       progress: {}, // progress[profileId][gameId] = { plays, bestScore, totalSeconds, lastPlayed }
       gameConfig: {}, // gameConfig[profileId][gameId] = arbitrary per-game settings object
+      quizState: {}, // quizState[profileId] = adaptive quiz state and history
     };
   }
 
@@ -167,6 +178,19 @@
     if (!state.progress[profileId]) state.progress[profileId] = {};
     if (!state.gameConfig) state.gameConfig = {};
     if (!state.gameConfig[profileId]) state.gameConfig[profileId] = {};
+    if (!state.quizState) state.quizState = {};
+    if (!state.quizState[profileId]) state.quizState[profileId] = defaultQuizState();
+  }
+
+  function defaultQuizState() {
+    return {
+      mastery: {},
+      attempts: [],
+      daily: {},
+      sessions: {},
+      streak: 0,
+      lastQuizDate: null,
+    };
   }
 
   // ---------- Profile API ----------
@@ -208,6 +232,7 @@
     state.profiles = state.profiles.filter((p) => p.id !== profileId);
     delete state.settings[profileId];
     delete state.progress[profileId];
+    if (state.quizState) delete state.quizState[profileId];
     if (state.activeProfileId === profileId) state.activeProfileId = null;
     save(state);
   }
@@ -267,6 +292,181 @@
   function getProgress(profileId, gameId) {
     ensureProfileBuckets(profileId);
     return state.progress[profileId][gameId] || { plays: 0, bestScore: 0, totalSeconds: 0, lastPlayed: null };
+  }
+
+  // ---------- Quiz Data ----------
+  const QUIZ_BANK = {
+    course: 'organizational-behaviour',
+    units: {
+      unit1: {
+        title: 'Management and Organizational Behaviour, plus Leadership in a Dynamic Environment',
+        topics: [
+          { id: 'U1-T5', name: 'Leadership fundamentals', weight: 0.16 },
+          { id: 'U1-T6', name: 'Leadership theories and effectiveness', weight: 0.18 }
+        ]
+      },
+      unit2: {
+        title: 'Structure, Strategy and Change',
+        topics: [
+          { id: 'U2-T4', name: '7-S and expanded 7-S alignment diagnostics', weight: 0.16 },
+          { id: 'U2-T7', name: 'Diversity and inclusion', weight: 0.12 },
+          { id: 'U2-T9', name: 'Stress, role pressure, and well-being', weight: 0.07 }
+        ]
+      }
+    },
+    questions: [
+      { id: 'U1-T5-Q001', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'mcq', difficulty: 'easy', prompt: 'Which definition best matches leadership in Unit 1?', options: ['The ability to enforce compliance through punishment', 'The ability to influence people toward shared goals', 'The formal right to allocate budgets', 'The process of monitoring output only'], correct_answer: 'The ability to influence people toward shared goals', explanation: 'Unit 1 treats leadership as influence toward goals, not just authority or control.' },
+      { id: 'U1-T5-Q002', unit: 'unit1', topic_id: 'U1-T5', topic_name: 'Leadership fundamentals', question_type: 'mcq', difficulty: 'easy', prompt: 'Which statement best captures the difference between leadership and management in Unit 1?', options: ['Leadership is only informal, while management is only formal', 'Management is mainly about influence, while leadership is mainly about budgeting', 'Management relies more on coordination and formal role, while leadership relies more on influence and commitment', 'There is no meaningful difference between the two'], correct_answer: 'Management relies more on coordination and formal role, while leadership relies more on influence and commitment', explanation: 'Unit 1 distinguishes management from leadership, while also showing they often overlap in practice.' },
+      { id: 'U1-T6-Q004', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'mcq', difficulty: 'medium', prompt: 'Which description best fits transformational leadership?', options: ['Leadership based mainly on exchange, compliance, and routine monitoring', 'Leadership based mainly on vision, inspiration, development, and commitment beyond self-interest', 'Leadership based only on job descriptions and formal procedures', 'Leadership based mainly on fear of penalties'], correct_answer: 'Leadership based mainly on vision, inspiration, development, and commitment beyond self-interest', explanation: 'Transformational leadership emphasizes vision, higher commitment, and follower development.' },
+      { id: 'U1-T6-Q005', unit: 'unit1', topic_id: 'U1-T6', topic_name: 'Leadership theories and effectiveness', question_type: 'mcq', difficulty: 'medium', prompt: 'Which feature is most characteristic of transactional leadership?', options: ['Shared meaning and inspiration beyond self-interest', 'Exchange relationships, compliance, and role-based expectations', 'Total rejection of formal authority', 'Leadership through ambiguity and spontaneity'], correct_answer: 'Exchange relationships, compliance, and role-based expectations', explanation: 'Transactional leadership is more strongly tied to exchange and formal performance expectations.' },
+      { id: 'U2-T4-Q001', unit: 'unit2', topic_id: 'U2-T4', topic_name: '7-S and expanded 7-S alignment diagnostics', question_type: 'mcq', difficulty: 'easy', prompt: 'Which of the following is a hard element in the basic 7-S framework?', options: ['Shared values', 'Style', 'Structure', 'Staff'], correct_answer: 'Structure', explanation: 'The hard elements are strategy, structure, and systems.' },
+      { id: 'U2-T4-Q004', unit: 'unit2', topic_id: 'U2-T4', topic_name: '7-S and expanded 7-S alignment diagnostics', question_type: 'mcq', difficulty: 'medium', prompt: 'What is the best distinction between superordinate goals and shared values in the expanded 7-S perspective?', options: ['Superordinate goals are enduring beliefs, while shared values are financial targets', 'Superordinate goals concern future aspiration, while shared values concern enduring beliefs and principles', 'They are exactly the same concept with different labels', 'Shared values are external, while superordinate goals are internal'], correct_answer: 'Superordinate goals concern future aspiration, while shared values concern enduring beliefs and principles', explanation: 'Unit 2 treats one as where the organization is trying to go and the other as what it stands for.' },
+      { id: 'U2-T7-Q001', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'easy', prompt: 'What does diversity in organizations primarily refer to?', options: ['Making everyone think the same way', 'Differences among people in a workforce', 'Having no conflict at work', 'Reducing all jobs to one standard design'], correct_answer: 'Differences among people in a workforce', explanation: 'Diversity refers to differences among people, not automatic harmony or uniformity.' },
+      { id: 'U2-T7-Q002', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'easy', prompt: 'Which statement best describes inclusion?', options: ['Having demographic variety only', 'Ensuring people feel valued, heard, and able to participate fully', 'Avoiding every disagreement in teams', 'Giving all employees identical backgrounds'], correct_answer: 'Ensuring people feel valued, heard, and able to participate fully', explanation: 'Inclusion concerns whether difference is respected and integrated into real participation.' },
+      { id: 'U2-T7-Q006', unit: 'unit2', topic_id: 'U2-T7', topic_name: 'Diversity and inclusion', question_type: 'mcq', difficulty: 'medium', prompt: 'Which is the strongest Unit 2 claim about diversity in organizations?', options: ['Diversity automatically improves performance with no management effort', 'Diversity is always harmful to team cohesion', 'Diversity can create value, but outcomes depend on how it is managed and whether inclusion is present', 'Diversity matters only in global firms'], correct_answer: 'Diversity can create value, but outcomes depend on how it is managed and whether inclusion is present', explanation: 'Unit 2 treats diversity as potentially valuable but not self-executing.' },
+      { id: 'U2-T9-Q001', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'mcq', difficulty: 'easy', prompt: 'In Unit 2, stress is best understood as:', options: ['any form of hard work', 'a response to demands or pressures that can affect well-being and performance', 'a synonym for laziness', 'something caused only by personal weakness'], correct_answer: 'a response to demands or pressures that can affect well-being and performance', explanation: 'Unit 2 treats stress as a real organizational and human issue, not a character flaw.' },
+      { id: 'U2-T9-Q002', unit: 'unit2', topic_id: 'U2-T9', topic_name: 'Stress, role pressure, and well-being', question_type: 'mcq', difficulty: 'easy', prompt: 'Which distinction is correct?', options: ['Stressors are outcomes, while strain is the demand causing them', 'Stressors are demands or pressures, while strain is the reaction or effect', 'Stressors and strain mean exactly the same thing', 'Strain only exists outside work'], correct_answer: 'Stressors are demands or pressures, while strain is the reaction or effect', explanation: 'This distinction matters because the source of pressure is not the same as the human response to it.' }
+    ]
+  };
+
+  function getQuizState(profileId) {
+    if (!profileId) return defaultQuizState();
+    ensureProfileBuckets(profileId);
+    return JSON.parse(JSON.stringify(state.quizState[profileId]));
+  }
+
+  function getTopicMastery(profileId, topicId) {
+    ensureProfileBuckets(profileId);
+    const qs = state.quizState[profileId];
+    if (!qs.mastery[topicId]) {
+      qs.mastery[topicId] = { mastery: 50, correct: 0, wrong: 0, seen: 0, lastSeen: null };
+      save(state);
+    }
+    return JSON.parse(JSON.stringify(qs.mastery[topicId]));
+  }
+
+  function getQuizTopics(unit) {
+    if (unit) return (QUIZ_BANK.units[unit]?.topics || []).slice();
+    return Object.values(QUIZ_BANK.units).flatMap(u => u.topics);
+  }
+
+  function getQuizQuestions(filters) {
+    let questions = QUIZ_BANK.questions.slice();
+    if (filters?.unit) questions = questions.filter(q => q.unit === filters.unit);
+    if (filters?.topic_id) questions = questions.filter(q => q.topic_id === filters.topic_id);
+    return questions;
+  }
+
+  function chooseQuestions(profileId, opts) {
+    const count = Math.max(1, Math.min(20, Number(opts?.count || 8)));
+    const unit = opts?.unit || 'unit2';
+    const topicId = opts?.topic_id || null;
+    const mode = opts?.mode || 'daily';
+    const pool = getQuizQuestions({ unit, topic_id: topicId });
+    const shuffled = pool
+      .map(q => ({ q, sort: Math.random() + questionPriority(profileId, q, mode) }))
+      .sort((a, b) => b.sort - a.sort)
+      .map(x => x.q);
+    return shuffled.slice(0, Math.min(count, shuffled.length));
+  }
+
+  function questionPriority(profileId, question, mode) {
+    const mastery = getTopicMastery(profileId, question.topic_id);
+    const weaknessBoost = (100 - mastery.mastery) / 100;
+    const base = mode === 'daily' ? 0.35 : 0.2;
+    return base + weaknessBoost;
+  }
+
+  function createQuizSession(profileId, opts) {
+    ensureProfileBuckets(profileId);
+    const sessionId = 'quiz_' + Math.random().toString(36).slice(2, 10);
+    const questions = chooseQuestions(profileId, opts);
+    const session = {
+      id: sessionId,
+      mode: opts?.mode || 'manual',
+      unit: opts?.unit || 'unit2',
+      topic_id: opts?.topic_id || null,
+      createdAt: new Date().toISOString(),
+      currentIndex: 0,
+      questionIds: questions.map(q => q.id),
+      answers: [],
+      completed: false,
+    };
+    state.quizState[profileId].sessions[sessionId] = session;
+    save(state);
+    return JSON.parse(JSON.stringify(session));
+  }
+
+  function getQuizSession(profileId, sessionId) {
+    ensureProfileBuckets(profileId);
+    const session = state.quizState[profileId].sessions[sessionId];
+    return session ? JSON.parse(JSON.stringify(session)) : null;
+  }
+
+  function getQuizQuestionById(questionId) {
+    return QUIZ_BANK.questions.find(q => q.id === questionId) || null;
+  }
+
+  function answerQuizQuestion(profileId, sessionId, answer, confidence) {
+    ensureProfileBuckets(profileId);
+    const session = state.quizState[profileId].sessions[sessionId];
+    if (!session || session.completed) return null;
+    const questionId = session.questionIds[session.currentIndex];
+    const question = getQuizQuestionById(questionId);
+    if (!question) return null;
+    const isCorrect = String(answer).trim() === String(question.correct_answer).trim();
+    const mastery = state.quizState[profileId].mastery[question.topic_id] || { mastery: 50, correct: 0, wrong: 0, seen: 0, lastSeen: null };
+    mastery.seen += 1;
+    mastery.lastSeen = new Date().toISOString();
+    if (isCorrect) {
+      mastery.correct += 1;
+      mastery.mastery = Math.min(100, mastery.mastery + (confidence === 'confident' ? 6 : 5));
+    } else {
+      mastery.wrong += 1;
+      mastery.mastery = Math.max(0, mastery.mastery - (confidence === 'confident' ? 8 : 6));
+    }
+    state.quizState[profileId].mastery[question.topic_id] = mastery;
+    session.answers.push({ questionId, answer, confidence: confidence || null, isCorrect, answeredAt: new Date().toISOString() });
+    session.currentIndex += 1;
+    if (session.currentIndex >= session.questionIds.length) {
+      session.completed = true;
+      updateQuizStreak(profileId);
+      const correctCount = session.answers.filter(a => a.isCorrect).length;
+      recordPlay('mba-mastery-quiz', Math.round((correctCount / Math.max(1, session.questionIds.length)) * 100), session.questionIds.length * 12);
+    }
+    state.quizState[profileId].attempts.push({ sessionId, questionId, topic_id: question.topic_id, isCorrect, confidence: confidence || null, answeredAt: new Date().toISOString() });
+    save(state);
+    return {
+      question,
+      isCorrect,
+      explanation: question.explanation,
+      correctAnswer: question.correct_answer,
+      completed: session.completed,
+      nextIndex: session.currentIndex,
+      mastery: JSON.parse(JSON.stringify(mastery)),
+    };
+  }
+
+  function updateQuizStreak(profileId) {
+    const today = new Date().toISOString().slice(0, 10);
+    const qs = state.quizState[profileId];
+    if (qs.lastQuizDate === today) return;
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    qs.streak = qs.lastQuizDate === yesterday ? (qs.streak || 0) + 1 : 1;
+    qs.lastQuizDate = today;
+  }
+
+  function getDailyQuiz(profileId, unit) {
+    ensureProfileBuckets(profileId);
+    const day = new Date().toISOString().slice(0, 10);
+    const key = `${day}:${unit || 'unit2'}`;
+    const qs = state.quizState[profileId];
+    if (!qs.daily[key]) {
+      const session = createQuizSession(profileId, { mode: 'daily', unit: unit || 'unit2', count: 6 });
+      qs.daily[key] = { sessionId: session.id, createdAt: new Date().toISOString(), unit: unit || 'unit2' };
+      save(state);
+    }
+    return JSON.parse(JSON.stringify(qs.daily[key]));
   }
 
   function recordPlay(gameId, score, seconds) {
@@ -437,6 +637,7 @@
   window.Hub = {
     GAMES,
     AGE_GROUPS,
+    QUIZ_BANK,
     // profiles
     getProfiles, addProfile, updateProfile, removeProfile,
     setActiveProfile, getActiveProfile,
@@ -448,6 +649,9 @@
     getProgress, recordPlay, resetProgress,
     // session
     startSession, endSession,
+    // quiz
+    getQuizState, getTopicMastery, getQuizTopics, getQuizQuestions,
+    createQuizSession, getQuizSession, getQuizQuestionById, answerQuizQuestion, getDailyQuiz,
     // pin
     getPin, setPin,
     // util
