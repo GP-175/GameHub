@@ -181,11 +181,15 @@
     }, 400);
   }
 
+  function getApiBase() {
+    return window.GAMEHUB_API_BASE || '';
+  }
+
   async function syncRemoteState(snapshot) {
     const user = getRemoteUser();
     if (!user || !window.fetch) return { ok: false, reason: 'no-user' };
     const expectedRevision = snapshot?._sync?.revision || 0;
-    const res = await fetch(`/api/state`, {
+    const res = await fetch(`${getApiBase()}/api/state`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ user, state: snapshot, expectedRevision }),
@@ -210,7 +214,7 @@
     const user = getRemoteUser();
     if (!user || !window.fetch) return null;
     try {
-      const res = await fetch(`/api/state?user=${encodeURIComponent(user)}`);
+      const res = await fetch(`${getApiBase()}/api/state?user=${encodeURIComponent(user)}`);
       if (!res.ok) {
         setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
         emitSyncStatus();
