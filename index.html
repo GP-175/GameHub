@@ -46,6 +46,7 @@
 </header>
 
 <main class="container">
+  <div id="sync-banner" class="muted" style="margin-bottom:10px;"></div>
 
   <!-- View 1: Profile Picker -->
   <section id="view-profiles" class="hidden">
@@ -104,6 +105,8 @@
 
 
   function init() {
+    renderSyncBanner();
+    Hub.onSyncStatus(renderSyncBanner);
     const profiles = Hub.getProfiles();
     if (profiles.length === 0) { show('view-empty'); bindFirstRun(); return; }
     const active = Hub.getActiveProfile();
@@ -189,6 +192,14 @@
       `;
       grid.appendChild(a);
     });
+  }
+
+  function renderSyncBanner() {
+    const meta = Hub.getRemoteSyncMeta();
+    const user = Hub.getRemoteUser();
+    $('sync-banner').innerHTML = user
+      ? `Sync key: <strong>${escapeHtml(user)}</strong> • last pull: ${meta.lastPullAt || 'never'} • last push: ${meta.lastPushAt || 'never'}`
+      : 'Local mode only. Add a sync key in Parent for shared multi-device state.';
   }
 
   // ---------- helpers ----------

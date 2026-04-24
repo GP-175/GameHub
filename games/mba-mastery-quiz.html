@@ -37,6 +37,7 @@
 </header>
 
 <main class="quiz-shell">
+  <div id="quiz-sync-banner" class="muted" style="margin-bottom:12px;"></div>
   <section id="view-setup" class="hidden">
     <div class="quiz-grid">
       <aside class="quiz-side">
@@ -164,6 +165,8 @@ let currentQuestion = null;
 let currentSelectedAnswer = null;
 
 function init() {
+  renderQuizSyncBanner();
+  Hub.onSyncStatus(renderQuizSyncBanner);
   activeProfile = Hub.getActiveProfile();
   if (!activeProfile) {
     alert('Pick a profile in GameHub first.');
@@ -430,6 +433,14 @@ function showSummary() {
     : `<p class="muted">No clear weak area yet. Keep going with mixed quizzes.</p><p><strong>Recent question-type performance</strong><br>${breakdown || 'Not enough data yet'}</p>`;
 
   show('view-summary');
+}
+
+function renderQuizSyncBanner() {
+  const meta = Hub.getRemoteSyncMeta();
+  const user = Hub.getRemoteUser();
+  $('quiz-sync-banner').innerHTML = user
+    ? `Shared sync active for <strong>${escapeHtml(user)}</strong> • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}`
+    : 'Local mode only. Set a sync key in Parent to share quiz state across devices.';
 }
 
 function labelMode(mode) {

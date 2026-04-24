@@ -12,6 +12,8 @@
   const REMOTE_SYNC_META_KEY = 'gamehub.remoteSyncMeta';
   let syncTimer = null;
   let initPromise = null;
+  let refreshTimer = null;
+  const syncListeners = new Set();
 
   // ---------- Game Registry ----------
   // To add a new game, drop a new HTML file under /games/ and add an entry here.
@@ -188,6 +190,7 @@
     });
     const ok = !!res.ok;
     setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: ok });
+    emitSyncStatus();
     return { ok };
   }
 
@@ -198,13 +201,16 @@
       const res = await fetch(`/api/state?user=${encodeURIComponent(user)}`);
       if (!res.ok) {
         setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
+        emitSyncStatus();
         return null;
       }
       const data = await res.json();
       setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: true });
+      emitSyncStatus();
       return data && data.state ? data.state : null;
     } catch (e) {
       setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
+      emitSyncStatus();
       return null;
     }
   }
@@ -241,10 +247,37 @@
         if (remote && typeof remote === 'object') {
           state = Object.assign(defaultState(), remote);
           localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          emitSyncStatus();
         }
+        startBackgroundRefresh();
         return state;
       }).catch(() => state);
     } catch (_) {}
+  }
+
+  function emitSyncStatus() {
+    const meta = getRemoteSyncMeta();
+    syncListeners.forEach(fn => {
+      try { fn(meta); } catch (_) {}
+    });
+  }
+
+  function onSyncStatus(fn) {
+    syncListeners.add(fn);
+    return () => syncListeners.delete(fn);
+  }
+
+  function startBackgroundRefresh() {
+    clearInterval(refreshTimer);
+    const user = getRemoteUser();
+    if (!user) return;
+    refreshTimer = setInterval(async () => {
+      const remote = await loadRemoteState();
+      if (remote && typeof remote === 'object') {
+        state = Object.assign(defaultState(), remote);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+    }, 15000);
   }
 
   let state = load();
@@ -253,6 +286,7 @@
       state = Object.assign(defaultState(), remote);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
+    startBackgroundRefresh();
     return state;
   }).catch(() => state);
 
@@ -866,7 +900,7 @@
     // util
     speak,
     // remote sync
-    getRemoteUser, setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta,
+    getRemoteUser, setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta, onSyncStatus,
     whenReady: () => initPromise || Promise.resolve(state),
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),
