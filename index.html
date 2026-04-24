@@ -197,10 +197,7 @@
 
   function renderSyncBanner() {
     const meta = Hub.getRemoteSyncMeta();
-    const user = Hub.getRemoteUser();
-    $('sync-banner').innerHTML = user
-      ? `Sync key: <strong>${escapeHtml(user)}</strong> • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`
-      : 'Local mode only. Add a sync key in Parent for shared multi-device state.';
+    $('sync-banner').innerHTML = `Saved app data active • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
   }
 
   // ---------- helpers ----------

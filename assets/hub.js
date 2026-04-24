@@ -8,7 +8,6 @@
 
   const STORAGE_KEY = 'gamehub.v1';
   const DEFAULT_PIN = '1234';
-  const REMOTE_USER_KEY = 'gamehub.remoteUser';
   const REMOTE_SYNC_META_KEY = 'gamehub.remoteSyncMeta';
   let syncTimer = null;
   let initPromise = null;
@@ -186,13 +185,12 @@
   }
 
   async function syncRemoteState(snapshot) {
-    const user = getRemoteUser();
-    if (!user || !window.fetch) return { ok: false, reason: 'no-user' };
+    if (!window.fetch) return { ok: false, reason: 'no-fetch' };
     const expectedRevision = snapshot?._sync?.revision || 0;
     const res = await fetch(`${getApiBase()}/api/state`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ user, state: snapshot, expectedRevision }),
+      body: JSON.stringify({ state: snapshot, expectedRevision }),
     });
     const ok = !!res.ok;
     if (ok) {
@@ -211,10 +209,9 @@
   }
 
   async function loadRemoteState() {
-    const user = getRemoteUser();
-    if (!user || !window.fetch) return null;
+    if (!window.fetch) return null;
     try {
-      const res = await fetch(`${getApiBase()}/api/state?user=${encodeURIComponent(user)}`);
+      const res = await fetch(`${getApiBase()}/api/state`);
       if (!res.ok) {
         setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
         emitSyncStatus();
@@ -235,14 +232,6 @@
     }
   }
 
-  function getRemoteUser() {
-    try {
-      return localStorage.getItem(REMOTE_USER_KEY) || null;
-    } catch (_) {
-      return null;
-    }
-  }
-
   function getRemoteSyncMeta() {
     try {
       const raw = localStorage.getItem(REMOTE_SYNC_META_KEY);
@@ -259,20 +248,16 @@
     } catch (_) {}
   }
 
-  function setRemoteUser(user) {
-    try {
-      if (!user) localStorage.removeItem(REMOTE_USER_KEY);
-      else localStorage.setItem(REMOTE_USER_KEY, String(user));
-      initPromise = loadRemoteState().then((remote) => {
-        if (remote && typeof remote === 'object') {
-          state = Object.assign(defaultState(), remote);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-          emitSyncStatus();
-        }
-        startBackgroundRefresh();
-        return state;
-      }).catch(() => state);
-    } catch (_) {}
+  function setRemoteUser() {
+    initPromise = loadRemoteState().then((remote) => {
+      if (remote && typeof remote === 'object') {
+        state = Object.assign(defaultState(), remote);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        emitSyncStatus();
+      }
+      startBackgroundRefresh();
+      return state;
+    }).catch(() => state);
   }
 
   function emitSyncStatus() {
@@ -289,8 +274,6 @@
 
   function startBackgroundRefresh() {
     clearInterval(refreshTimer);
-    const user = getRemoteUser();
-    if (!user) return;
     refreshTimer = setInterval(async () => {
       const remote = await loadRemoteState();
       if (remote && typeof remote === 'object') {
@@ -920,7 +903,7 @@
     // util
     speak,
     // remote sync
-    getRemoteUser, setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta, onSyncStatus,
+    setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta, onSyncStatus,
     whenReady: () => initPromise || Promise.resolve(state),
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),

@@ -41,23 +41,21 @@ server.listen(PORT, '0.0.0.0', () => {
 
 async function handleState(req, res, url) {
   if (req.method === 'GET') {
-    const user = sanitizeUser(url.searchParams.get('user') || 'default');
-    const record = await readStateRecord(user);
-    return json(res, 200, { user, state: record?.state || null, revision: record?.revision || 0, updatedAt: record?.updatedAt || null });
+    const record = await readStateRecord();
+    return json(res, 200, { state: record?.state || null, revision: record?.revision || 0, updatedAt: record?.updatedAt || null });
   }
 
   if (req.method === 'POST') {
     const body = await readJson(req);
-    if (!body || !body.user || typeof body.state !== 'object') {
-      return json(res, 400, { error: 'Expected { user, state }' });
+    if (!body || typeof body.state !== 'object') {
+      return json(res, 400, { error: 'Expected { state }' });
     }
-    const user = sanitizeUser(body.user);
     const expectedRevision = Number(body.expectedRevision || 0);
-    const result = await writeStateRecord(user, body.state, expectedRevision);
+    const result = await writeStateRecord(body.state, expectedRevision);
     if (!result.ok) {
       return json(res, 409, { error: 'revision_conflict', currentRevision: result.currentRevision, updatedAt: result.updatedAt });
     }
-    return json(res, 200, { ok: true, user, revision: result.revision, updatedAt: result.updatedAt });
+    return json(res, 200, { ok: true, revision: result.revision, updatedAt: result.updatedAt });
   }
 
   return json(res, 405, { error: 'Method not allowed' });
@@ -90,29 +88,25 @@ function streamFile(filePath, res) {
   createReadStream(filePath).pipe(res);
 }
 
-async function readStateRecord(user) {
+async function readStateRecord() {
   try {
-    const raw = await readFile(path.join(DATA_DIR, `${user}.json`), 'utf8');
+    const raw = await readFile(path.join(DATA_DIR, `shared-state.json`), 'utf8');
     return JSON.parse(raw);
   } catch {
     return null;
   }
 }
 
-async function writeStateRecord(user, state, expectedRevision) {
-  const current = await readStateRecord(user);
+async function writeStateRecord(state, expectedRevision) {
+  const current = await readStateRecord();
   const currentRevision = current?.revision || 0;
   if (current && expectedRevision && expectedRevision !== currentRevision) {
     return { ok: false, currentRevision, updatedAt: current.updatedAt || null };
   }
   const next = { revision: currentRevision + 1, updatedAt: new Date().toISOString(), state };
   await mkdir(DATA_DIR, { recursive: true });
-  await writeFile(path.join(DATA_DIR, `${user}.json`), JSON.stringify(next, null, 2), 'utf8');
+  await writeFile(path.join(DATA_DIR, `shared-state.json`), JSON.stringify(next, null, 2), 'utf8');
   return { ok: true, revision: next.revision, updatedAt: next.updatedAt };
-}
-
-function sanitizeUser(user) {
-  return String(user || 'default').replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 120) || 'default';
 }
 
 function json(res, status, data) {
