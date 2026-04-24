@@ -1,105 +1,59 @@
-# Gamehub Cloudflare setup for shared persistence
+# Gamehub shared persistence setup
 
-The Gamehub app now includes a Worker API layer for shared state sync:
+The Gamehub app now includes a shared state sync API:
 - `GET /api/state?user=<key>`
 - `POST /api/state`
 
-It expects a Cloudflare KV binding:
-- `GAMEHUB_STATE`
+It supports two backends:
+1. **Local file storage**, works now on the local machine
+2. **Cloudflare KV**, optional later
 
-## Current blocker
-`wrangler.jsonc` still contains a placeholder KV id:
-- `REPLACE_WITH_REAL_KV_ID`
+## Local mode, works now
+If you run Gamehub locally with the Worker/server entrypoint, state can be stored in:
+- `/srv/gamehub/.data/<sync-key>.json`
 
-You need to create a real KV namespace and place its id into `wrangler.jsonc`.
+That means multiple browsers can share the same data on the same machine if they use the same sync key.
 
-## Prerequisites
-Set a Cloudflare API token in your shell before running Wrangler commands:
-
-```bash
-export CLOUDFLARE_API_TOKEN="YOUR_TOKEN_HERE"
-```
-
-The token should have permissions sufficient for Workers and KV namespace management.
-
-## 1. Create the KV namespace
-Run this in `/srv/gamehub`:
-
-```bash
-cd /srv/gamehub
-npx wrangler kv namespace create GAMEHUB_STATE
-```
-
-If you use a preview environment too, also run:
-
-```bash
-cd /srv/gamehub
-npx wrangler kv namespace create GAMEHUB_STATE --preview
-```
-
-Wrangler will return namespace ids.
-
-## 2. Update `wrangler.jsonc`
-Replace:
-
-```json
-{ "binding": "GAMEHUB_STATE", "id": "REPLACE_WITH_REAL_KV_ID" }
-```
-
-with the real id, for example:
-
-```json
-{
-  "binding": "GAMEHUB_STATE",
-  "id": "abc123realnamespaceid",
-  "preview_id": "preview456namespaceid"
-}
-```
-
-If you only create one namespace, you can omit `preview_id`.
-
-## 3. Deploy
-Then deploy the Worker:
-
-```bash
-cd /srv/gamehub
-npx wrangler deploy
-```
-
-## 4. Verify
-After deploy, test the API:
-
-### GET
-```bash
-curl "https://YOUR_GAMEHUB_DOMAIN/api/state?user=test-user"
-```
-
-Expected first response:
-```json
-{"user":"test-user","state":null}
-```
-
-### POST
-```bash
-curl -X POST "https://YOUR_GAMEHUB_DOMAIN/api/state" \
-  -H "content-type: application/json" \
-  -d '{"user":"test-user","state":{"hello":"world"}}'
-```
-
-Expected response:
-```json
-{"ok":true}
-```
-
-Then GET again and confirm the stored state returns.
-
-## 5. Use it in the app
+### How to use local mode
 In Gamehub Parent view:
 - open **Cloud sync**
 - enter the same sync key in both browsers, for example `george-mba`
 - click **Save sync key**
-- use the app normally so state saves remotely
-- in another browser, enter the same sync key and click **Pull remote state**
+- use the app in one browser so it saves state
+- in the other browser click **Pull remote state**
+
+### Local storage path
+Shared state files are written to:
+
+```bash
+/srv/gamehub/.data/
+```
+
+Each key becomes a JSON file, for example:
+
+```bash
+/srv/gamehub/.data/george-mba.json
+```
+
+## Cloudflare mode, optional later
+The same API can also use a KV binding:
+- `GAMEHUB_STATE`
+
+### Current blocker
+`wrangler.jsonc` still contains a placeholder KV id:
+- `REPLACE_WITH_REAL_KV_ID`
+
+You only need to change that when you decide to move to Cloudflare-backed persistence.
+
+### Cloudflare steps later
+```bash
+export CLOUDFLARE_API_TOKEN="YOUR_TOKEN_HERE"
+cd /srv/gamehub
+npx wrangler kv namespace create GAMEHUB_STATE
+npx wrangler kv namespace create GAMEHUB_STATE --preview
+```
+
+Then update `wrangler.jsonc` with the real ids and deploy.
 
 ## Notes
 - Current sync model is whole-state push/pull, not field-level merge
