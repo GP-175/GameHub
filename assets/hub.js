@@ -184,6 +184,10 @@
     return window.GAMEHUB_API_BASE || '';
   }
 
+  function getEndpointLabel() {
+    return `${window.location.origin}${getApiBase() ? ` via ${getApiBase()}` : ''}`;
+  }
+
   async function syncRemoteState(snapshot) {
     if (!window.fetch) return { ok: false, reason: 'no-fetch' };
     const expectedRevision = snapshot?._sync?.revision || 0;
@@ -903,7 +907,7 @@
     // util
     speak,
     // remote sync
-    setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta, onSyncStatus,
+    setRemoteUser, loadRemoteState, syncRemoteState, getRemoteSyncMeta, onSyncStatus, getEndpointLabel,
     whenReady: () => initPromise || Promise.resolve(state),
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),

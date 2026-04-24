@@ -113,6 +113,10 @@
           <div class="muted">This Gamehub now uses one permanent shared save for this installation. Any time you open the app, it loads the same saved data automatically.</div>
         </div>
         <div class="form-row">
+          <label>Connected endpoint</label>
+          <div id="endpoint-label" class="muted"></div>
+        </div>
+        <div class="form-row">
           <label>Sync status</label>
           <div id="remote-sync-status" class="muted">No sync activity yet.</div>
         </div>
@@ -360,6 +364,7 @@
   }
 
   function bindSettings() {
+    $('endpoint-label').textContent = Hub.getEndpointLabel();
     renderRemoteSyncStatus();
     $('pull-remote').onclick = async () => {
       const remote = await Hub.loadRemoteState();

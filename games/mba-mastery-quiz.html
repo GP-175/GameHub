@@ -438,7 +438,7 @@ function showSummary() {
 
 function renderQuizSyncBanner() {
   const meta = Hub.getRemoteSyncMeta();
-  $('quiz-sync-banner').innerHTML = `Saved app data active • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
+  $('quiz-sync-banner').innerHTML = `Permanent shared save active • endpoint: ${escapeHtml(Hub.getEndpointLabel())} • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
 }
 
 function labelMode(mode) {

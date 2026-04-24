@@ -197,7 +197,7 @@
 
   function renderSyncBanner() {
     const meta = Hub.getRemoteSyncMeta();
-    $('sync-banner').innerHTML = `Saved app data active • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
+    $('sync-banner').innerHTML = `Permanent shared save active • endpoint: ${escapeHtml(Hub.getEndpointLabel())} • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
   }
 
   // ---------- helpers ----------
