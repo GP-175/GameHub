@@ -42,7 +42,7 @@ server.listen(PORT, '0.0.0.0', () => {
 async function handleState(req, res, url) {
   if (req.method === 'GET') {
     const record = await readStateRecord();
-    return json(res, 200, { state: record?.state || null, revision: record?.revision || 0, updatedAt: record?.updatedAt || null });
+    return json(res, 200, { user: 'shared', state: record?.state || null, revision: record?.revision || 0, updatedAt: record?.updatedAt || null });
   }
 
   if (req.method === 'POST') {
