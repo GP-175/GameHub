@@ -10,5 +10,9 @@
   },
   "compatibility_flags": [
     "nodejs_compat"
+  ],
+  "main": "server.js",
+  "kv_namespaces": [
+    { "binding": "GAMEHUB_STATE", "id": "REPLACE_WITH_REAL_KV_ID" }
   ]
 }

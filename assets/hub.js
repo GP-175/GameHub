@@ -8,6 +8,7 @@
 
   const STORAGE_KEY = 'gamehub.v1';
   const DEFAULT_PIN = '1234';
+  const REMOTE_USER_KEY = 'gamehub.remoteUser';
 
   // ---------- Game Registry ----------
   // To add a new game, drop a new HTML file under /games/ and add an entry here.
@@ -161,12 +162,57 @@
   function save(state) {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      syncRemoteState(state).catch((e) => console.warn('GameHub: remote sync failed', e));
     } catch (e) {
       console.error('GameHub: failed to save storage.', e);
     }
   }
 
+  async function syncRemoteState(snapshot) {
+    const user = getRemoteUser();
+    if (!user || !window.fetch) return;
+    await fetch(`/api/state`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ user, state: snapshot }),
+    });
+  }
+
+  async function loadRemoteState() {
+    const user = getRemoteUser();
+    if (!user || !window.fetch) return null;
+    try {
+      const res = await fetch(`/api/state?user=${encodeURIComponent(user)}`);
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data && data.state ? data.state : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function getRemoteUser() {
+    try {
+      return localStorage.getItem(REMOTE_USER_KEY) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function setRemoteUser(user) {
+    try {
+      if (!user) localStorage.removeItem(REMOTE_USER_KEY);
+      else localStorage.setItem(REMOTE_USER_KEY, String(user));
+    } catch (_) {}
+  }
+
   let state = load();
+  loadRemoteState().then((remote) => {
+    if (remote && typeof remote === 'object') {
+      state = Object.assign(defaultState(), remote);
+      save(state);
+    }
+  });
 
   // ---------- Helpers ----------
   function uid() {
@@ -777,6 +823,8 @@
     getPin, setPin,
     // util
     speak,
+    // remote sync
+    getRemoteUser, setRemoteUser, loadRemoteState,
     // raw state for the parent dashboard (read-only copy)
     debugState: () => JSON.parse(JSON.stringify(state)),
   };

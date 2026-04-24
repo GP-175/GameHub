@@ -105,6 +105,21 @@
     </div>
 
     <div class="panel">
+      <h2>Cloud sync</h2>
+      <div class="card">
+        <div class="form-row">
+          <label>Sync user key</label>
+          <div class="row">
+            <input id="remote-user" class="input" placeholder="e.g. george-mba" style="max-width:260px;" />
+            <button class="btn btn-soft" id="save-remote-user">Save sync key</button>
+            <button class="btn btn-ghost" id="pull-remote">Pull remote state</button>
+          </div>
+          <div class="muted">Use the same sync key in another browser to load the same Gamehub data.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
       <h2>Settings</h2>
       <div class="card">
         <div class="form-row">
@@ -339,6 +354,18 @@
   }
 
   function bindSettings() {
+    $('remote-user').value = Hub.getRemoteUser() || '';
+    $('save-remote-user').onclick = () => {
+      const user = $('remote-user').value.trim();
+      if (!user) { toast('Enter a sync key'); return; }
+      Hub.setRemoteUser(user);
+      toast('Sync key saved');
+    };
+    $('pull-remote').onclick = async () => {
+      const remote = await Hub.loadRemoteState();
+      if (!remote) { toast('No remote state found'); return; }
+      location.reload();
+    };
     $('save-pin').onclick = () => {
       const p = $('new-pin').value.trim();
       if (!/^\d{4,8}$/.test(p)) { toast('PIN must be 4–8 digits'); return; }
