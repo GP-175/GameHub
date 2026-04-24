@@ -396,8 +396,11 @@
     const meta = Hub.getRemoteSyncMeta();
     $('remote-sync-status').innerHTML = user
       ? `Key: <strong>${escapeHtml(user)}</strong><br>
+         Revision: ${meta.revision || 0}<br>
+         Last updated: ${meta.updatedAt || 'unknown'}<br>
          Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌' : meta.lastPushOk ? '✅' : ''}<br>
-         Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌' : meta.lastPullOk ? '✅' : ''}`
+         Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌' : meta.lastPullOk ? '✅' : ''}<br>
+         Conflict: ${meta.lastConflict ? `⚠️ current revision ${meta.conflictRevision || '?'} at ${meta.conflictUpdatedAt || 'unknown'}` : 'none'}`
       : 'No sync key saved yet.';
   }
 

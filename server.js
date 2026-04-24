@@ -9,8 +9,8 @@ export default {
     if (url.pathname.startsWith('/api/state')) {
       if (request.method === 'GET') {
         const user = sanitizeUser(url.searchParams.get('user') || 'default');
-        const state = await readState(env, user);
-        return json({ user, state });
+        const record = await readStateRecord(env, user);
+        return json({ user, state: record?.state || null, revision: record?.revision || 0, updatedAt: record?.updatedAt || null });
       }
 
       if (request.method === 'POST') {
@@ -19,8 +19,12 @@ export default {
           return json({ error: 'Expected { user, state }' }, 400);
         }
         const user = sanitizeUser(body.user);
-        await writeState(env, user, body.state);
-        return json({ ok: true, user });
+        const expectedRevision = Number(body.expectedRevision || 0);
+        const result = await writeStateRecord(env, user, body.state, expectedRevision);
+        if (!result.ok) {
+          return json({ error: 'revision_conflict', currentRevision: result.currentRevision, updatedAt: result.updatedAt }, 409);
+        }
+        return json({ ok: true, user, revision: result.revision, updatedAt: result.updatedAt });
       }
 
       return json({ error: 'Method not allowed' }, 405);
@@ -30,10 +34,10 @@ export default {
   }
 };
 
-async function readState(env, user) {
+async function readStateRecord(env, user) {
   if (env.GAMEHUB_STATE && typeof env.GAMEHUB_STATE.get === 'function' && !String(env.GAMEHUB_STATE).includes('REPLACE_WITH_REAL_KV_ID')) {
-    const state = await env.GAMEHUB_STATE.get(`state:${user}`, 'text');
-    return state ? JSON.parse(state) : null;
+    const raw = await env.GAMEHUB_STATE.get(`state:${user}`, 'text');
+    return raw ? JSON.parse(raw) : null;
   }
   try {
     const path = `${LOCAL_STATE_DIR}/${user}.json`;
@@ -44,14 +48,25 @@ async function readState(env, user) {
   }
 }
 
-async function writeState(env, user, state) {
+async function writeStateRecord(env, user, state, expectedRevision) {
+  const current = await readStateRecord(env, user);
+  const currentRevision = current?.revision || 0;
+  if (current && expectedRevision && expectedRevision !== currentRevision) {
+    return { ok: false, currentRevision, updatedAt: current.updatedAt || null };
+  }
+  const next = {
+    revision: currentRevision + 1,
+    updatedAt: new Date().toISOString(),
+    state,
+  };
   if (env.GAMEHUB_STATE && typeof env.GAMEHUB_STATE.put === 'function' && !String(env.GAMEHUB_STATE).includes('REPLACE_WITH_REAL_KV_ID')) {
-    await env.GAMEHUB_STATE.put(`state:${user}`, JSON.stringify(state));
-    return;
+    await env.GAMEHUB_STATE.put(`state:${user}`, JSON.stringify(next));
+    return { ok: true, revision: next.revision, updatedAt: next.updatedAt };
   }
   await mkdir(LOCAL_STATE_DIR, { recursive: true });
   const path = `${LOCAL_STATE_DIR}/${user}.json`;
-  await writeFile(path, JSON.stringify(state, null, 2), 'utf8');
+  await writeFile(path, JSON.stringify(next, null, 2), 'utf8');
+  return { ok: true, revision: next.revision, updatedAt: next.updatedAt };
 }
 
 function sanitizeUser(user) {

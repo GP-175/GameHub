@@ -439,7 +439,7 @@ function renderQuizSyncBanner() {
   const meta = Hub.getRemoteSyncMeta();
   const user = Hub.getRemoteUser();
   $('quiz-sync-banner').innerHTML = user
-    ? `Shared sync active for <strong>${escapeHtml(user)}</strong> • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}`
+    ? `Shared sync active for <strong>${escapeHtml(user)}</strong> • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`
     : 'Local mode only. Set a sync key in Parent to share quiz state across devices.';
 }
 

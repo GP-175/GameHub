@@ -149,6 +149,7 @@
       progress: {}, // progress[profileId][gameId] = { plays, bestScore, totalSeconds, lastPlayed }
       gameConfig: {}, // gameConfig[profileId][gameId] = arbitrary per-game settings object
       quizState: {}, // quizState[profileId] = adaptive quiz state and history
+      _sync: { revision: 0, updatedAt: null },
     };
   }
 
@@ -183,13 +184,24 @@
   async function syncRemoteState(snapshot) {
     const user = getRemoteUser();
     if (!user || !window.fetch) return { ok: false, reason: 'no-user' };
+    const expectedRevision = snapshot?._sync?.revision || 0;
     const res = await fetch(`/api/state`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ user, state: snapshot }),
+      body: JSON.stringify({ user, state: snapshot, expectedRevision }),
     });
     const ok = !!res.ok;
-    setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: ok });
+    if (ok) {
+      const data = await res.json();
+      snapshot._sync = { revision: data.revision || expectedRevision, updatedAt: data.updatedAt || new Date().toISOString() };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+      setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: true, lastConflict: null, revision: snapshot._sync.revision, updatedAt: snapshot._sync.updatedAt });
+    } else if (res.status === 409) {
+      const conflict = await res.json().catch(() => ({}));
+      setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: false, lastConflict: true, conflictRevision: conflict.currentRevision || null, conflictUpdatedAt: conflict.updatedAt || null });
+    } else {
+      setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: false });
+    }
     emitSyncStatus();
     return { ok };
   }
@@ -205,9 +217,13 @@
         return null;
       }
       const data = await res.json();
-      setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: true });
+      setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: true, revision: data.revision || 0, updatedAt: data.updatedAt || null, lastConflict: null });
       emitSyncStatus();
-      return data && data.state ? data.state : null;
+      if (data && data.state && typeof data.state === 'object') {
+        data.state._sync = { revision: data.revision || 0, updatedAt: data.updatedAt || null };
+        return data.state;
+      }
+      return null;
     } catch (e) {
       setRemoteSyncMeta({ lastPullAt: new Date().toISOString(), lastPullOk: false });
       emitSyncStatus();
