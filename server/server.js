@@ -706,6 +706,7 @@ app.get('/api/gp-hoot/network', (req, res) => {
 });
 
 const SHARED_STATE_PATH = path.join(ROOT, '.data', 'shared-state.json');
+const SHARED_STATE_UPSTREAM = 'https://gp-hoot.gplange.tech/api/state';
 
 function defaultSharedStateRecord() {
   return { revision: 0, updatedAt: null, state: null };
@@ -732,12 +733,41 @@ function writeSharedStateRecord(state, expectedRevision) {
   return { ok: true, revision: next.revision, updatedAt: next.updatedAt };
 }
 
-app.get('/api/state', (_req, res) => {
+function shouldProxySharedState(req) {
+  const host = String(req.headers.host || '').toLowerCase();
+  return host === 'gplange.tech' || host === 'www.gplange.tech' || host.endsWith('.vercel.app');
+}
+
+async function proxySharedState(req, res) {
+  try {
+    const upstream = await fetch(SHARED_STATE_UPSTREAM, {
+      method: req.method,
+      headers: { 'content-type': 'application/json' },
+      body: req.method === 'POST' ? JSON.stringify(req.body || {}) : undefined,
+    });
+    const text = await upstream.text();
+    res.status(upstream.status);
+    res.type(upstream.headers.get('content-type') || 'application/json; charset=utf-8');
+    res.send(text);
+  } catch {
+    res.status(502).json({ error: 'Shared state upstream unavailable.' });
+  }
+}
+
+app.get('/api/state', async (req, res) => {
+  if (shouldProxySharedState(req)) {
+    await proxySharedState(req, res);
+    return;
+  }
   const record = readSharedStateRecord();
   res.json({ user: 'shared', state: record.state || null, revision: record.revision || 0, updatedAt: record.updatedAt || null });
 });
 
-app.post('/api/state', (req, res) => {
+app.post('/api/state', async (req, res) => {
+  if (shouldProxySharedState(req)) {
+    await proxySharedState(req, res);
+    return;
+  }
   if (!req.body || typeof req.body.state !== 'object') {
     res.status(400).json({ error: 'Expected { state }' });
     return;
