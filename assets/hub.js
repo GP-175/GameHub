@@ -130,6 +130,16 @@
       path: 'games/mba-mastery-quiz.html',
       accent: '#6c5ce7',
     },
+    {
+      id: 'gp-hoot',
+      title: 'GP-hoot',
+      subject: 'Team Quiz',
+      icon: 'GP',
+      tagline: 'Host a live team quiz',
+      ageGroups: ['early-elem'],
+      path: 'gp-hoot',
+      accent: '#16213e',
+    },
   ];
 
   const AGE_GROUPS = {

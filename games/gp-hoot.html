@@ -1,0 +1,1732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>GP-hoot - GameHub</title>
+<link rel="manifest" href="../manifest.webmanifest" />
+<meta name="theme-color" content="#16213e" />
+<link rel="apple-touch-icon" href="../assets/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
+<script src="/socket.io/socket.io.js"></script>
+<style>
+  :root {
+    --bg: #f5f7fb;
+    --panel: #ffffff;
+    --ink: #172033;
+    --muted: #647089;
+    --line: #dfe5ef;
+    --navy: #16213e;
+    --teal: #007c89;
+    --red: #d93535;
+    --blue: #1f73d8;
+    --yellow: #d99b00;
+    --green: #188a45;
+    --good: #0f8f5f;
+    --bad: #c5283d;
+    --shadow: 0 10px 28px rgba(25, 34, 51, .08);
+    color-scheme: light;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    min-height: 100%;
+    margin: 0;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    overflow-x: hidden;
+  }
+
+  body {
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  button, input, textarea, select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    min-height: 68px;
+    padding: 12px clamp(14px, 4vw, 36px);
+    background: rgba(255, 255, 255, .94);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(12px);
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: fit-content;
+    font-weight: 900;
+    font-size: 1.15rem;
+  }
+
+  .brand-mark {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    display: grid;
+    place-items: center;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 900;
+  }
+
+  .topbar nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+    flex-wrap: wrap;
+  }
+
+  .shell {
+    width: min(1180px, 100%);
+    margin: 0 auto;
+    padding: clamp(16px, 4vw, 32px);
+  }
+
+  .view { display: none; }
+  .view.active { display: block; }
+
+  .band {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow);
+  }
+
+  .pad { padding: clamp(16px, 3vw, 26px); }
+
+  .section-title {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  h1, h2, h3, p { margin-top: 0; }
+  h1 { margin-bottom: 8px; font-size: clamp(2rem, 6vw, 4rem); line-height: 1; letter-spacing: 0; }
+  h2 { margin-bottom: 6px; font-size: clamp(1.35rem, 3vw, 2rem); letter-spacing: 0; }
+  h3 { margin-bottom: 10px; font-size: 1.05rem; letter-spacing: 0; }
+  p { line-height: 1.55; }
+
+  .muted { color: var(--muted); }
+  .small { font-size: .9rem; }
+  .hidden { display: none !important; }
+  .right { text-align: right; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 42px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 10px 14px;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 800;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .btn:hover { filter: brightness(1.05); }
+  .btn:active { transform: translateY(1px); }
+  .btn.secondary { background: #fff; border-color: var(--line); color: var(--ink); }
+  .btn.soft { background: #e9f6f7; color: var(--teal); }
+  .btn.good { background: var(--good); }
+  .btn.bad { background: var(--bad); }
+  .btn.warn { background: #8a5b00; }
+  .btn:disabled { opacity: .48; cursor: not-allowed; transform: none; filter: none; }
+
+  .segmented {
+    display: inline-grid;
+    grid-template-columns: repeat(2, minmax(86px, 1fr));
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #eef2f7;
+  }
+
+  .segmented button {
+    border: 0;
+    border-radius: 6px;
+    min-height: 34px;
+    background: transparent;
+    color: var(--muted);
+    font-weight: 800;
+  }
+
+  .segmented button.active {
+    background: #fff;
+    color: var(--ink);
+    box-shadow: 0 2px 8px rgba(25, 34, 51, .08);
+  }
+
+  .grid-two {
+    display: grid;
+    grid-template-columns: minmax(240px, 340px) minmax(0, 1fr);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .field {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .check-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    color: #303b50;
+    font-weight: 800;
+  }
+
+  .check-row input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--teal);
+  }
+
+  label, .label {
+    color: #303b50;
+    font-weight: 800;
+    font-size: .9rem;
+  }
+
+  input, textarea, select {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    padding: 11px 12px;
+  }
+
+  textarea {
+    min-height: 84px;
+    resize: vertical;
+  }
+
+  input:focus, textarea:focus, select:focus {
+    outline: 2px solid rgba(0, 124, 137, .2);
+    border-color: var(--teal);
+  }
+
+  .auth-wrap {
+    min-height: calc(100vh - 132px);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+    gap: clamp(20px, 5vw, 48px);
+    align-items: center;
+  }
+
+  .intro {
+    max-width: 680px;
+  }
+
+  .intro .strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    height: 16px;
+    width: min(420px, 100%);
+    overflow: hidden;
+    border-radius: 8px;
+    margin-bottom: 22px;
+  }
+
+  .strip span:nth-child(1) { background: var(--red); }
+  .strip span:nth-child(2) { background: var(--blue); }
+  .strip span:nth-child(3) { background: var(--yellow); }
+  .strip span:nth-child(4) { background: var(--green); }
+
+  .quiz-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .quiz-row {
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 12px;
+    color: var(--ink);
+  }
+
+  .quiz-row.active {
+    border-color: var(--teal);
+    box-shadow: 0 0 0 3px rgba(0, 124, 137, .12);
+  }
+
+  .quiz-row strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .editor-toolbar, .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .editor-toolbar {
+    justify-content: flex-end;
+    margin-bottom: 16px;
+  }
+
+  .question-list {
+    display: grid;
+    gap: 14px;
+    margin-top: 18px;
+  }
+
+  .question-card {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbfcff;
+    padding: 16px;
+  }
+
+  .question-head {
+    display: grid;
+    grid-template-columns: auto auto minmax(150px, 220px) minmax(110px, 150px) auto;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .q-num {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 8px;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 900;
+  }
+
+  .option-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .option-edit {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .option-edit input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--teal);
+  }
+
+  .image-preview {
+    max-width: 220px;
+    max-height: 130px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    object-fit: cover;
+  }
+
+  .room-code {
+    font-size: clamp(3.2rem, 12vw, 7rem);
+    line-height: .95;
+    font-weight: 900;
+    letter-spacing: .08em;
+    color: var(--navy);
+    margin: 8px 0 12px;
+    word-break: break-all;
+  }
+
+  .join-url {
+    overflow-wrap: anywhere;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  .room-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
+    gap: 18px;
+    align-items: start;
+  }
+
+  .player-list, .leaderboard {
+    display: grid;
+    gap: 8px;
+  }
+
+  .player-pill, .rank-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+
+  .player-pill span:nth-child(2),
+  .rank-row span {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #9aa4b5;
+  }
+
+  .status-dot.on { background: var(--good); }
+
+  .game-stage {
+    display: grid;
+    gap: 18px;
+  }
+
+  .question-display {
+    display: grid;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .question-text {
+    font-size: clamp(1.45rem, 4vw, 3rem);
+    line-height: 1.12;
+    font-weight: 900;
+    letter-spacing: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .question-image {
+    width: min(100%, 560px);
+    max-height: 320px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+
+  .timer-wrap {
+    display: grid;
+    gap: 8px;
+  }
+
+  .timer-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    color: var(--muted);
+    font-weight: 800;
+  }
+
+  .timer-track {
+    height: 12px;
+    border-radius: 999px;
+    background: #dfe5ef;
+    overflow: hidden;
+  }
+
+  .timer-fill {
+    height: 100%;
+    width: 100%;
+    background: var(--teal);
+    transition: width .2s linear;
+  }
+
+  .answer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .answer-btn {
+    min-height: 96px;
+    border: 0;
+    border-radius: 8px;
+    padding: 14px;
+    color: #fff;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    align-items: center;
+    gap: 12px;
+    text-align: left;
+    font-size: clamp(1rem, 3vw, 1.3rem);
+    font-weight: 900;
+  }
+
+  .answer-btn span:last-child {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+  }
+
+  .answer-btn:disabled {
+    cursor: default;
+    opacity: .62;
+  }
+
+  .answer-btn.correct {
+    outline: 4px solid rgba(15, 143, 95, .28);
+  }
+
+  .answer-btn.wrong-choice {
+    opacity: .45;
+  }
+
+  .answer-btn:nth-child(1) { background: var(--red); }
+  .answer-btn:nth-child(2) { background: var(--blue); }
+  .answer-btn:nth-child(3) { background: var(--yellow); color: #172033; }
+  .answer-btn:nth-child(4) { background: var(--green); }
+
+  .shape {
+    width: 34px;
+    height: 34px;
+    display: block;
+    background: rgba(255,255,255,.92);
+  }
+
+  .shape.triangle {
+    width: 0;
+    height: 0;
+    background: transparent;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-bottom: 32px solid rgba(255,255,255,.92);
+  }
+
+  .shape.diamond { transform: rotate(45deg); border-radius: 4px; }
+  .shape.circle { border-radius: 50%; }
+  .shape.square { border-radius: 4px; }
+
+  .result-banner {
+    border-radius: 8px;
+    padding: 16px;
+    font-weight: 900;
+    font-size: clamp(1.2rem, 4vw, 2rem);
+  }
+
+  .result-banner.good { background: #dff7eb; color: #075f3c; }
+  .result-banner.bad { background: #ffe1e6; color: #8f1328; }
+  .result-banner.neutral { background: #e8eef8; color: var(--navy); }
+
+  .bar-list {
+    display: grid;
+    gap: 10px;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: minmax(90px, 1fr) minmax(120px, 3fr) 36px;
+    gap: 10px;
+    align-items: center;
+  }
+
+  .bar-track {
+    height: 22px;
+    background: #e6ebf3;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--teal);
+  }
+
+  .podium {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+    margin-bottom: 18px;
+  }
+
+  .podium-place {
+    min-height: 110px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    padding: 14px;
+    display: grid;
+    align-content: end;
+    gap: 6px;
+    text-align: center;
+  }
+
+  .podium-place:first-child { min-height: 150px; border-color: #d99b00; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 22px;
+    z-index: 50;
+    transform: translateX(-50%) translateY(16px);
+    min-width: min(420px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    border-radius: 8px;
+    background: #172033;
+    color: #fff;
+    padding: 12px 14px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
+    font-weight: 800;
+    text-align: center;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  @media (max-width: 860px) {
+    .auth-wrap, .grid-two, .room-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .question-head {
+      grid-template-columns: auto 1fr;
+    }
+
+    .question-head .btn {
+      grid-column: 1 / -1;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .shell {
+      padding: 12px;
+    }
+
+    .pad {
+      padding: 14px;
+    }
+
+    .topbar {
+      align-items: flex-start;
+      padding: 10px 12px;
+      gap: 10px;
+    }
+
+    .topbar nav {
+      width: 100%;
+      justify-content: flex-start;
+    }
+
+    .topbar nav .btn {
+      flex: 1 1 auto;
+      min-width: 74px;
+      padding-inline: 10px;
+    }
+
+    .option-grid, .answer-grid, .podium {
+      grid-template-columns: 1fr;
+    }
+
+    .room-code {
+      font-size: clamp(2.6rem, 16vw, 4.8rem);
+    }
+
+    .question-image {
+      max-height: 40vh;
+    }
+
+    .answer-btn {
+      min-height: 76px;
+      grid-template-columns: 34px 1fr;
+    }
+
+    .bar-row {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><span class="brand-mark">GP</span><span>GP-hoot</span></div>
+  <nav>
+    <button class="btn secondary" id="nav-host" type="button">Host</button>
+    <button class="btn secondary" id="nav-join" type="button">Join</button>
+    <a class="btn secondary" href="../index.html">Hub</a>
+    <button class="btn secondary hidden" id="logout-btn" type="button">Log out</button>
+  </nav>
+</header>
+
+<main class="shell">
+  <section id="auth-view" class="view">
+    <div class="auth-wrap">
+      <div class="intro">
+        <div class="strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <h1>GP-hoot</h1>
+        <p class="muted">Run live quiz rounds with a room code, fast answer locking, server-side scoring, host controls, and a final leaderboard.</p>
+      </div>
+      <form class="band pad" id="auth-form">
+        <div class="section-title">
+          <div>
+            <h2 id="auth-title">Host login</h2>
+            <p class="muted small" id="auth-copy">Sign in to create quizzes and launch rooms.</p>
+          </div>
+          <div class="segmented">
+            <button class="active" id="login-tab" type="button">Log in</button>
+            <button id="signup-tab" type="button">Sign up</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="auth-email">Email</label>
+          <input id="auth-email" autocomplete="email" type="email" required />
+        </div>
+        <div class="field">
+          <label for="auth-password">Password</label>
+          <input id="auth-password" autocomplete="current-password" type="password" minlength="6" required />
+        </div>
+        <div class="field hidden" id="display-name-field">
+          <label for="auth-display">Display name</label>
+          <input id="auth-display" autocomplete="name" maxlength="80" />
+        </div>
+        <button class="btn" id="auth-submit" type="submit">Log in</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="host-view" class="view">
+    <div class="section-title">
+      <div>
+        <h2>Host dashboard</h2>
+        <p class="muted">Build a quiz, save it, then launch a room.</p>
+      </div>
+      <div class="row">
+        <button class="btn soft" id="sample-quiz-btn" type="button">Sample quiz</button>
+        <button class="btn" id="new-quiz-btn" type="button">New quiz</button>
+      </div>
+    </div>
+
+    <div class="grid-two">
+      <aside class="band pad">
+        <h3>Quiz library</h3>
+        <div class="quiz-list" id="quiz-list"></div>
+      </aside>
+      <section class="band pad">
+        <div id="quiz-editor"></div>
+      </section>
+    </div>
+  </section>
+
+  <section id="host-room-view" class="view">
+    <div id="host-room"></div>
+  </section>
+
+  <section id="join-view" class="view">
+    <div class="auth-wrap">
+      <div class="intro">
+        <div class="strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <h1>Join GP-hoot</h1>
+        <p class="muted">Enter the six-digit room code and your nickname.</p>
+      </div>
+      <form class="band pad" id="join-form">
+        <h2>Player join</h2>
+        <div class="field">
+          <label for="join-code">Room code</label>
+          <input id="join-code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required />
+        </div>
+        <div class="field">
+          <label for="join-name">Nickname</label>
+          <input id="join-name" maxlength="20" minlength="3" required />
+        </div>
+        <button class="btn" type="submit">Join room</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="player-room-view" class="view">
+    <div id="player-room"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const shapes = ['triangle', 'diamond', 'circle', 'square'];
+  const state = {
+    mode: new URLSearchParams(location.search).has('room') ? 'join' : 'host',
+    authMode: 'login',
+    user: null,
+    quizzes: [],
+    selectedQuiz: null,
+    hostQuizId: null,
+    hostRoomCode: null,
+    playerRoomCode: null,
+    hostSocket: null,
+    playerSocket: null,
+    roomState: null,
+    serverOffsetMs: 0,
+    autoAdvanceResults: false,
+    lanOrigin: '',
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  function esc(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (m) => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;',
+    })[m]);
+  }
+
+  function toast(message) {
+    const el = $('toast');
+    el.textContent = message;
+    el.classList.add('show');
+    clearTimeout(el._hide);
+    el._hide = setTimeout(() => el.classList.remove('show'), 2200);
+  }
+
+  async function api(path, options = {}) {
+    const response = await fetch(`/api/gp-hoot${path}`, {
+      credentials: 'include',
+      cache: 'no-store',
+      headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+      ...options,
+      body: options.body && typeof options.body !== 'string' ? JSON.stringify(options.body) : options.body,
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Request failed.');
+    return data;
+  }
+
+  function setView(id) {
+    document.querySelectorAll('.view').forEach((view) => view.classList.toggle('active', view.id === id));
+  }
+
+  function renderShell() {
+    $('logout-btn').classList.toggle('hidden', !state.user);
+    $('nav-host').classList.toggle('soft', state.mode === 'host');
+    $('nav-join').classList.toggle('soft', state.mode === 'join');
+
+    if (state.hostRoomCode) {
+      setView('host-room-view');
+      renderHostRoom();
+      return;
+    }
+    if (state.playerRoomCode) {
+      setView('player-room-view');
+      renderPlayerRoom();
+      return;
+    }
+    if (state.mode === 'join') {
+      setView('join-view');
+      return;
+    }
+    if (!state.user) {
+      setView('auth-view');
+      renderAuthMode();
+      return;
+    }
+    setView('host-view');
+    renderDashboard();
+  }
+
+  function renderAuthMode() {
+    const signup = state.authMode === 'signup';
+    $('login-tab').classList.toggle('active', !signup);
+    $('signup-tab').classList.toggle('active', signup);
+    $('display-name-field').classList.toggle('hidden', !signup);
+    $('auth-title').textContent = signup ? 'Create host account' : 'Host login';
+    $('auth-copy').textContent = signup ? 'Use an email and password for this local GP-hoot server.' : 'Sign in to create quizzes and launch rooms.';
+    $('auth-submit').textContent = signup ? 'Create account' : 'Log in';
+  }
+
+  async function loadMe() {
+    const data = await api('/me');
+    state.user = data.user;
+    if (state.user) await loadQuizzes();
+  }
+
+  async function loadNetworkInfo() {
+    try {
+      const data = await api('/network');
+      state.lanOrigin = (data.lanOrigins || [])[0] || '';
+    } catch {
+      state.lanOrigin = '';
+    }
+  }
+
+  async function loadQuizzes() {
+    const data = await api('/quizzes');
+    state.quizzes = data.quizzes;
+    if (state.selectedQuiz?.id) {
+      const exists = state.quizzes.some((quiz) => quiz.id === state.selectedQuiz.id);
+      if (!exists) state.selectedQuiz = null;
+    }
+    if (!state.selectedQuiz && state.quizzes.length) await selectQuiz(state.quizzes[0].id);
+  }
+
+  async function selectQuiz(id) {
+    const data = await api(`/quizzes/${encodeURIComponent(id)}`);
+    state.selectedQuiz = data.quiz;
+    renderShell();
+  }
+
+  function defaultQuestion(type = 'multiple_choice') {
+    return type === 'true_false'
+      ? { type, text: 'The team should answer true or false.', imageUrl: '', options: ['True', 'False'], correctIndex: 0, timeLimitSeconds: 20 }
+      : { type, text: 'What is the correct answer?', imageUrl: '', options: ['Answer A', 'Answer B', 'Answer C', 'Answer D'], correctIndex: 0, timeLimitSeconds: 20 };
+  }
+
+  function sampleImageDataUrl() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 900;
+    canvas.height = 520;
+    const ctx = canvas.getContext('2d');
+    const roundedRect = (x, y, width, height, radius) => {
+      if (ctx.roundRect) {
+        ctx.roundRect(x, y, width, height, radius);
+        return;
+      }
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+    };
+    ctx.fillStyle = '#16213e';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    roundedRect(70, 70, 760, 380, 28);
+    ctx.fill();
+    ctx.fillStyle = '#1f73d8';
+    ctx.beginPath();
+    ctx.arc(250, 260, 95, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#188a45';
+    ctx.beginPath();
+    roundedRect(390, 165, 190, 190, 20);
+    ctx.fill();
+    ctx.fillStyle = '#d93535';
+    ctx.beginPath();
+    ctx.moveTo(700, 160);
+    ctx.lineTo(805, 350);
+    ctx.lineTo(595, 350);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = '#16213e';
+    ctx.font = '700 38px Arial, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('GP-hoot Shapes Round', 450, 455);
+    return canvas.toDataURL('image/png');
+  }
+
+  async function copyText(value, label) {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const input = document.createElement('textarea');
+        input.value = value;
+        input.style.position = 'fixed';
+        input.style.opacity = '0';
+        document.body.appendChild(input);
+        input.focus();
+        input.select();
+        document.execCommand('copy');
+        input.remove();
+      }
+      toast(`${label} copied.`);
+    } catch {
+      toast(`Could not copy ${label.toLowerCase()}.`);
+    }
+  }
+
+  function sampleQuiz() {
+    return {
+      title: 'Team warm-up quiz',
+      description: 'A short demo quiz with speed scoring and one image question.',
+      questions: [
+        {
+          type: 'multiple_choice',
+          text: 'Which shape is blue in the image?',
+          imageUrl: sampleImageDataUrl(),
+          options: ['Triangle', 'Circle', 'Square', 'Rectangle'],
+          correctIndex: 1,
+          timeLimitSeconds: 20,
+        },
+        {
+          type: 'true_false',
+          text: 'GP-hoot gives more points for faster correct answers.',
+          imageUrl: '',
+          options: ['True', 'False'],
+          correctIndex: 0,
+          timeLimitSeconds: 15,
+        },
+      ],
+    };
+  }
+
+  function renderDashboard() {
+    const list = $('quiz-list');
+    if (!state.quizzes.length) {
+      list.innerHTML = '<p class="muted small">No quizzes yet.</p>';
+    } else {
+      list.innerHTML = state.quizzes.map((quiz) => `
+        <button class="quiz-row ${state.selectedQuiz?.id === quiz.id ? 'active' : ''}" type="button" data-select-quiz="${esc(quiz.id)}">
+          <strong>${esc(quiz.title)}</strong>
+          <span class="muted small">${quiz.questionCount} question${quiz.questionCount === 1 ? '' : 's'}</span>
+        </button>
+      `).join('');
+    }
+
+    list.querySelectorAll('[data-select-quiz]').forEach((button) => {
+      button.onclick = () => selectQuiz(button.dataset.selectQuiz).catch((err) => toast(err.message));
+    });
+
+    renderEditor();
+  }
+
+  function renderEditor() {
+    const editor = $('quiz-editor');
+    const quiz = state.selectedQuiz;
+    if (!quiz) {
+      editor.innerHTML = `
+        <div class="section-title">
+          <div>
+            <h2>No quiz selected</h2>
+            <p class="muted">Create a quiz or load the sample to start.</p>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    editor.innerHTML = `
+      <div class="editor-toolbar">
+        <label class="check-row"><input id="auto-advance-launch" type="checkbox" ${state.autoAdvanceResults ? 'checked' : ''} /> Auto-advance</label>
+        <button class="btn secondary" type="button" id="duplicate-quiz" ${quiz.id ? '' : 'disabled'}>Duplicate</button>
+        <button class="btn bad" type="button" id="delete-quiz" ${quiz.id ? '' : 'disabled'}>Delete</button>
+        <button class="btn soft" type="button" id="save-quiz">Save</button>
+        <button class="btn good" type="button" id="host-quiz" ${quiz.id && quiz.questions.length ? '' : 'disabled'}>Host game</button>
+      </div>
+      <div class="field">
+        <label for="quiz-title">Title</label>
+        <input id="quiz-title" maxlength="120" value="${esc(quiz.title)}" />
+      </div>
+      <div class="field">
+        <label for="quiz-description">Description</label>
+        <textarea id="quiz-description" maxlength="500">${esc(quiz.description || '')}</textarea>
+      </div>
+      <div class="section-title">
+        <div>
+          <h3>Questions</h3>
+          <p class="muted small">Multiple choice supports two to four options. True/false uses fixed options.</p>
+        </div>
+        <div class="row">
+          <button class="btn secondary" type="button" id="add-mc">Add multiple choice</button>
+          <button class="btn secondary" type="button" id="add-tf">Add true/false</button>
+        </div>
+      </div>
+      <div class="question-list">
+        ${quiz.questions.map((question, index) => questionTemplate(question, index)).join('')}
+      </div>
+    `;
+
+    bindEditor();
+  }
+
+  function questionTemplate(question, index) {
+    const options = question.options || [];
+    return `
+      <article class="question-card" data-question="${index}">
+        <div class="question-head">
+          <div class="q-num">${index + 1}</div>
+          <div class="row">
+            <button class="btn secondary" data-move-question="-1" type="button" ${index === 0 ? 'disabled' : ''} aria-label="Move question up">Up</button>
+            <button class="btn secondary" data-move-question="1" type="button" ${index === state.selectedQuiz.questions.length - 1 ? 'disabled' : ''} aria-label="Move question down">Down</button>
+          </div>
+          <select data-q-type>
+            <option value="multiple_choice" ${question.type === 'multiple_choice' ? 'selected' : ''}>Multiple choice</option>
+            <option value="true_false" ${question.type === 'true_false' ? 'selected' : ''}>True/false</option>
+          </select>
+          <input data-q-time type="number" min="5" max="120" value="${esc(question.timeLimitSeconds || 20)}" aria-label="Time limit seconds" />
+          <button class="btn secondary" data-remove-question type="button">Remove</button>
+        </div>
+        <div class="field">
+          <label>Question text</label>
+          <textarea data-q-text maxlength="280">${esc(question.text || '')}</textarea>
+        </div>
+        <div class="field">
+          <label>Image</label>
+          <div class="row">
+            <input data-q-image type="file" accept="image/png,image/jpeg,image/webp" />
+            <button class="btn secondary" data-remove-image type="button" ${question.imageUrl ? '' : 'disabled'}>Remove image</button>
+          </div>
+          ${question.imageUrl ? `<img class="image-preview" src="${esc(question.imageUrl)}" alt="" />` : ''}
+        </div>
+        <div class="label">Answers</div>
+        <div class="option-grid">
+          ${options.map((option, optionIndex) => optionTemplate(question, index, option, optionIndex)).join('')}
+        </div>
+        ${question.type === 'multiple_choice' && options.length < 4 ? '<button class="btn secondary" data-add-option type="button" style="margin-top:10px;">Add option</button>' : ''}
+      </article>
+    `;
+  }
+
+  function optionTemplate(question, qIndex, option, optionIndex) {
+    const fixed = question.type === 'true_false';
+    return `
+      <label class="option-edit">
+        <input type="radio" name="correct-${qIndex}" data-correct-index="${optionIndex}" ${question.correctIndex === optionIndex ? 'checked' : ''} />
+        <input data-option-index="${optionIndex}" value="${esc(option)}" ${fixed ? 'readonly' : ''} maxlength="90" />
+        ${!fixed && question.options.length > 2 ? `<button class="btn secondary" data-remove-option="${optionIndex}" type="button">Remove</button>` : '<span></span>'}
+      </label>
+    `;
+  }
+
+  function bindEditor() {
+    const quiz = state.selectedQuiz;
+    $('quiz-title').oninput = (event) => { quiz.title = event.target.value; };
+    $('quiz-description').oninput = (event) => { quiz.description = event.target.value; };
+    $('add-mc').onclick = () => { quiz.questions.push(defaultQuestion('multiple_choice')); renderEditor(); };
+    $('add-tf').onclick = () => { quiz.questions.push(defaultQuestion('true_false')); renderEditor(); };
+    $('auto-advance-launch').onchange = (event) => { state.autoAdvanceResults = event.target.checked; };
+    $('save-quiz').onclick = () => saveQuiz().catch((err) => toast(err.message));
+    $('host-quiz').onclick = () => launchRoom().catch((err) => toast(err.message));
+    $('duplicate-quiz').onclick = () => duplicateQuiz().catch((err) => toast(err.message));
+    $('delete-quiz').onclick = () => deleteQuiz().catch((err) => toast(err.message));
+
+    document.querySelectorAll('[data-question]').forEach((card) => {
+      const index = Number(card.dataset.question);
+      const question = quiz.questions[index];
+      card.querySelector('[data-q-type]').onchange = (event) => {
+        const next = defaultQuestion(event.target.value);
+        quiz.questions[index] = { ...question, ...next, text: question.text || next.text, imageUrl: question.imageUrl || '' };
+        renderEditor();
+      };
+      card.querySelector('[data-q-time]').oninput = (event) => { question.timeLimitSeconds = Number(event.target.value); };
+      card.querySelector('[data-q-text]').oninput = (event) => { question.text = event.target.value; };
+      card.querySelector('[data-remove-question]').onclick = () => {
+        quiz.questions.splice(index, 1);
+        renderEditor();
+      };
+      card.querySelectorAll('[data-move-question]').forEach((button) => {
+        button.onclick = () => {
+          const target = index + Number(button.dataset.moveQuestion);
+          if (target < 0 || target >= quiz.questions.length) return;
+          [quiz.questions[index], quiz.questions[target]] = [quiz.questions[target], quiz.questions[index]];
+          renderEditor();
+        };
+      });
+      card.querySelector('[data-q-image]').onchange = (event) => readImage(event.target.files[0], question);
+      card.querySelector('[data-remove-image]').onclick = () => {
+        question.imageUrl = '';
+        renderEditor();
+      };
+      card.querySelectorAll('[data-correct-index]').forEach((input) => {
+        input.onchange = () => { question.correctIndex = Number(input.dataset.correctIndex); };
+      });
+      card.querySelectorAll('[data-option-index]').forEach((input) => {
+        input.oninput = () => { question.options[Number(input.dataset.optionIndex)] = input.value; };
+      });
+      const addOption = card.querySelector('[data-add-option]');
+      if (addOption) addOption.onclick = () => {
+        question.options.push(`Answer ${question.options.length + 1}`);
+        renderEditor();
+      };
+      card.querySelectorAll('[data-remove-option]').forEach((button) => {
+        button.onclick = () => {
+          const optionIndex = Number(button.dataset.removeOption);
+          question.options.splice(optionIndex, 1);
+          if (question.correctIndex >= question.options.length) question.correctIndex = question.options.length - 1;
+          renderEditor();
+        };
+      });
+    });
+  }
+
+  function readImage(file, question) {
+    if (!file) return;
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) {
+      toast('Use a JPG, PNG, or WebP image.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast('Image must be 5MB or smaller.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        toast('Uploading image...');
+        const uploaded = await api('/uploads', { method: 'POST', body: { imageData: reader.result } });
+        question.imageUrl = uploaded.url;
+        toast('Image uploaded.');
+        renderEditor();
+      } catch (err) {
+        toast(err.message);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadEmbeddedImages(quiz) {
+    for (const question of quiz.questions) {
+      if (/^data:image\/(png|jpe?g|webp);base64,/i.test(question.imageUrl || '')) {
+        const uploaded = await api('/uploads', { method: 'POST', body: { imageData: question.imageUrl } });
+        question.imageUrl = uploaded.url;
+      }
+    }
+  }
+
+  function validateQuiz(quiz) {
+    if (!quiz.title.trim()) throw new Error('Quiz title is required.');
+    if (!quiz.questions.length) throw new Error('Add at least one question.');
+    quiz.questions.forEach((question, index) => {
+      if (!question.text.trim()) throw new Error(`Question ${index + 1} needs text.`);
+      question.options = question.options.map((option) => option.trim()).filter(Boolean);
+      if (question.options.length < 2) throw new Error(`Question ${index + 1} needs at least two answers.`);
+      question.timeLimitSeconds = Math.min(120, Math.max(5, Number(question.timeLimitSeconds) || 20));
+      question.correctIndex = Math.min(question.options.length - 1, Math.max(0, Number(question.correctIndex) || 0));
+    });
+  }
+
+  async function saveQuiz() {
+    const quiz = state.selectedQuiz;
+    validateQuiz(quiz);
+    await uploadEmbeddedImages(quiz);
+    const payload = { title: quiz.title, description: quiz.description, questions: quiz.questions };
+    const data = quiz.id
+      ? await api(`/quizzes/${encodeURIComponent(quiz.id)}`, { method: 'PUT', body: payload })
+      : await api('/quizzes', { method: 'POST', body: payload });
+    state.selectedQuiz = data.quiz;
+    await loadQuizzes();
+    toast('Quiz saved.');
+    renderShell();
+  }
+
+  async function duplicateQuiz() {
+    if (!state.selectedQuiz?.id) return;
+    const data = await api(`/quizzes/${encodeURIComponent(state.selectedQuiz.id)}/duplicate`, { method: 'POST' });
+    state.selectedQuiz = data.quiz;
+    await loadQuizzes();
+    toast('Quiz duplicated.');
+    renderShell();
+  }
+
+  async function deleteQuiz() {
+    if (!state.selectedQuiz?.id) return;
+    if (!confirm(`Delete "${state.selectedQuiz.title}"?`)) return;
+    await api(`/quizzes/${encodeURIComponent(state.selectedQuiz.id)}`, { method: 'DELETE' });
+    state.selectedQuiz = null;
+    await loadQuizzes();
+    toast('Quiz deleted.');
+    renderShell();
+  }
+
+  async function launchRoom() {
+    if (!state.selectedQuiz?.id) {
+      await saveQuiz();
+    }
+    const data = await api(`/quizzes/${encodeURIComponent(state.selectedQuiz.id)}/rooms`, {
+      method: 'POST',
+      body: { autoAdvanceResults: state.autoAdvanceResults },
+    });
+    state.hostQuizId = state.selectedQuiz.id;
+    state.hostRoomCode = data.room.code;
+    connectHostSocket(data.room.code);
+    renderShell();
+  }
+
+  function connectHostSocket(code) {
+    if (state.hostSocket) state.hostSocket.disconnect();
+    state.roomState = null;
+    const socket = io({ withCredentials: true });
+    state.hostSocket = socket;
+    socket.on('connect', () => {
+      socket.emit('host:join', { code }, (reply) => {
+        if (!reply?.ok) toast(reply?.error || 'Could not join as host.');
+        if (reply?.state) updateRoomState(reply.state);
+      });
+    });
+    socket.on('room:state', updateRoomState);
+    socket.on('room:error', toast);
+    socket.on('disconnect', () => toast('Host socket disconnected.'));
+  }
+
+  function connectPlayerSocket(code, nickname) {
+    if (state.playerSocket) state.playerSocket.disconnect();
+    state.roomState = null;
+    const socket = io({ withCredentials: true });
+    state.playerSocket = socket;
+    socket.on('connect', () => {
+      socket.emit('player:join', { code, nickname }, (reply) => {
+        if (!reply?.ok) {
+          toast(reply?.error || 'Could not join room.');
+          state.playerRoomCode = null;
+          renderShell();
+        }
+        if (reply?.state) updateRoomState(reply.state);
+      });
+    });
+    socket.on('room:state', updateRoomState);
+    socket.on('room:error', toast);
+    socket.on('room:kicked', () => {
+      toast('You were removed from the room.');
+      state.playerRoomCode = null;
+      state.roomState = null;
+      socket.disconnect();
+      renderShell();
+    });
+  }
+
+  function updateRoomState(nextState) {
+    state.roomState = nextState;
+    state.serverOffsetMs = nextState.serverNow - Date.now();
+    renderShell();
+  }
+
+  function renderHostRoom() {
+    const container = $('host-room');
+    const room = state.roomState;
+    if (!room) {
+      container.innerHTML = '<div class="band pad"><h2>Connecting room...</h2></div>';
+      return;
+    }
+    if (room.room.phase === 'lobby') renderHostLobby(container, room);
+    else if (room.room.phase === 'question') renderHostQuestion(container, room);
+    else if (room.room.phase === 'results') renderHostResults(container, room);
+    else renderFinal(container, room, true);
+  }
+
+  function renderHostLobby(container, room) {
+    const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(location.origin);
+    const publicOrigin = localOrigin && state.lanOrigin ? state.lanOrigin : location.origin;
+    const joinUrl = `${publicOrigin}/gp-hoot?room=${room.room.code}`;
+    const localWarning = localOrigin && state.lanOrigin
+      ? `<div class="result-banner neutral small">Phone testing uses ${esc(state.lanOrigin)}. Open the host there too if QR scans fail.</div>`
+      : '';
+    container.innerHTML = `
+      <div class="room-layout">
+        <section class="band pad">
+          <p class="muted small">Room code</p>
+          <div class="room-code">${esc(room.room.code)}</div>
+          <h2>${esc(room.quiz.title)}</h2>
+          <p class="muted">${esc(room.quiz.description || 'Waiting for players.')}</p>
+          <p class="small muted">Auto-advance ${room.room.autoAdvanceResults ? 'on' : 'off'}</p>
+          ${localWarning}
+          <div class="row">
+            <button class="btn good" id="start-game" type="button" ${room.players.length ? '' : 'disabled'}>Start</button>
+            <button class="btn secondary" id="copy-code" type="button">Copy code</button>
+            <button class="btn secondary" id="copy-link" type="button">Copy link</button>
+            <button class="btn bad" id="end-game" type="button">End</button>
+          </div>
+        </section>
+        <aside class="band pad">
+          <h3>Join</h3>
+          <img alt="QR code" width="180" height="180" src="/api/gp-hoot/qr?url=${encodeURIComponent(joinUrl)}" />
+          <p class="small muted join-url">${esc(joinUrl)}</p>
+          <h3>Players (${room.players.length})</h3>
+          <div class="player-list">${playersTemplate(room, true)}</div>
+        </aside>
+      </div>
+    `;
+    $('start-game').onclick = () => hostEmit('host:start');
+    $('copy-code').onclick = () => copyText(room.room.code, 'Code');
+    $('copy-link').onclick = () => copyText(joinUrl, 'Link');
+    $('end-game').onclick = () => hostEmit('host:end_game');
+  }
+
+  function renderHostQuestion(container, room) {
+    container.innerHTML = `
+      <div class="room-layout">
+        <section class="band pad game-stage">
+          ${questionHeaderTemplate(room)}
+          ${questionTemplateForPlay(room, true)}
+          <div class="answer-grid">
+            ${room.question.options.map((option, index) => answerButtonTemplate(option, index, room.question.correctIndex, null, true, room.room.phase)).join('')}
+          </div>
+          <div class="row">
+            <button class="btn warn" id="pause-game" type="button">${room.room.paused ? 'Resume' : 'Pause'}</button>
+            <button class="btn secondary" id="skip-game" type="button">Skip</button>
+            <button class="btn bad" id="end-game" type="button">End</button>
+          </div>
+        </section>
+        <aside class="band pad">
+          <h3>Answers</h3>
+          <p class="muted">${room.players.filter((p) => p.locked).length} of ${room.players.length} locked</p>
+          <div class="player-list">${playersTemplate(room, true)}</div>
+        </aside>
+      </div>
+    `;
+    $('pause-game').onclick = () => hostEmit(room.room.paused ? 'host:resume' : 'host:pause');
+    $('skip-game').onclick = () => hostEmit('host:skip_question');
+    $('end-game').onclick = () => hostEmit('host:end_game');
+    bindKickButtons();
+  }
+
+  function renderHostResults(container, room) {
+    container.innerHTML = `
+      <div class="room-layout">
+        <section class="band pad game-stage">
+          ${questionHeaderTemplate(room)}
+          ${questionTemplateForPlay(room, true)}
+          <div class="answer-grid">
+            ${room.question.options.map((option, index) => answerButtonTemplate(option, index, room.question.correctIndex, null, true, room.room.phase)).join('')}
+          </div>
+          ${resultsBarsTemplate(room)}
+          ${room.room.nextAutoAdvanceAt ? `<p class="muted small" data-auto-advance-label>${autoAdvanceLabel(room)}</p>` : ''}
+          <div class="row">
+            <button class="btn good" id="next-question" type="button">${room.room.currentQuestionIndex + 1 >= room.room.totalQuestions ? 'Finish' : 'Next'}</button>
+            <button class="btn bad" id="end-game" type="button">End</button>
+          </div>
+        </section>
+        <aside class="band pad">
+          <h3>Leaderboard</h3>
+          <div class="leaderboard">${leaderboardTemplate(room)}</div>
+        </aside>
+      </div>
+    `;
+    $('next-question').onclick = () => hostEmit('host:next_question');
+    $('end-game').onclick = () => hostEmit('host:end_game');
+  }
+
+  function renderPlayerRoom() {
+    const container = $('player-room');
+    const room = state.roomState;
+    if (!room) {
+      container.innerHTML = '<div class="band pad"><h2>Joining room...</h2></div>';
+      return;
+    }
+    if (room.room.phase === 'lobby') {
+      container.innerHTML = `
+        <div class="band pad">
+          <h2>${esc(room.quiz.title)}</h2>
+          <p class="muted">Waiting for the host to start.</p>
+          <h3>Players</h3>
+          <div class="player-list">${playersTemplate(room, false)}</div>
+        </div>
+      `;
+    } else if (room.room.phase === 'question') {
+      renderPlayerQuestion(container, room);
+    } else if (room.room.phase === 'results') {
+      renderPlayerResults(container, room);
+    } else {
+      renderFinal(container, room, false);
+    }
+  }
+
+  function renderPlayerQuestion(container, room) {
+    container.innerHTML = `
+      <section class="band pad game-stage">
+        ${questionHeaderTemplate(room)}
+        ${questionTemplateForPlay(room, false)}
+        ${room.you.locked ? '<div class="result-banner neutral">Answer locked in</div>' : ''}
+        <div class="answer-grid">
+          ${room.question.options.map((option, index) => answerButtonTemplate(option, index, null, room.you.answerIndex, room.you.locked, room.room.phase)).join('')}
+        </div>
+      </section>
+    `;
+    if (!room.you.locked && !room.room.paused) {
+      document.querySelectorAll('[data-answer-index]').forEach((button) => {
+        button.onclick = () => state.playerSocket.emit('player:submit_answer', { optionIndex: Number(button.dataset.answerIndex) }, (reply) => {
+          if (!reply?.ok) toast(reply?.error || 'Answer rejected.');
+        });
+      });
+    }
+  }
+
+  function renderPlayerResults(container, room) {
+    const correct = room.you.lastAnswerCorrect;
+    container.innerHTML = `
+      <section class="band pad game-stage">
+        <div class="result-banner ${correct ? 'good' : 'bad'}">${correct ? 'Correct' : 'Incorrect'} - ${room.you.roundPoints} points</div>
+        <p class="muted">Rank ${room.you.rank} with ${room.you.score} points.</p>
+        ${questionTemplateForPlay(room, false)}
+        <div class="answer-grid">
+          ${room.question.options.map((option, index) => answerButtonTemplate(option, index, room.question.correctIndex, room.you.answerIndex, true, room.room.phase)).join('')}
+        </div>
+        <h3>Leaderboard</h3>
+        <div class="leaderboard">${leaderboardTemplate(room)}</div>
+      </section>
+    `;
+  }
+
+  function renderFinal(container, room, isHost) {
+    const leaders = room.leaderboard.slice(0, 3);
+    container.innerHTML = `
+      <section class="band pad">
+        <div class="section-title">
+          <div>
+            <h2>Final leaderboard</h2>
+            <p class="muted">${isHost ? esc(room.quiz.title) : `Your rank: ${room.you?.rank || '-'}`}</p>
+          </div>
+          ${isHost ? '<div class="row"><button class="btn good" id="play-again" type="button">Play again</button><button class="btn secondary" id="back-dashboard" type="button">Dashboard</button></div>' : '<button class="btn secondary" id="leave-room" type="button">Leave</button>'}
+        </div>
+        <div class="podium">
+          ${leaders.map((player) => `<div class="podium-place"><strong>#${player.rank}</strong><span>${esc(player.nickname)}</span><b>${player.score}</b></div>`).join('')}
+        </div>
+        <div class="leaderboard">${leaderboardTemplate(room)}</div>
+      </section>
+    `;
+    const again = $('play-again');
+    if (again) again.onclick = () => launchRoom().catch((err) => toast(err.message));
+    const back = $('back-dashboard');
+    if (back) back.onclick = () => {
+      state.hostRoomCode = null;
+      state.roomState = null;
+      if (state.hostSocket) state.hostSocket.disconnect();
+      renderShell();
+    };
+    const leave = $('leave-room');
+    if (leave) leave.onclick = () => {
+      state.playerRoomCode = null;
+      state.roomState = null;
+      if (state.playerSocket) state.playerSocket.disconnect();
+      renderShell();
+    };
+  }
+
+  function questionHeaderTemplate(room) {
+    const index = room.room.currentQuestionIndex + 1;
+    return `
+      <div>
+        <div class="timer-line">
+          <span>Question ${index} of ${room.room.totalQuestions}</span>
+          <span>${room.room.paused ? 'Paused' : `<span data-time-left>${timeLeftLabel(room)}</span>`}</span>
+        </div>
+        <div class="timer-track"><div class="timer-fill" data-timer-fill style="width:${timerPercent(room)}%"></div></div>
+      </div>
+    `;
+  }
+
+  function questionTemplateForPlay(room) {
+    return `
+      <div class="question-display">
+        <div class="question-text">${esc(room.question.text)}</div>
+        ${room.question.imageUrl ? `<img class="question-image" alt="" src="${esc(room.question.imageUrl)}" />` : ''}
+      </div>
+    `;
+  }
+
+  function answerButtonTemplate(option, index, correctIndex, selectedIndex, locked, phase) {
+    const isCorrect = correctIndex === index;
+    const wrongSelected = selectedIndex === index && correctIndex != null && selectedIndex !== correctIndex;
+    const reveal = phase === 'results' || phase === 'final';
+    return `
+      <button class="answer-btn ${reveal && isCorrect ? 'correct' : ''} ${reveal && wrongSelected ? 'wrong-choice' : ''}" data-answer-index="${index}" type="button" ${locked ? 'disabled' : ''}>
+        <span class="shape ${shapes[index] || 'square'}"></span>
+        <span>${esc(option)}</span>
+      </button>
+    `;
+  }
+
+  function playersTemplate(room, hostControls) {
+    if (!room.players.length) return '<p class="muted small">No players yet.</p>';
+    return room.players.map((player) => `
+      <div class="player-pill">
+        <span class="status-dot ${player.connected ? 'on' : ''}"></span>
+        <span>${esc(player.nickname)}${player.locked ? ' - locked' : ''}</span>
+        ${hostControls && player.id ? `<button class="btn secondary" data-kick-player="${esc(player.id)}" type="button">Kick</button>` : `<b>${player.score}</b>`}
+      </div>
+    `).join('');
+  }
+
+  function leaderboardTemplate(room) {
+    if (!room.leaderboard.length) return '<p class="muted small">No scores yet.</p>';
+    return room.leaderboard.map((player) => `
+      <div class="rank-row">
+        <strong>#${player.rank}</strong>
+        <span>${esc(player.nickname)}</span>
+        <b>${player.score}</b>
+      </div>
+    `).join('');
+  }
+
+  function resultsBarsTemplate(room) {
+    const results = room.results;
+    if (!results) return '';
+    const max = Math.max(1, ...results.distribution.map((row) => row.count));
+    return `
+      <div>
+        <h3>Answer spread</h3>
+        <div class="bar-list">
+          ${results.distribution.map((row) => `
+            <div class="bar-row">
+              <strong>${esc(row.option)}</strong>
+              <div class="bar-track"><div class="bar-fill" style="width:${(row.count / max) * 100}%"></div></div>
+              <span>${row.count}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function bindKickButtons() {
+    document.querySelectorAll('[data-kick-player]').forEach((button) => {
+      button.onclick = () => hostEmit('host:kick_player', { playerId: button.dataset.kickPlayer });
+    });
+  }
+
+  function hostEmit(event, payload = {}) {
+    if (!state.hostSocket) return;
+    state.hostSocket.emit(event, payload, (reply) => {
+      if (!reply?.ok) toast(reply?.error || 'Action failed.');
+    });
+  }
+
+  function timeRemainingMs(room) {
+    if (!room?.room) return 0;
+    if (room.room.paused) return room.room.remainingMs || 0;
+    if (!room.room.deadlineAt) return 0;
+    return Math.max(0, room.room.deadlineAt - (Date.now() + state.serverOffsetMs));
+  }
+
+  function timerPercent(room) {
+    const limit = (room.question?.timeLimitSeconds || 1) * 1000;
+    return Math.round((timeRemainingMs(room) / limit) * 100);
+  }
+
+  function timeLeftLabel(room) {
+    return `${Math.ceil(timeRemainingMs(room) / 1000)}s`;
+  }
+
+  function autoAdvanceLabel(room) {
+    const remaining = Math.max(0, (room.room.nextAutoAdvanceAt || 0) - (Date.now() + state.serverOffsetMs));
+    return `Auto-advancing in ${Math.ceil(remaining / 1000)}s`;
+  }
+
+  function tickTimer() {
+    const room = state.roomState;
+    if (!room) return;
+    if (room.room.phase === 'question') {
+      document.querySelectorAll('[data-time-left]').forEach((el) => { el.textContent = timeLeftLabel(room); });
+      document.querySelectorAll('[data-timer-fill]').forEach((el) => { el.style.width = `${timerPercent(room)}%`; });
+    }
+    document.querySelectorAll('[data-auto-advance-label]').forEach((el) => { el.textContent = autoAdvanceLabel(room); });
+  }
+
+  $('nav-host').onclick = () => {
+    state.mode = 'host';
+    state.playerRoomCode = null;
+    if (state.playerSocket) state.playerSocket.disconnect();
+    history.replaceState(null, '', '/gp-hoot');
+    renderShell();
+  };
+
+  $('nav-join').onclick = () => {
+    state.mode = 'join';
+    state.hostRoomCode = null;
+    if (state.hostSocket) state.hostSocket.disconnect();
+    renderShell();
+  };
+
+  $('login-tab').onclick = () => { state.authMode = 'login'; renderAuthMode(); };
+  $('signup-tab').onclick = () => { state.authMode = 'signup'; renderAuthMode(); };
+
+  $('auth-form').onsubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const path = state.authMode === 'signup' ? '/auth/signup' : '/auth/login';
+      const data = await api(path, {
+        method: 'POST',
+        body: {
+          email: $('auth-email').value,
+          password: $('auth-password').value,
+          displayName: $('auth-display').value,
+        },
+      });
+      state.user = data.user;
+      await loadQuizzes();
+      toast(state.authMode === 'signup' ? 'Account created.' : 'Logged in.');
+      renderShell();
+    } catch (err) {
+      toast(err.message);
+    }
+  };
+
+  $('join-form').onsubmit = (event) => {
+    event.preventDefault();
+    const code = $('join-code').value.trim().padStart(6, '0');
+    const nickname = $('join-name').value.trim();
+    state.playerRoomCode = code;
+    connectPlayerSocket(code, nickname);
+    renderShell();
+  };
+
+  $('logout-btn').onclick = async () => {
+    await api('/auth/logout', { method: 'POST' }).catch(() => {});
+    state.user = null;
+    state.quizzes = [];
+    state.selectedQuiz = null;
+    renderShell();
+  };
+
+  $('new-quiz-btn').onclick = () => {
+    state.selectedQuiz = {
+      id: null,
+      title: 'Untitled GP-hoot quiz',
+      description: '',
+      questions: [defaultQuestion()],
+    };
+    renderShell();
+  };
+
+  $('sample-quiz-btn').onclick = () => {
+    state.selectedQuiz = sampleQuiz();
+    renderShell();
+  };
+
+  const roomParam = new URLSearchParams(location.search).get('room');
+  if (roomParam) $('join-code').value = roomParam.replace(/\D/g, '').slice(0, 6);
+
+  setInterval(tickTimer, 250);
+
+  Promise.all([loadNetworkInfo(), loadMe()])
+    .catch(() => {})
+    .finally(() => renderShell());
+})();
+</script>
+</body>
+</html>
