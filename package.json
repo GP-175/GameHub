@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "GameHub with GP-hoot, a live team quiz game.",
   "private": true,
+  "main": "server/server.js",
   "scripts": {
     "build": "node -e \"console.log('GameHub static assets require no build step')\"",
     "start": "node server/server.js",

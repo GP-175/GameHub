@@ -18,7 +18,13 @@ node_modules/
 # GP-hoot local runtime data
 data/*.json
 data/*.json.tmp
+.data/
 uploads/gp-hoot/*
+
+# Local scratch / backups
+*.bak
+api/
+vercel.json
 
 # Claude Code local settings
 .claude/settings.local.json
@@ -29,3 +35,4 @@ uploads/gp-hoot/*
 !.dev.vars.example
 .env*
 !.env.example
+.vercel

@@ -136,7 +136,7 @@
       subject: 'Team Quiz',
       icon: 'GP',
       tagline: 'Host a live team quiz',
-      ageGroups: ['early-elem'],
+      ageGroups: ['adult'],
       path: 'gp-hoot',
       accent: '#16213e',
     },
