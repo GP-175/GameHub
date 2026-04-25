@@ -675,7 +675,17 @@ app.get('/index.html', (_req, res) => res.sendFile(path.join(ROOT, 'index.html')
 app.get('/parent.html', (_req, res) => res.sendFile(path.join(ROOT, 'parent.html')));
 app.get('/manifest.webmanifest', (_req, res) => res.sendFile(path.join(ROOT, 'manifest.webmanifest')));
 app.get('/sw.js', (_req, res) => res.sendFile(path.join(ROOT, 'sw.js')));
-app.get('/gp-hoot', (_req, res) => res.sendFile(path.join(ROOT, 'games', 'gp-hoot.html')));
+app.get('/gp-hoot', (req, res) => {
+  const host = String(req.headers.host || '').toLowerCase();
+  if (host && !host.startsWith('gp-hoot.gplange.tech')) {
+    const target = new URL('https://gp-hoot.gplange.tech/gp-hoot');
+    const room = req.query?.room;
+    if (room) target.searchParams.set('room', String(room));
+    res.redirect(302, target.toString());
+    return;
+  }
+  res.sendFile(path.join(ROOT, 'games', 'gp-hoot.html'));
+});
 
 app.get('/api/gp-hoot/me', (req, res) => {
   res.json({ user: publicUser(userFromCookieHeader(req.headers.cookie)) });
