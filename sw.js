@@ -27,7 +27,7 @@ const CORE_ASSETS = [
 ];
 
 // ── Install: pre-cache the app shell ──────────────────────────
-// Some hosts (e.g. Cloudflare Pages/Workers) redirect /foo.html → /foo.
+// Some hosts redirect /foo.html → /foo.
 // cache.add() refuses redirected responses, so we fetch manually with
 // `redirect: follow` and store the final response under the original URL.
 // We also store it under the redirected URL so either path hits the cache.
