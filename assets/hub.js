@@ -137,8 +137,6 @@
     'early-elem': { label: 'Early Elementary', min: 5, max: 7 },
     adult: { label: 'Adult', min: 18, max: 120 },
   };
-  ];
-
 
   // ---------- Storage ----------
   function defaultState() {
