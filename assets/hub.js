@@ -126,7 +126,7 @@
       subject: 'MBA Revision',
       icon: '🧠',
       tagline: 'Adaptive quiz practice by topic',
-      ageGroups: ['early-elem'],
+      ageGroups: ['adult'],
       path: 'games/mba-mastery-quiz.html',
       accent: '#6c5ce7',
     },
@@ -135,7 +135,10 @@
   const AGE_GROUPS = {
     toddler: { label: 'Toddler', min: 2, max: 4 },
     'early-elem': { label: 'Early Elementary', min: 5, max: 7 },
+    adult: { label: 'Adult', min: 18, max: 120 },
   };
+  ];
+
 
   // ---------- Storage ----------
   function defaultState() {

@@ -88,7 +88,8 @@
           <label>Age group</label>
           <select id="new-age">
             <option value="toddler">Toddler (2–4)</option>
-            <option value="early-elem" selected>Early Elementary (5–7)</option>
+            <option value="early-elem">Early Elementary (5–7)</option>
+            <option value="adult" selected>Adult (18+)</option>
           </select>
         </div>
         <button class="btn" id="add-kid">Add kid</button>
@@ -216,6 +217,7 @@
             <select data-role="age" data-pid="${p.id}" style="max-width:220px;display:inline-block;margin-left:8px;">
               <option value="toddler"${p.ageGroup==='toddler'?' selected':''}>Toddler (2–4)</option>
               <option value="early-elem"${p.ageGroup==='early-elem'?' selected':''}>Early Elementary (5–7)</option>
+              <option value="adult"${p.ageGroup==='adult'?' selected':''}>Adult (18+)</option>
             </select>
           </div>
           <button class="btn btn-bad" data-role="remove" data-pid="${p.id}">Remove</button>
