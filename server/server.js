@@ -674,7 +674,12 @@ app.get('/', (_req, res) => res.sendFile(path.join(ROOT, 'index.html')));
 app.get('/index.html', (_req, res) => res.sendFile(path.join(ROOT, 'index.html')));
 app.get('/parent.html', (_req, res) => res.sendFile(path.join(ROOT, 'parent.html')));
 app.get('/manifest.webmanifest', (_req, res) => res.sendFile(path.join(ROOT, 'manifest.webmanifest')));
-app.get('/sw.js', (_req, res) => res.sendFile(path.join(ROOT, 'sw.js')));
+app.get('/sw.js', (_req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  res.sendFile(path.join(ROOT, 'sw.js'));
+});
 app.get('/gp-hoot', (req, res) => {
   const host = String(req.headers.host || '').toLowerCase();
   if (host && !host.startsWith('gp-hoot.gplange.tech')) {

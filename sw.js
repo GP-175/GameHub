@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v8';
+const CACHE_VERSION = 'gamehub-v9';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -93,23 +93,39 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (sameOrigin) {
-    // Cache-first with a couple of tolerant fallbacks
     event.respondWith((async () => {
-      // 1. Try exact URL match
+      const isNavigation = req.mode === 'navigate' || req.destination === 'document';
+      const isHtmlLike = req.headers.get('accept')?.includes('text/html');
+
+      if (isNavigation || isHtmlLike) {
+        try {
+          const resp = await fetch(req, { cache: 'no-store' });
+          if (resp && resp.ok && !resp.redirected) {
+            const copy = resp.clone();
+            caches.open(CACHE_VERSION).then((c) => c.put(req, copy));
+          }
+          return resp;
+        } catch (e) {
+          let cached = await caches.match(req);
+          if (cached) return cached;
+          const alt = url.pathname.endsWith('.html')
+            ? url.pathname.slice(0, -5)
+            : url.pathname + '.html';
+          cached = await caches.match(alt);
+          if (cached) return cached;
+          return caches.match('./index.html');
+        }
+      }
+
       let cached = await caches.match(req);
       if (cached) return cached;
 
-      // 2. Try alternate form (strip or add .html) — helps when hosts
-      //    redirect /foo.html → /foo but SW was asked for the other form.
       const alt = url.pathname.endsWith('.html')
         ? url.pathname.slice(0, -5)
         : url.pathname + '.html';
       cached = await caches.match(alt);
       if (cached) return cached;
 
-      // 3. Go to the network and opportunistically cache the response.
-      //    Skip caching redirected responses — they can't be served back for
-      //    navigation requests (redirect mode "manual" rejects them).
       try {
         const resp = await fetch(req);
         if (resp && resp.ok && !resp.redirected) {
@@ -118,7 +134,6 @@ self.addEventListener('fetch', (event) => {
         }
         return resp;
       } catch (e) {
-        // 4. Offline and nothing cached — fall back to the landing page
         return caches.match('./index.html');
       }
     })());
