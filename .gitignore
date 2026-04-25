@@ -15,6 +15,11 @@ npm-debug.log*
 # Node (not used yet, future-proof)
 node_modules/
 
+# GP-hoot local runtime data
+data/*.json
+data/*.json.tmp
+uploads/gp-hoot/*
+
 # Claude Code local settings
 .claude/settings.local.json
 

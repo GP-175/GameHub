@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v6';
+const CACHE_VERSION = 'gamehub-v8';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const CORE_ASSETS = [
   './games/world-explorer.html',
   './games/space-adventure.html',
   './games/gem-quest.html',
+  './games/gp-hoot.html',
 ];
 
 // ── Install: pre-cache the app shell ──────────────────────────
@@ -79,9 +80,15 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
+  const isDynamicRoute =
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/socket.io/') ||
+    url.pathname.startsWith('/uploads/');
 
-  if (sameOrigin && url.pathname.startsWith('/api/')) {
-    event.respondWith(fetch(req));
+  // GP-hoot APIs, sockets, and uploaded files are dynamic. Never satisfy them
+  // from the app-shell cache, otherwise quiz CRUD screens can show stale data.
+  if (sameOrigin && isDynamicRoute) {
+    event.respondWith(fetch(req, { cache: 'no-store' }));
     return;
   }
 
