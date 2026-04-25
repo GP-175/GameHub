@@ -690,6 +690,52 @@ app.get('/api/gp-hoot/network', (req, res) => {
   });
 });
 
+const SHARED_STATE_PATH = path.join(ROOT, '.data', 'shared-state.json');
+
+function defaultSharedStateRecord() {
+  return { revision: 0, updatedAt: null, state: null };
+}
+
+function readSharedStateRecord() {
+  try {
+    if (!fs.existsSync(SHARED_STATE_PATH)) return defaultSharedStateRecord();
+    return { ...defaultSharedStateRecord(), ...JSON.parse(fs.readFileSync(SHARED_STATE_PATH, 'utf8')) };
+  } catch {
+    return defaultSharedStateRecord();
+  }
+}
+
+function writeSharedStateRecord(state, expectedRevision) {
+  const current = readSharedStateRecord();
+  const currentRevision = current?.revision || 0;
+  if (current.state && expectedRevision && expectedRevision !== currentRevision) {
+    return { ok: false, currentRevision, updatedAt: current.updatedAt || null };
+  }
+  const next = { revision: currentRevision + 1, updatedAt: nowIso(), state };
+  fs.mkdirSync(path.dirname(SHARED_STATE_PATH), { recursive: true });
+  fs.writeFileSync(SHARED_STATE_PATH, JSON.stringify(next, null, 2));
+  return { ok: true, revision: next.revision, updatedAt: next.updatedAt };
+}
+
+app.get('/api/state', (_req, res) => {
+  const record = readSharedStateRecord();
+  res.json({ user: 'shared', state: record.state || null, revision: record.revision || 0, updatedAt: record.updatedAt || null });
+});
+
+app.post('/api/state', (req, res) => {
+  if (!req.body || typeof req.body.state !== 'object') {
+    res.status(400).json({ error: 'Expected { state }' });
+    return;
+  }
+  const expectedRevision = Number(req.body.expectedRevision || 0);
+  const result = writeSharedStateRecord(req.body.state, expectedRevision);
+  if (!result.ok) {
+    res.status(409).json({ error: 'revision_conflict', currentRevision: result.currentRevision, updatedAt: result.updatedAt });
+    return;
+  }
+  res.json({ ok: true, user: 'shared', revision: result.revision, updatedAt: result.updatedAt });
+});
+
 app.post('/api/gp-hoot/auth/signup', rateLimit({
   name: 'signup',
   limit: 8,
