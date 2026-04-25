@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v5';
+const CACHE_VERSION = 'gamehub-v6';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -79,6 +79,11 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   const sameOrigin = url.origin === self.location.origin;
+
+  if (sameOrigin && url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(req));
+    return;
+  }
 
   if (sameOrigin) {
     // Cache-first with a couple of tolerant fallbacks

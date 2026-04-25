@@ -369,7 +369,7 @@
     $('pull-remote').onclick = async () => {
       const remote = await Hub.loadRemoteState();
       renderRemoteSyncStatus();
-      if (!remote) { toast('No shared state found'); return; }
+      if (!remote) { toast('No saved shared state found yet'); return; }
       location.reload();
     };
     $('save-pin').onclick = () => {
@@ -392,9 +392,10 @@
     const meta = Hub.getRemoteSyncMeta();
     $('remote-sync-status').innerHTML = `Revision: ${meta.revision || 0}<br>
       Last updated: ${meta.updatedAt || 'unknown'}<br>
-      Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌' : meta.lastPushOk ? '✅' : ''}<br>
-      Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌' : meta.lastPullOk ? '✅' : ''}<br>
-      Conflict: ${meta.lastConflict ? `⚠️ current revision ${meta.conflictRevision || '?'} at ${meta.conflictUpdatedAt || 'unknown'}` : 'none'}`;
+      Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌ failed' : meta.lastPushOk ? '✅ ok' : ''}<br>
+      Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌ failed' : meta.lastPullOk ? '✅ ok' : ''}<br>
+      Conflict: ${meta.lastConflict ? `⚠️ current revision ${meta.conflictRevision || '?'} at ${meta.conflictUpdatedAt || 'unknown'}` : 'none'}<br>
+      If push/pull keeps failing, refresh once to clear any stale cached app shell.`;
   }
 
   // ---------- helpers ----------

@@ -84,7 +84,11 @@ async function serveStatic(req, res, url) {
 
 function streamFile(filePath, res) {
   const ext = path.extname(filePath).toLowerCase();
-  res.writeHead(200, { 'content-type': MIME[ext] || 'application/octet-stream' });
+  const headers = { 'content-type': MIME[ext] || 'application/octet-stream' };
+  if (ext === '.html' || ext === '.js' || ext === '.css' || ext === '.json' || ext === '.webmanifest') {
+    headers['cache-control'] = 'no-store';
+  }
+  res.writeHead(200, headers);
   createReadStream(filePath).pipe(res);
 }
 
