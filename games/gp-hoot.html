@@ -761,6 +761,300 @@
     transform: translateX(-50%) translateY(0);
   }
 
+  /* ── Background orbs ── */
+  @keyframes floatOrb1 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%       { transform: translate(60px, -40px) scale(1.15); }
+  }
+  @keyframes floatOrb2 {
+    0%, 100% { transform: translate(0, 0) scale(1); }
+    50%       { transform: translate(-50px, 50px) scale(.92); }
+  }
+  @keyframes floatOrb3 {
+    0%, 100% { transform: translate(0, 0); }
+    50%       { transform: translate(40px, 30px); }
+  }
+
+  .bg-orbs {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .bg-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    will-change: transform;
+  }
+  .bg-orb.a {
+    width: 460px; height: 460px;
+    background: #6366f1;
+    top: -160px; left: -120px;
+    opacity: .35;
+    animation: floatOrb1 22s ease-in-out infinite;
+  }
+  .bg-orb.b {
+    width: 380px; height: 380px;
+    background: #22d3ee;
+    bottom: -120px; right: -100px;
+    opacity: .28;
+    animation: floatOrb2 26s ease-in-out infinite;
+  }
+  .bg-orb.c {
+    width: 280px; height: 280px;
+    background: #ec4899;
+    top: 35%; right: 18%;
+    opacity: .18;
+    animation: floatOrb3 18s ease-in-out infinite;
+  }
+
+  .topbar, .shell, .toast { position: relative; z-index: 1; }
+
+  /* ── Icons ── */
+  .icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .icon-lg { width: 22px; height: 22px; flex-shrink: 0; }
+  .brand .icon-brand {
+    width: 22px;
+    height: 22px;
+    color: #fff;
+  }
+
+  /* ── Hero shapes (auth view) ── */
+  .hero-shapes {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .hero-shape {
+    position: absolute;
+    opacity: .14;
+    animation: floatOrb1 14s ease-in-out infinite;
+  }
+  .hero-shape.s2 { animation: floatOrb2 19s ease-in-out infinite; }
+  .hero-shape.s3 { animation: floatOrb3 16s ease-in-out infinite; }
+
+  .intro { position: relative; }
+  .intro-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(34, 211, 238, .1);
+    border: 1px solid rgba(34, 211, 238, .25);
+    color: var(--teal);
+    font-weight: 700;
+    font-size: .82rem;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-top: 28px;
+  }
+  .feature {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    background: rgba(20, 28, 46, .6);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+  }
+  .feature .icon-lg { color: var(--teal); margin-top: 2px; }
+  .feature b { display: block; font-size: .95rem; }
+  .feature span { font-size: .85rem; color: var(--muted); line-height: 1.4; }
+
+  /* ── Answer button stagger entrance ── */
+  @keyframes staggerSlide {
+    from { opacity: 0; transform: translateY(24px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .answer-btn {
+    animation: staggerSlide .45s cubic-bezier(.34, 1.56, .64, 1) both;
+  }
+  .answer-btn:nth-child(1) { animation-delay: 0s; }
+  .answer-btn:nth-child(2) { animation-delay: .07s; }
+  .answer-btn:nth-child(3) { animation-delay: .14s; }
+  .answer-btn:nth-child(4) { animation-delay: .21s; }
+
+  .answer-btn .shape-wrap {
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, .22);
+  }
+
+  /* Player's locked-in answer ring */
+  @keyframes lockedRing {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 255, 255, .65), 0 8px 24px rgba(0,0,0,.3); }
+    100% { box-shadow: 0 0 0 18px rgba(255, 255, 255, 0),   0 8px 24px rgba(0,0,0,.3); }
+  }
+  .answer-btn.locked-self {
+    animation: staggerSlide .45s cubic-bezier(.34,1.56,.64,1) both,
+               lockedRing 1.2s ease-out 1;
+    border-color: rgba(255, 255, 255, .45);
+  }
+
+  /* Question entrance */
+  @keyframes questionEnter {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+  .question-display { animation: questionEnter .4s ease both; }
+
+  /* Timer urgent pulse (last quarter) */
+  @keyframes urgentPulse {
+    0%, 100% { filter: brightness(1) saturate(1); }
+    50%       { filter: brightness(1.35) saturate(1.4); }
+  }
+  .timer-fill.low {
+    animation: urgentPulse .9s ease-in-out infinite;
+  }
+  .timer-track.urgent {
+    box-shadow: 0 0 18px rgba(239, 68, 68, .35);
+  }
+
+  /* Score pop on player results */
+  @keyframes scorePop {
+    0%   { opacity: 0; transform: scale(.4); }
+    60%  { opacity: 1; transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+  .score-pop {
+    display: block;
+    font-size: clamp(2.4rem, 8vw, 4rem);
+    font-weight: 900;
+    letter-spacing: -.03em;
+    line-height: 1;
+    margin-top: 6px;
+    animation: scorePop .65s cubic-bezier(.34, 1.56, .64, 1) both;
+  }
+  .result-headline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: clamp(1.05rem, 3vw, 1.4rem);
+    font-weight: 800;
+    letter-spacing: .02em;
+    text-transform: uppercase;
+  }
+
+  /* Confetti */
+  @keyframes confettiFall {
+    0%   { transform: translate(0, -10px) rotate(0); opacity: 1; }
+    100% { transform: translate(var(--dx, 0), 200px) rotate(720deg); opacity: 0; }
+  }
+  .confetti {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .confetti span {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 8px;
+    height: 14px;
+    border-radius: 2px;
+    transform-origin: center;
+    animation: confettiFall 1.6s cubic-bezier(.4, 0, .6, 1) forwards;
+    animation-delay: calc(var(--i) * 28ms);
+    --dx: calc((var(--i) - 12) * 16px);
+  }
+  .confetti span:nth-child(5n)   { background: #ef4444; }
+  .confetti span:nth-child(5n+1) { background: #3b82f6; }
+  .confetti span:nth-child(5n+2) { background: #f59e0b; }
+  .confetti span:nth-child(5n+3) { background: #22c55e; }
+  .confetti span:nth-child(5n+4) { background: #6366f1; }
+
+  /* Skeleton loader */
+  @keyframes skelShimmer {
+    0%   { background-position: -400px 0; }
+    100% { background-position: 400px 0; }
+  }
+  .skeleton-card {
+    display: grid;
+    gap: 12px;
+  }
+  .skeleton-block {
+    height: 20px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--panel2) 0%, #2a3a5a 50%, var(--panel2) 100%);
+    background-size: 800px 100%;
+    animation: skelShimmer 1.4s linear infinite;
+  }
+  .skeleton-block.lg { height: 48px; }
+  .skeleton-block.sm { height: 14px; width: 60%; }
+
+  /* QR card */
+  .qr-card {
+    display: grid;
+    place-items: center;
+    padding: 14px;
+    background: #fff;
+    border-radius: 14px;
+    margin-bottom: 14px;
+  }
+  .qr-card img { display: block; border-radius: 6px; }
+
+  /* Big start CTA */
+  .btn-cta {
+    min-height: 56px;
+    font-size: 1.1rem;
+    padding: 14px 22px;
+  }
+
+  /* Result banner needs relative for confetti */
+  .result-banner { position: relative; overflow: hidden; }
+
+  /* Player avatar pill */
+  .player-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-weight: 900;
+    font-size: .82rem;
+    flex-shrink: 0;
+  }
+
+  .podium-rank {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: inline-grid;
+    place-items: center;
+    margin: 0 auto 6px;
+    font-weight: 900;
+    color: #0b0f1e;
+  }
+  .podium-place:nth-child(1) .podium-rank { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+  .podium-place:nth-child(2) .podium-rank { background: linear-gradient(135deg, #cbd5e1, #94a3b8); }
+  .podium-place:nth-child(3) .podium-rank { background: linear-gradient(135deg, #fdba74, #cd7c2f); }
+
+  /* Reduced motion respect */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .001ms !important;
+    }
+  }
+
   /* ── Responsive ── */
   @media (max-width: 860px) {
     .auth-wrap, .grid-two, .room-layout { grid-template-columns: 1fr; }
@@ -778,18 +1072,66 @@
     .room-code { font-size: clamp(2.6rem, 16vw, 4.8rem); }
     .question-image { max-height: 40vh; }
     .answer-btn { min-height: 80px; grid-template-columns: 36px 1fr; }
+    .answer-btn .shape-wrap { width: 36px; height: 36px; }
     .bar-row { grid-template-columns: 1fr; }
   }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-bolt" viewBox="0 0 24 24"><path d="M13 2L4.5 13.5h6L9 22l8.5-11.5h-6L13 2z" fill="currentColor"/></symbol>
+    <symbol id="i-host" viewBox="0 0 24 24"><path d="M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-5l1 2h2v2H7v-2h2l1-2H5a2 2 0 0 1-2-2V5zm7 3v6l5-3-5-3z" fill="currentColor"/></symbol>
+    <symbol id="i-join" viewBox="0 0 24 24"><path d="M11 7V4a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2h-7a2 2 0 0 1-2-2v-3h2v3h7V4h-7v3h-2zM3 11l4-4v3h8v2H7v3l-4-4z" fill="currentColor"/></symbol>
+    <symbol id="i-hub" viewBox="0 0 24 24"><path d="M12 3l9 7v11h-6v-7H9v7H3V10l9-7z" fill="currentColor"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M17 16l5-4-5-4v3H9v2h8v3zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z" fill="currentColor"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z" fill="currentColor"/></symbol>
+    <symbol id="i-skip" viewBox="0 0 24 24"><path d="M6 5l8 7-8 7zm10 0h2v14h-2z" fill="currentColor"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5z" fill="currentColor"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z" fill="currentColor"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M3.9 12a3.1 3.1 0 0 1 3.1-3.1h4V7H7a5 5 0 0 0 0 10h4v-1.9H7A3.1 3.1 0 0 1 3.9 12zM8 13h8v-2H8v2zm9-6h-4v1.9h4a3.1 3.1 0 0 1 0 6.2h-4V17h4a5 5 0 0 0 0-10z" fill="currentColor"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19l12-12-1.4-1.4z" fill="currentColor"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z" fill="currentColor"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M19 5h-2V3H7v2H5a2 2 0 0 0-2 2v2c0 2.2 1.8 4 4 4 .5 1.4 1.7 2.5 3.2 2.9V18H8v2h8v-2h-2.2v-2.1c1.5-.4 2.7-1.5 3.2-2.9 2.2 0 4-1.8 4-4V7a2 2 0 0 0-2-2zM5 9V7h2v3.8C5.8 10.4 5 9.7 5 9zm14 0c0 .7-.8 1.4-2 1.8V7h2v2z" fill="currentColor"/></symbol>
+    <symbol id="i-save" viewBox="0 0 24 24"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm3-10H5V5h10v4z" fill="currentColor"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 2l1.6 5L18 8l-4.4 1L12 14l-1.6-5L6 8l4.4-1L12 2zM19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z" fill="currentColor"/></symbol>
+    <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="M12 4l8 8h-5v8h-6v-8H4z" fill="currentColor"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 20l-8-8h5V4h6v8h5z" fill="currentColor"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm0 2c-3 0-9 1.5-9 4.5V21h18v-2.5c0-3-6-4.5-9-4.5z" fill="currentColor"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm5 11h-6V6h2v5h4z" fill="currentColor"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><path d="M21 5v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zm-2 11l-4-5-3 4-2-2-4 5h13z" fill="currentColor"/></symbol>
+    <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M14 4h6v6h-2V7.4l-9.3 9.3 1.4 1.4L19.6 9H17V7h6v6h-2zM4 4h6v2H4v12h12v-6h2v8H4z" fill="currentColor"/></symbol>
+    <symbol id="i-owl" viewBox="0 0 24 24">
+      <path d="M12 2C7.6 2 4 5.6 4 10v5a7 7 0 0 0 14 0v-5c0-4.4-3.6-8-6-8z" fill="currentColor" opacity=".15"/>
+      <circle cx="9" cy="10" r="3" fill="currentColor"/>
+      <circle cx="15" cy="10" r="3" fill="currentColor"/>
+      <circle cx="9" cy="10" r="1.2" fill="#0b0f1e"/>
+      <circle cx="15" cy="10" r="1.2" fill="#0b0f1e"/>
+      <path d="M11 13.5l1 1.2 1-1.2" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+      <path d="M5 4l3 2M19 4l-3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </symbol>
+  </defs>
+</svg>
+
+<div class="bg-orbs" aria-hidden="true">
+  <div class="bg-orb a"></div>
+  <div class="bg-orb b"></div>
+  <div class="bg-orb c"></div>
+</div>
+
 <header class="topbar">
-  <div class="brand"><span class="brand-mark">GP</span><span>GP-hoot</span></div>
+  <div class="brand">
+    <span class="brand-mark"><svg class="icon-brand"><use href="#i-owl"/></svg></span>
+    <span>GP-hoot</span>
+  </div>
   <nav>
-    <button class="btn secondary" id="nav-host" type="button">Host</button>
-    <button class="btn secondary" id="nav-join" type="button">Join</button>
-    <a class="btn secondary" href="../index.html">Hub</a>
-    <button class="btn secondary hidden" id="logout-btn" type="button">Log out</button>
+    <button class="btn secondary" id="nav-host" type="button"><svg class="icon"><use href="#i-host"/></svg>Host</button>
+    <button class="btn secondary" id="nav-join" type="button"><svg class="icon"><use href="#i-join"/></svg>Join</button>
+    <a class="btn secondary" href="../index.html"><svg class="icon"><use href="#i-hub"/></svg>Hub</a>
+    <button class="btn secondary hidden" id="logout-btn" type="button"><svg class="icon"><use href="#i-logout"/></svg>Log out</button>
   </nav>
 </header>
 
@@ -797,9 +1139,24 @@
   <section id="auth-view" class="view">
     <div class="auth-wrap">
       <div class="intro">
+        <span class="intro-tag"><svg class="icon"><use href="#i-bolt"/></svg>Live quiz rounds</span>
+        <h1>Quiz nights, <br>turned up.</h1>
+        <p class="muted">Build a quiz, drop a six-digit room code, and watch answers roll in with speed-based scoring and a live leaderboard.</p>
         <div class="strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-        <h1>GP-hoot</h1>
-        <p class="muted">Run live quiz rounds with a room code, fast answer locking, server-side scoring, host controls, and a final leaderboard.</p>
+        <div class="features">
+          <div class="feature">
+            <svg class="icon-lg"><use href="#i-bolt"/></svg>
+            <div><b>Speed scoring</b><span>Faster answers earn more points.</span></div>
+          </div>
+          <div class="feature">
+            <svg class="icon-lg"><use href="#i-users"/></svg>
+            <div><b>Live lobby</b><span>Players join with a QR code.</span></div>
+          </div>
+          <div class="feature">
+            <svg class="icon-lg"><use href="#i-trophy"/></svg>
+            <div><b>Final podium</b><span>Gold, silver, bronze finish.</span></div>
+          </div>
+        </div>
       </div>
       <form class="band pad" id="auth-form">
         <div class="section-title">
@@ -824,7 +1181,10 @@
           <label for="auth-display">Display name</label>
           <input id="auth-display" autocomplete="name" maxlength="80" />
         </div>
-        <button class="btn" id="auth-submit" type="submit">Log in</button>
+        <button class="btn btn-cta" id="auth-submit" type="submit">
+          <svg class="icon-lg"><use href="#i-host"/></svg>
+          <span id="auth-submit-text">Log in</span>
+        </button>
       </form>
     </div>
   </section>
@@ -836,8 +1196,8 @@
         <p class="muted">Build a quiz, save it, then launch a room.</p>
       </div>
       <div class="row">
-        <button class="btn soft" id="sample-quiz-btn" type="button">Sample quiz</button>
-        <button class="btn" id="new-quiz-btn" type="button">New quiz</button>
+        <button class="btn soft" id="sample-quiz-btn" type="button"><svg class="icon"><use href="#i-spark"/></svg>Sample quiz</button>
+        <button class="btn" id="new-quiz-btn" type="button"><svg class="icon"><use href="#i-plus"/></svg>New quiz</button>
       </div>
     </div>
 
@@ -859,21 +1219,23 @@
   <section id="join-view" class="view">
     <div class="auth-wrap">
       <div class="intro">
+        <span class="intro-tag"><svg class="icon"><use href="#i-join"/></svg>Player entry</span>
+        <h1>Hop in. <br>Outscore everyone.</h1>
+        <p class="muted">Type the six-digit room code your host shared, pick a nickname, and you're in.</p>
         <div class="strip" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
-        <h1>Join GP-hoot</h1>
-        <p class="muted">Enter the six-digit room code and your nickname.</p>
       </div>
       <form class="band pad" id="join-form">
         <h2>Player join</h2>
+        <p class="muted small" style="margin-bottom:18px">Use the code on the host's screen.</p>
         <div class="field">
           <label for="join-code">Room code</label>
-          <input id="join-code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required />
+          <input id="join-code" inputmode="numeric" maxlength="6" pattern="[0-9]{6}" required style="font-size:1.6rem;font-weight:900;letter-spacing:.4em;text-align:center" />
         </div>
         <div class="field">
           <label for="join-name">Nickname</label>
           <input id="join-name" maxlength="20" minlength="3" required />
         </div>
-        <button class="btn" type="submit">Join room</button>
+        <button class="btn btn-cta" type="submit"><svg class="icon-lg"><use href="#i-bolt"/></svg>Join room</button>
       </form>
     </div>
   </section>
@@ -979,7 +1341,7 @@
     $('display-name-field').classList.toggle('hidden', !signup);
     $('auth-title').textContent = signup ? 'Create host account' : 'Host login';
     $('auth-copy').textContent = signup ? 'Use an email and password for this local GP-hoot server.' : 'Sign in to create quizzes and launch rooms.';
-    $('auth-submit').textContent = signup ? 'Create account' : 'Log in';
+    $('auth-submit-text').textContent = signup ? 'Create account' : 'Log in';
   }
 
   async function loadMe() {
@@ -1151,10 +1513,10 @@
     editor.innerHTML = `
       <div class="editor-toolbar">
         <label class="check-row"><input id="auto-advance-launch" type="checkbox" ${state.autoAdvanceResults ? 'checked' : ''} /> Auto-advance</label>
-        <button class="btn secondary" type="button" id="duplicate-quiz" ${quiz.id ? '' : 'disabled'}>Duplicate</button>
-        <button class="btn bad" type="button" id="delete-quiz" ${quiz.id ? '' : 'disabled'}>Delete</button>
-        <button class="btn soft" type="button" id="save-quiz">Save</button>
-        <button class="btn good" type="button" id="host-quiz" ${quiz.id && quiz.questions.length ? '' : 'disabled'}>Host game</button>
+        <button class="btn secondary" type="button" id="duplicate-quiz" ${quiz.id ? '' : 'disabled'}><svg class="icon"><use href="#i-copy"/></svg>Duplicate</button>
+        <button class="btn bad" type="button" id="delete-quiz" ${quiz.id ? '' : 'disabled'}><svg class="icon"><use href="#i-trash"/></svg>Delete</button>
+        <button class="btn soft" type="button" id="save-quiz"><svg class="icon"><use href="#i-save"/></svg>Save</button>
+        <button class="btn good" type="button" id="host-quiz" ${quiz.id && quiz.questions.length ? '' : 'disabled'}><svg class="icon"><use href="#i-play"/></svg>Host game</button>
       </div>
       <div class="field">
         <label for="quiz-title">Title</label>
@@ -1170,8 +1532,8 @@
           <p class="muted small">Multiple choice supports two to four options. True/false uses fixed options.</p>
         </div>
         <div class="row">
-          <button class="btn secondary" type="button" id="add-mc">Add multiple choice</button>
-          <button class="btn secondary" type="button" id="add-tf">Add true/false</button>
+          <button class="btn secondary" type="button" id="add-mc"><svg class="icon"><use href="#i-plus"/></svg>Multiple choice</button>
+          <button class="btn secondary" type="button" id="add-tf"><svg class="icon"><use href="#i-plus"/></svg>True/false</button>
         </div>
       </div>
       <div class="question-list">
@@ -1189,15 +1551,15 @@
         <div class="question-head">
           <div class="q-num">${index + 1}</div>
           <div class="row">
-            <button class="btn secondary" data-move-question="-1" type="button" ${index === 0 ? 'disabled' : ''} aria-label="Move question up">Up</button>
-            <button class="btn secondary" data-move-question="1" type="button" ${index === state.selectedQuiz.questions.length - 1 ? 'disabled' : ''} aria-label="Move question down">Down</button>
+            <button class="btn secondary" data-move-question="-1" type="button" ${index === 0 ? 'disabled' : ''} aria-label="Move question up"><svg class="icon"><use href="#i-arrow-up"/></svg></button>
+            <button class="btn secondary" data-move-question="1" type="button" ${index === state.selectedQuiz.questions.length - 1 ? 'disabled' : ''} aria-label="Move question down"><svg class="icon"><use href="#i-arrow-down"/></svg></button>
           </div>
           <select data-q-type>
             <option value="multiple_choice" ${question.type === 'multiple_choice' ? 'selected' : ''}>Multiple choice</option>
             <option value="true_false" ${question.type === 'true_false' ? 'selected' : ''}>True/false</option>
           </select>
           <input data-q-time type="number" min="5" max="120" value="${esc(question.timeLimitSeconds || 20)}" aria-label="Time limit seconds" />
-          <button class="btn secondary" data-remove-question type="button">Remove</button>
+          <button class="btn secondary" data-remove-question type="button"><svg class="icon"><use href="#i-trash"/></svg></button>
         </div>
         <div class="field">
           <label>Question text</label>
@@ -1437,7 +1799,17 @@
     const container = $('host-room');
     const room = state.roomState;
     if (!room) {
-      container.innerHTML = '<div class="band pad"><h2>Connecting room...</h2></div>';
+      container.innerHTML = `
+        <div class="band pad">
+          <h2>Connecting room…</h2>
+          <div class="skeleton-card">
+            <div class="skeleton-block lg"></div>
+            <div class="skeleton-block sm"></div>
+            <div class="skeleton-block"></div>
+            <div class="skeleton-block"></div>
+          </div>
+        </div>
+      `;
       return;
     }
     if (room.room.phase === 'lobby') renderHostLobby(container, room);
@@ -1456,24 +1828,26 @@
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad">
-          <p class="muted small">Room code</p>
+          <p class="label" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-bolt"/></svg>Room code</p>
           <div class="room-code">${esc(room.room.code)}</div>
           <h2>${esc(room.quiz.title)}</h2>
           <p class="muted">${esc(room.quiz.description || 'Waiting for players.')}</p>
-          <p class="small muted">Auto-advance ${room.room.autoAdvanceResults ? 'on' : 'off'}</p>
+          <p class="small muted" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-shuffle"/></svg>Auto-advance ${room.room.autoAdvanceResults ? 'on' : 'off'}</p>
           ${localWarning}
-          <div class="row">
-            <button class="btn good" id="start-game" type="button" ${room.players.length ? '' : 'disabled'}>Start</button>
-            <button class="btn secondary" id="copy-code" type="button">Copy code</button>
-            <button class="btn secondary" id="copy-link" type="button">Copy link</button>
-            <button class="btn bad" id="end-game" type="button">End</button>
+          <div class="row" style="margin-top:14px">
+            <button class="btn good btn-cta" id="start-game" type="button" ${room.players.length ? '' : 'disabled'}><svg class="icon-lg"><use href="#i-play"/></svg>Start game</button>
+            <button class="btn secondary" id="copy-code" type="button"><svg class="icon"><use href="#i-copy"/></svg>Copy code</button>
+            <button class="btn secondary" id="copy-link" type="button"><svg class="icon"><use href="#i-link"/></svg>Copy link</button>
+            <button class="btn bad" id="end-game" type="button"><svg class="icon"><use href="#i-stop"/></svg>End</button>
           </div>
         </section>
         <aside class="band pad">
-          <h3>Join</h3>
-          <img alt="QR code" width="180" height="180" src="/api/gp-hoot/qr?url=${encodeURIComponent(joinUrl)}" />
+          <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-join"/></svg>Scan to join</h3>
+          <div class="qr-card">
+            <img alt="QR code" width="180" height="180" src="/api/gp-hoot/qr?url=${encodeURIComponent(joinUrl)}" />
+          </div>
           <p class="small muted join-url">${esc(joinUrl)}</p>
-          <h3>Players (${room.players.length})</h3>
+          <h3 style="display:flex;align-items:center;gap:6px;margin-top:14px"><svg class="icon"><use href="#i-users"/></svg>Players (${room.players.length})</h3>
           <div class="player-list">${playersTemplate(room, true)}</div>
         </aside>
       </div>
@@ -1485,6 +1859,9 @@
   }
 
   function renderHostQuestion(container, room) {
+    const pauseIcon = room.room.paused ? 'i-play' : 'i-pause';
+    const pauseLabel = room.room.paused ? 'Resume' : 'Pause';
+    const lockedCount = room.players.filter((p) => p.locked).length;
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad game-stage">
@@ -1494,14 +1871,14 @@
             ${room.question.options.map((option, index) => answerButtonTemplate(option, index, room.question.correctIndex, null, true, room.room.phase)).join('')}
           </div>
           <div class="row">
-            <button class="btn warn" id="pause-game" type="button">${room.room.paused ? 'Resume' : 'Pause'}</button>
-            <button class="btn secondary" id="skip-game" type="button">Skip</button>
-            <button class="btn bad" id="end-game" type="button">End</button>
+            <button class="btn warn" id="pause-game" type="button"><svg class="icon"><use href="#${pauseIcon}"/></svg>${pauseLabel}</button>
+            <button class="btn secondary" id="skip-game" type="button"><svg class="icon"><use href="#i-skip"/></svg>Skip</button>
+            <button class="btn bad" id="end-game" type="button"><svg class="icon"><use href="#i-stop"/></svg>End</button>
           </div>
         </section>
         <aside class="band pad">
-          <h3>Answers</h3>
-          <p class="muted">${room.players.filter((p) => p.locked).length} of ${room.players.length} locked</p>
+          <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-check"/></svg>Answers</h3>
+          <p class="muted"><b>${lockedCount}</b> of <b>${room.players.length}</b> locked in</p>
           <div class="player-list">${playersTemplate(room, true)}</div>
         </aside>
       </div>
@@ -1513,6 +1890,9 @@
   }
 
   function renderHostResults(container, room) {
+    const isFinishing = room.room.currentQuestionIndex + 1 >= room.room.totalQuestions;
+    const nextIcon = isFinishing ? 'i-trophy' : 'i-skip';
+    const nextLabel = isFinishing ? 'Finish' : 'Next';
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad game-stage">
@@ -1524,12 +1904,12 @@
           ${resultsBarsTemplate(room)}
           ${room.room.nextAutoAdvanceAt ? `<p class="muted small" data-auto-advance-label>${autoAdvanceLabel(room)}</p>` : ''}
           <div class="row">
-            <button class="btn good" id="next-question" type="button">${room.room.currentQuestionIndex + 1 >= room.room.totalQuestions ? 'Finish' : 'Next'}</button>
-            <button class="btn bad" id="end-game" type="button">End</button>
+            <button class="btn good btn-cta" id="next-question" type="button"><svg class="icon-lg"><use href="#${nextIcon}"/></svg>${nextLabel}</button>
+            <button class="btn bad" id="end-game" type="button"><svg class="icon"><use href="#i-stop"/></svg>End</button>
           </div>
         </section>
         <aside class="band pad">
-          <h3>Leaderboard</h3>
+          <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-trophy"/></svg>Leaderboard</h3>
           <div class="leaderboard">${leaderboardTemplate(room)}</div>
         </aside>
       </div>
@@ -1542,15 +1922,25 @@
     const container = $('player-room');
     const room = state.roomState;
     if (!room) {
-      container.innerHTML = '<div class="band pad"><h2>Joining room...</h2></div>';
+      container.innerHTML = `
+        <div class="band pad">
+          <h2>Joining room…</h2>
+          <div class="skeleton-card">
+            <div class="skeleton-block sm"></div>
+            <div class="skeleton-block lg"></div>
+            <div class="skeleton-block"></div>
+          </div>
+        </div>
+      `;
       return;
     }
     if (room.room.phase === 'lobby') {
       container.innerHTML = `
         <div class="band pad">
-          <h2>${esc(room.quiz.title)}</h2>
-          <p class="muted">Waiting for the host to start.</p>
-          <h3>Players</h3>
+          <span class="intro-tag"><svg class="icon"><use href="#i-clock"/></svg>Waiting room</span>
+          <h2 style="margin-top:10px">${esc(room.quiz.title)}</h2>
+          <p class="muted">The host will start the game shortly.</p>
+          <h3 style="display:flex;align-items:center;gap:6px;margin-top:18px"><svg class="icon"><use href="#i-users"/></svg>Players (${room.players.length})</h3>
           <div class="player-list">${playersTemplate(room, false)}</div>
         </div>
       `;
@@ -1564,11 +1954,14 @@
   }
 
   function renderPlayerQuestion(container, room) {
+    const lockedBanner = room.you.locked
+      ? `<div class="result-banner neutral"><div class="result-headline"><svg class="icon-lg"><use href="#i-check"/></svg>Locked in — waiting for others</div></div>`
+      : '';
     container.innerHTML = `
       <section class="band pad game-stage">
         ${questionHeaderTemplate(room)}
         ${questionTemplateForPlay(room, false)}
-        ${room.you.locked ? '<div class="result-banner neutral">Answer locked in</div>' : ''}
+        ${lockedBanner}
         <div class="answer-grid">
           ${room.question.options.map((option, index) => answerButtonTemplate(option, index, null, room.you.answerIndex, room.you.locked, room.room.phase)).join('')}
         </div>
@@ -1583,17 +1976,27 @@
     }
   }
 
+  function confettiBurst(count = 24) {
+    return `<div class="confetti">${Array.from({ length: count }, (_, i) => `<span style="--i:${i}"></span>`).join('')}</div>`;
+  }
+
   function renderPlayerResults(container, room) {
     const correct = room.you.lastAnswerCorrect;
+    const headlineIcon = correct ? 'i-check' : 'i-x';
+    const headlineText = correct ? 'Correct!' : 'Not this time';
     container.innerHTML = `
       <section class="band pad game-stage">
-        <div class="result-banner ${correct ? 'good' : 'bad'}">${correct ? 'Correct' : 'Incorrect'} - ${room.you.roundPoints} points</div>
-        <p class="muted">Rank ${room.you.rank} with ${room.you.score} points.</p>
+        <div class="result-banner ${correct ? 'good' : 'bad'}">
+          ${correct ? confettiBurst(24) : ''}
+          <div class="result-headline"><svg class="icon-lg"><use href="#${headlineIcon}"/></svg>${headlineText}</div>
+          <span class="score-pop">${correct ? '+' : ''}${room.you.roundPoints}</span>
+        </div>
+        <p class="muted" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-trophy"/></svg>Rank <b>#${room.you.rank}</b> with <b>${room.you.score}</b> points</p>
         ${questionTemplateForPlay(room, false)}
         <div class="answer-grid">
           ${room.question.options.map((option, index) => answerButtonTemplate(option, index, room.question.correctIndex, room.you.answerIndex, true, room.room.phase)).join('')}
         </div>
-        <h3>Leaderboard</h3>
+        <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-trophy"/></svg>Leaderboard</h3>
         <div class="leaderboard">${leaderboardTemplate(room)}</div>
       </section>
     `;
@@ -1601,17 +2004,34 @@
 
   function renderFinal(container, room, isHost) {
     const leaders = room.leaderboard.slice(0, 3);
+    const order = [leaders[1], leaders[0], leaders[2]].filter(Boolean); // 2nd, 1st, 3rd visual order
+    const subtitle = isHost ? esc(room.quiz.title) : `You finished #${room.you?.rank || '-'}`;
+    const hostActions = `
+      <div class="row">
+        <button class="btn good btn-cta" id="play-again" type="button"><svg class="icon-lg"><use href="#i-play"/></svg>Play again</button>
+        <button class="btn secondary" id="back-dashboard" type="button"><svg class="icon"><use href="#i-hub"/></svg>Dashboard</button>
+      </div>
+    `;
+    const playerActions = `<button class="btn secondary" id="leave-room" type="button"><svg class="icon"><use href="#i-logout"/></svg>Leave</button>`;
     container.innerHTML = `
       <section class="band pad">
+        ${leaders[0] && (!isHost && room.you?.rank === 1) ? confettiBurst(36) : ''}
         <div class="section-title">
           <div>
-            <h2>Final leaderboard</h2>
-            <p class="muted">${isHost ? esc(room.quiz.title) : `Your rank: ${room.you?.rank || '-'}`}</p>
+            <span class="intro-tag"><svg class="icon"><use href="#i-trophy"/></svg>Game over</span>
+            <h2 style="margin-top:10px">Final leaderboard</h2>
+            <p class="muted">${subtitle}</p>
           </div>
-          ${isHost ? '<div class="row"><button class="btn good" id="play-again" type="button">Play again</button><button class="btn secondary" id="back-dashboard" type="button">Dashboard</button></div>' : '<button class="btn secondary" id="leave-room" type="button">Leave</button>'}
+          ${isHost ? hostActions : playerActions}
         </div>
         <div class="podium">
-          ${leaders.map((player) => `<div class="podium-place"><strong>#${player.rank}</strong><span>${esc(player.nickname)}</span><b>${player.score}</b></div>`).join('')}
+          ${order.map((player) => `
+            <div class="podium-place">
+              <span class="podium-rank">${player.rank}</span>
+              <strong>${esc(player.nickname)}</strong>
+              <b style="font-size:1.4rem">${player.score}</b>
+            </div>
+          `).join('')}
         </div>
         <div class="leaderboard">${leaderboardTemplate(room)}</div>
       </section>
@@ -1636,11 +2056,14 @@
 
   function questionHeaderTemplate(room) {
     const index = room.room.currentQuestionIndex + 1;
+    const pausedMark = room.room.paused
+      ? '<span style="display:inline-flex;align-items:center;gap:4px"><svg class="icon"><use href="#i-pause"/></svg>Paused</span>'
+      : `<span style="display:inline-flex;align-items:center;gap:4px"><svg class="icon"><use href="#i-clock"/></svg><span data-time-left>${timeLeftLabel(room)}</span></span>`;
     return `
       <div>
         <div class="timer-line">
-          <span>Question ${index} of ${room.room.totalQuestions}</span>
-          <span>${room.room.paused ? 'Paused' : `<span data-time-left>${timeLeftLabel(room)}</span>`}</span>
+          <span>Question <b>${index}</b> of ${room.room.totalQuestions}</span>
+          ${pausedMark}
         </div>
         <div class="timer-track"><div class="timer-fill" data-timer-fill style="width:${timerPercent(room)}%"></div></div>
       </div>
@@ -1658,36 +2081,74 @@
 
   function answerButtonTemplate(option, index, correctIndex, selectedIndex, locked, phase) {
     const isCorrect = correctIndex === index;
-    const wrongSelected = selectedIndex === index && correctIndex != null && selectedIndex !== correctIndex;
+    const isSelected = selectedIndex === index;
+    const wrongSelected = isSelected && correctIndex != null && selectedIndex !== correctIndex;
     const reveal = phase === 'results' || phase === 'final';
+    const lockedSelf = isSelected && locked && !reveal;
+    const classes = [
+      reveal && isCorrect ? 'correct' : '',
+      reveal && wrongSelected ? 'wrong-choice' : '',
+      lockedSelf ? 'locked-self' : '',
+    ].filter(Boolean).join(' ');
     return `
-      <button class="answer-btn ${reveal && isCorrect ? 'correct' : ''} ${reveal && wrongSelected ? 'wrong-choice' : ''}" data-answer-index="${index}" type="button" ${locked ? 'disabled' : ''}>
-        <span class="shape ${shapes[index] || 'square'}"></span>
+      <button class="answer-btn ${classes}" data-answer-index="${index}" type="button" ${locked ? 'disabled' : ''}>
+        <span class="shape-wrap"><span class="shape ${shapes[index] || 'square'}"></span></span>
         <span>${esc(option)}</span>
       </button>
     `;
   }
 
+  function avatarColor(nickname) {
+    const palette = ['#ef4444', '#3b82f6', '#f59e0b', '#22c55e', '#6366f1', '#ec4899', '#22d3ee', '#a855f7'];
+    let hash = 0;
+    for (let i = 0; i < nickname.length; i++) hash = (hash * 31 + nickname.charCodeAt(i)) >>> 0;
+    return palette[hash % palette.length];
+  }
+
+  function avatarInitial(nickname) {
+    return (nickname || '?').trim().charAt(0).toUpperCase() || '?';
+  }
+
   function playersTemplate(room, hostControls) {
-    if (!room.players.length) return '<p class="muted small">No players yet.</p>';
-    return room.players.map((player) => `
-      <div class="player-pill">
-        <span class="status-dot ${player.connected ? 'on' : ''}"></span>
-        <span>${esc(player.nickname)}${player.locked ? ' - locked' : ''}</span>
-        ${hostControls && player.id ? `<button class="btn secondary" data-kick-player="${esc(player.id)}" type="button">Kick</button>` : `<b>${player.score}</b>`}
-      </div>
-    `).join('');
+    if (!room.players.length) {
+      return `<p class="muted small" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-clock"/></svg>Waiting for players to join…</p>`;
+    }
+    return room.players.map((player) => {
+      const lockedTag = player.locked
+        ? '<svg class="icon" style="color:#22c55e"><use href="#i-check"/></svg>'
+        : `<span class="status-dot ${player.connected ? 'on' : ''}"></span>`;
+      const trailing = hostControls && player.id
+        ? `<button class="btn secondary" data-kick-player="${esc(player.id)}" type="button" aria-label="Kick player"><svg class="icon"><use href="#i-x"/></svg></button>`
+        : `<b>${player.score}</b>`;
+      return `
+        <div class="player-pill">
+          <span class="player-avatar" style="background:${avatarColor(player.nickname)}">${avatarInitial(player.nickname)}</span>
+          <span style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="overflow:hidden;text-overflow:ellipsis">${esc(player.nickname)}</span>
+            ${lockedTag}
+          </span>
+          ${trailing}
+        </div>
+      `;
+    }).join('');
   }
 
   function leaderboardTemplate(room) {
     if (!room.leaderboard.length) return '<p class="muted small">No scores yet.</p>';
-    return room.leaderboard.map((player) => `
-      <div class="rank-row">
-        <strong>#${player.rank}</strong>
-        <span>${esc(player.nickname)}</span>
-        <b>${player.score}</b>
-      </div>
-    `).join('');
+    return room.leaderboard.map((player) => {
+      const medalColor = player.rank === 1 ? '#f59e0b' : player.rank === 2 ? '#94a3b8' : player.rank === 3 ? '#cd7c2f' : '';
+      const rankStyle = medalColor ? `color:${medalColor}` : '';
+      return `
+        <div class="rank-row">
+          <strong style="${rankStyle}">#${player.rank}</strong>
+          <span style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span class="player-avatar" style="background:${avatarColor(player.nickname)};width:24px;height:24px;font-size:.74rem">${avatarInitial(player.nickname)}</span>
+            <span style="overflow:hidden;text-overflow:ellipsis">${esc(player.nickname)}</span>
+          </span>
+          <b>${player.score}</b>
+        </div>
+      `;
+    }).join('');
   }
 
   function resultsBarsTemplate(room) {
@@ -1753,6 +2214,8 @@
       document.querySelectorAll('[data-timer-fill]').forEach((el) => {
         el.style.width = `${pct}%`;
         el.classList.toggle('low', pct <= 25);
+        const track = el.parentElement;
+        if (track) track.classList.toggle('urgent', pct <= 25);
       });
     }
     document.querySelectorAll('[data-auto-advance-label]').forEach((el) => { el.textContent = autoAdvanceLabel(room); });
