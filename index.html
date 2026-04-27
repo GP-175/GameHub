@@ -9,8 +9,6 @@
 <!-- PWA manifest + theme -->
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#6c5ce7" />
-
-<!-- iOS / iPad home-screen app -->
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,22 +16,642 @@
 <link rel="apple-touch-icon" href="assets/icon.svg" />
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
 
+<!-- Fonts -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600&family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+
 <link rel="stylesheet" href="assets/styles.css" />
+
+<style>
+/* ── Kid Dashboard V1 · Bright Punchy ─────────────────────────── */
+:root {
+  --hub-bg:     oklch(0.97 0.012 80);
+  --hub-rail:   oklch(0.94 0.012 80);
+  --hub-ink:    oklch(0.22 0.04 280);
+  --hub-muted:  oklch(0.55 0.02 280);
+  --hub-card:   #ffffff;
+  --hub-border: oklch(0.90 0.01 80);
+  --hub-shadow: 0 1px 0 oklch(0.96 0.005 80), 0 4px 16px rgba(20,15,40,0.06);
+  --hub-radius: 22px;
+}
+
+/* Override global body styles for this page only */
+body {
+  background: var(--hub-bg) !important;
+  background-image: none !important;
+  color: var(--hub-ink);
+  font-family: 'Outfit', system-ui, sans-serif;
+}
+
+/* Suppress the shared topbar – dashboard has its own chrome */
+.topbar { display: none !important; }
+.container { max-width: none !important; padding: 0 !important; margin: 0 !important; }
+
+/* ── VIEWS ────────────────────────────────────────────────────── */
+#view-profiles,
+#view-empty {
+  min-height: 100vh;
+  padding: 40px clamp(16px, 5vw, 56px);
+  background: var(--hub-bg);
+}
+#view-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── GAME DASHBOARD: 3-column grid ────────────────────────────── */
+#view-games {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  #view-games { grid-template-columns: 72px 1fr 300px; }
+  .right-rail { display: flex !important; }
+}
+@media (max-width: 599px) {
+  .left-rail { display: none !important; }
+  #view-games { grid-template-columns: 1fr; }
+  .dashboard-main { padding: 20px 16px 48px; }
+}
+
+/* ── LEFT RAIL ────────────────────────────────────────────────── */
+.left-rail {
+  background: var(--hub-rail);
+  border-right: 1px solid var(--hub-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0 20px;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.rail-logo {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  background: var(--hub-ink);
+  color: #fff;
+  display: grid; place-items: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800; font-size: 18px;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+.rail-divider {
+  width: 36px; height: 1px;
+  background: var(--hub-border);
+  flex-shrink: 0;
+}
+#rail-profiles {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.rail-avatar {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  border-radius: 50%;
+}
+.rail-avatar:hover { transform: scale(1.06); }
+.rail-avatar-img {
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.rail-active-bar {
+  position: absolute;
+  left: -14px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 20px;
+  border-radius: 2px;
+  background: var(--hub-ink);
+}
+.rail-add {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px dashed var(--hub-border);
+  display: grid; place-items: center;
+  color: var(--hub-muted);
+  font-size: 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.rail-add:hover { border-color: var(--hub-ink); color: var(--hub-ink); }
+.rail-spacer { flex: 1; }
+.rail-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px; letter-spacing: 0.12em;
+  color: var(--hub-muted);
+}
+
+/* ── MAIN CONTENT ─────────────────────────────────────────────── */
+.dashboard-main {
+  padding: 28px 32px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+/* ── TOPBAR (inside main) ─────────────────────────────────────── */
+.dash-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.dash-search {
+  background: var(--hub-card);
+  border-radius: 999px;
+  padding: 10px 18px;
+  border: 1px solid var(--hub-border);
+  flex: 1; max-width: 340px;
+  display: flex; align-items: center; gap: 8px;
+  color: var(--hub-muted);
+  font-size: 14px;
+}
+.dash-status {
+  margin-left: auto;
+  padding: 8px 14px;
+  background: var(--hub-card);
+  border-radius: 999px;
+  border: 1px solid var(--hub-border);
+  font-size: 13px; font-weight: 600;
+  display: flex; align-items: center; gap: 7px;
+  color: var(--hub-ink);
+}
+.dash-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+}
+.dash-switch-btn {
+  padding: 10px 16px;
+  background: var(--hub-ink);
+  color: #fff;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 700;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: opacity 0.15s;
+}
+.dash-switch-btn:hover { opacity: 0.82; }
+.dash-parent-link {
+  padding: 10px 16px;
+  background: var(--hub-rail);
+  border: 1px solid var(--hub-border);
+  border-radius: 999px;
+  font-size: 13px; font-weight: 700;
+  color: var(--hub-ink);
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.dash-parent-link:hover { background: var(--hub-border); text-decoration: none; }
+
+/* ── HERO BANNER ──────────────────────────────────────────────── */
+.hero-banner {
+  border-radius: 28px;
+  padding: 28px 32px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  width: 220px; height: 220px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.12);
+  right: -40px; top: -40px;
+  pointer-events: none;
+}
+.hero-banner::after {
+  content: '';
+  position: absolute;
+  width: 140px; height: 140px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+  right: 110px; bottom: -55px;
+  pointer-events: none;
+}
+.hero-left {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  z-index: 1;
+}
+.hero-avatar {
+  width: 80px; height: 80px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  display: grid; place-items: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800; font-size: 28px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.hero-eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; letter-spacing: 0.14em;
+  opacity: 0.82;
+}
+.hero-name {
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: clamp(26px, 3.5vw, 40px);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin-top: 4px;
+}
+.hero-sub {
+  font-size: 14px;
+  opacity: 0.9;
+  margin-top: 8px;
+  max-width: 420px;
+}
+.hero-right {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.hero-stats {
+  background: rgba(255,255,255,0.18);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.28);
+  border-radius: 18px;
+  padding: 14px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.hero-stat { text-align: center; }
+.hero-stat-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; letter-spacing: 0.12em;
+  opacity: 0.8;
+}
+.hero-stat-val {
+  font-family: 'Sora', sans-serif;
+  font-size: 26px; font-weight: 700;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.hero-stat-sep {
+  width: 1px; height: 38px;
+  background: rgba(255,255,255,0.28);
+}
+.hero-cta {
+  background: #fff;
+  color: var(--hub-ink);
+  padding: 11px 18px;
+  border-radius: 999px;
+  font-weight: 700; font-size: 14px;
+  display: flex; align-items: center;
+  justify-content: center; gap: 8px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+  text-decoration: none;
+  transition: transform 0.15s;
+}
+.hero-cta:hover { transform: translateY(-1px); text-decoration: none; color: var(--hub-ink); }
+.hero-cta-play {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--hub-ink);
+  color: #fff;
+  display: grid; place-items: center;
+  font-size: 9px;
+}
+@media (max-width: 700px) {
+  .hero-banner { grid-template-columns: 1fr; padding: 22px 20px; }
+  .hero-right { display: none; }
+  .hero-avatar { width: 60px; height: 60px; font-size: 22px; }
+}
+
+/* ── GAMES SECTION HEADER ─────────────────────────────────────── */
+.games-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.games-title {
+  font-family: 'Sora', sans-serif;
+  font-size: 20px; font-weight: 700;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--hub-ink);
+}
+.games-tabs {
+  display: flex;
+  gap: 16px;
+  margin-left: 10px;
+  flex-wrap: wrap;
+}
+.games-tab {
+  font-size: 13px; font-weight: 600;
+  color: var(--hub-muted);
+  padding-bottom: 3px;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+.games-tab.active {
+  color: var(--hub-ink);
+  border-bottom-color: var(--hub-ink);
+}
+.games-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--hub-muted);
+  margin-left: auto;
+}
+
+/* ── GAME GRID ────────────────────────────────────────────────── */
+#game-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(195px, 1fr));
+  gap: 16px;
+}
+
+/* Override inherited game-card styles entirely */
+.game-card {
+  background: var(--hub-card) !important;
+  border-radius: var(--hub-radius) !important;
+  border: 1px solid var(--hub-border) !important;
+  border-top: none !important;
+  padding: 0 !important;
+  box-shadow: var(--hub-shadow) !important;
+  overflow: hidden;
+  display: flex !important;
+  flex-direction: column !important;
+  color: var(--hub-ink) !important;
+  text-decoration: none;
+  transition: transform 0.15s ease, box-shadow 0.2s ease !important;
+}
+.game-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 8px 28px rgba(20,15,40,0.10) !important;
+  text-decoration: none !important;
+}
+.game-card-art {
+  height: 118px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  font-size: 3.2rem;
+  overflow: hidden;
+}
+.game-card-art-mono {
+  position: absolute;
+  bottom: 8px; right: 12px;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: -0.02em;
+  opacity: 0.28;
+  pointer-events: none;
+  color: #fff;
+}
+.game-card-emoji {
+  position: relative;
+  z-index: 1;
+  line-height: 1;
+}
+.game-card-body {
+  padding: 13px 15px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.game-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.game-subject-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px; font-weight: 600;
+  letter-spacing: 0.1em;
+}
+.star-row {
+  margin-left: auto;
+  display: flex;
+  gap: 1px;
+}
+.star-filled { color: #fbbf24; font-size: 11px; }
+.star-empty  { color: var(--hub-border); font-size: 11px; }
+.game-card-title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700; font-size: 15px;
+  letter-spacing: -0.01em;
+  color: var(--hub-ink);
+}
+.game-card-tag {
+  font-size: 12px;
+  color: var(--hub-muted);
+}
+
+/* ── RIGHT RAIL ───────────────────────────────────────────────── */
+.right-rail {
+  display: none;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--hub-rail);
+  border-left: 1px solid var(--hub-border);
+  padding: 28px 20px 40px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+.rail-section-title {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700; font-size: 14px;
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.rail-section-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--hub-muted);
+}
+.family-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--hub-card);
+  border-radius: 14px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--hub-border);
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.family-card:hover { transform: translateY(-1px); }
+.family-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: 'Sora', sans-serif;
+  font-weight: 800; font-size: 12px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.family-info { flex: 1; min-width: 0; }
+.family-name { font-weight: 600; font-size: 13px; }
+.family-sub { font-size: 11px; color: var(--hub-muted); }
+.badge-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.badge-chip {
+  display: flex; align-items: center; gap: 5px;
+  background: var(--hub-card);
+  border: 1px solid var(--hub-border);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px; font-weight: 600;
+}
+.badge-chip-icon { font-size: 13px; }
+.recent-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--hub-border);
+}
+.recent-item:last-child { border-bottom: none; }
+.recent-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+.recent-info { flex: 1; min-width: 0; }
+.recent-title { font-weight: 600; font-size: 13px; }
+.recent-sub { font-size: 11px; color: var(--hub-muted); }
+
+/* ── PROFILE PICKER ───────────────────────────────────────────── */
+#view-profiles h1 {
+  font-family: 'Sora', sans-serif;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  color: var(--hub-ink);
+}
+.hub-subtitle {
+  color: var(--hub-muted);
+  font-size: 16px;
+  margin-bottom: 28px;
+}
+#profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  max-width: 840px;
+}
+.profile-card {
+  background: var(--hub-card) !important;
+  border-radius: 24px !important;
+  padding: 26px 16px !important;
+  text-align: center;
+  cursor: pointer;
+  border: 1px solid var(--hub-border) !important;
+  box-shadow: var(--hub-shadow) !important;
+  transition: transform 0.15s, box-shadow 0.15s !important;
+}
+.profile-card:hover { transform: translateY(-4px) !important; }
+.profile-card.add {
+  display: grid !important;
+  place-items: center !important;
+  min-height: 180px;
+  font-weight: 800 !important;
+  font-size: 14px;
+  color: var(--hub-muted) !important;
+  border: 2px dashed var(--hub-border) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.profile-card.add:hover { border-color: var(--hub-ink) !important; color: var(--hub-ink) !important; }
+.profile-avatar {
+  width: 76px; height: 76px;
+  border-radius: 50% !important;
+  margin: 0 auto 14px !important;
+  display: grid; place-items: center !important;
+  font-family: 'Sora', sans-serif;
+  font-weight: 900 !important; font-size: 2rem !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.14);
+}
+.profile-name {
+  font-family: 'Sora', sans-serif;
+  font-weight: 700; font-size: 16px;
+  color: var(--hub-ink);
+}
+.profile-age { font-size: 12px; color: var(--hub-muted); margin-top: 3px; }
+
+/* ── FIRST RUN ────────────────────────────────────────────────── */
+#view-empty .card {
+  max-width: 520px;
+  width: 100%;
+  border-radius: 28px !important;
+  padding: 36px !important;
+  border: 1px solid var(--hub-border);
+  text-align: center;
+  box-shadow: var(--hub-shadow) !important;
+}
+#view-empty h1 {
+  font-family: 'Sora', sans-serif;
+  font-size: 1.9rem; font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--hub-ink);
+}
+
+/* ── MISC ─────────────────────────────────────────────────────── */
+#no-games {
+  color: var(--hub-muted);
+  font-size: 15px;
+  text-align: center;
+  padding: 36px 0;
+}
+.hidden { display: none !important; }
+</style>
+
 <script>window.GAMEHUB_API_BASE = window.location.origin;</script>
 <script src="assets/hub.js" defer></script>
 
-<!-- Register the service worker (enables offline play after first visit) -->
 <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', async () => {
       try {
-        const registration = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
-        registration.update().catch(() => {});
-      } catch (err) {
-        console.warn('SW registration failed:', err);
+        const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+        reg.update().catch(() => {});
+      } catch (e) {
+        console.warn('SW registration failed:', e);
       }
     });
   }
@@ -41,95 +659,134 @@
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">
-    <span class="logo">G</span> GameHub
+<!-- View 1: Profile Picker -->
+<section id="view-profiles" class="hidden">
+  <h1>Who's playing?</h1>
+  <p class="hub-subtitle">Pick your profile to start playing.</p>
+  <div id="profile-grid"></div>
+</section>
+
+<!-- View 2: First Run (no profiles exist) -->
+<section id="view-empty" class="hidden">
+  <div class="card">
+    <h1>Welcome to GameHub</h1>
+    <p style="color:var(--hub-muted);margin:8px 0 24px;">Let's create a profile for your first kid. You can add more anytime.</p>
+    <div class="form-row" style="text-align:left;">
+      <label for="first-name">Kid's name</label>
+      <input class="input" id="first-name" placeholder="e.g. Ada" maxlength="24" />
+    </div>
+    <div class="form-row" style="text-align:left;">
+      <label for="first-age">Age group</label>
+      <select id="first-age">
+        <option value="toddler">Toddler (2–4)</option>
+        <option value="early-elem">Early Elementary (5–7)</option>
+        <option value="adult" selected>Adult (18+)</option>
+      </select>
+    </div>
+    <button class="btn btn-big" id="first-create">Create profile</button>
   </div>
-  <nav>
-    <a href="#" id="nav-switch" class="hidden">Switch kid</a>
-    <a href="parent.html">Parent</a>
-  </nav>
-</header>
+</section>
 
-<main class="container">
-  <div id="sync-banner" class="muted" style="margin-bottom:10px;"></div>
+<!-- View 3: Game Dashboard (3-column) -->
+<section id="view-games" class="hidden">
 
-  <!-- View 1: Profile Picker -->
-  <section id="view-profiles" class="hidden">
-    <h1>Who's playing?</h1>
-    <p class="muted">Pick a profile to see the games available.</p>
-    <div id="profile-grid" class="profile-grid"></div>
-  </section>
+  <!-- Left Rail: profile switcher -->
+  <aside class="left-rail">
+    <a class="rail-logo" href="parent.html" title="GameHub">G</a>
+    <div class="rail-divider"></div>
+    <div id="rail-profiles"></div>
+    <div class="rail-add" id="rail-add-btn" title="Add a kid">+</div>
+    <div class="rail-spacer"></div>
+    <div class="rail-label">KID</div>
+  </aside>
 
-  <!-- View 2: First Run -->
-  <section id="view-empty" class="hidden">
-    <div class="card" style="max-width:520px;margin:40px auto;text-align:center;">
-      <h1>Welcome to GameHub</h1>
-      <p>Let's create a profile for your first kid. You can add more anytime.</p>
-      <div class="form-row" style="text-align:left;">
-        <label for="first-name">Kid's name</label>
-        <input class="input" id="first-name" placeholder="e.g. Ada" maxlength="24" />
+  <!-- Main -->
+  <main class="dashboard-main">
+
+    <!-- Top bar -->
+    <div class="dash-topbar">
+      <div class="dash-search">
+        <span style="font-size:15px;opacity:0.7">⌕</span>
+        <span>Find a game…</span>
       </div>
-      <div class="form-row" style="text-align:left;">
-        <label for="first-age">Age group</label>
-        <select id="first-age">
-          <option value="toddler">Toddler (2–4)</option>
-          <option value="early-elem">Early Elementary (5–7)</option>
-          <option value="adult" selected>Adult (18+)</option>
-        </select>
+      <div class="dash-status">
+        <span class="dash-status-dot"></span>
+        Online
       </div>
-      <button class="btn btn-big" id="first-create">Create profile</button>
+      <button class="dash-switch-btn hidden" id="nav-switch">Switch kid</button>
+      <a href="parent.html" class="dash-parent-link">Parent ↗</a>
     </div>
-  </section>
 
-  <!-- View 3: Game Grid -->
-  <section id="view-games" class="hidden">
-    <div class="row" style="margin-bottom:18px;">
-      <div>
-        <h1 id="hello-title">Hi!</h1>
-        <p class="muted" id="hello-sub">Pick a game to play.</p>
+    <!-- Hero Banner -->
+    <section class="hero-banner" id="hero-banner">
+      <div class="hero-left">
+        <div class="hero-avatar" id="hero-avatar"></div>
+        <div>
+          <div class="hero-eyebrow">HELLO AGAIN</div>
+          <div class="hero-name" id="hero-name">Hey!</div>
+          <div class="hero-sub" id="hero-sub"></div>
+        </div>
       </div>
-      <div class="spacer"></div>
+      <div class="hero-right">
+        <div class="hero-stats" id="hero-stats"></div>
+        <a class="hero-cta hidden" id="hero-cta" href="#">
+          <span class="hero-cta-play">▶</span>
+          <span id="hero-cta-label">Continue playing</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- Games header + filter tabs -->
+    <div class="games-header">
+      <h2 class="games-title">Your games</h2>
+      <div class="games-tabs" id="games-tabs"></div>
+      <span class="games-count" id="games-count"></span>
     </div>
-    <div id="game-grid" class="game-grid"></div>
-    <p id="no-games" class="muted center hidden" style="margin-top:32px;">
+
+    <!-- Game grid -->
+    <div id="game-grid"></div>
+    <p id="no-games" class="hidden">
       No games are enabled for this profile yet. Ask a grown-up to enable some in the
       <a href="parent.html">Parent</a> area.
     </p>
-  </section>
 
-</main>
+  </main>
+
+  <!-- Right Rail: family, badges, recently played -->
+  <aside class="right-rail" id="right-rail">
+    <div id="rail-family"></div>
+    <div id="rail-badges"></div>
+    <div id="rail-recent"></div>
+  </aside>
+
+</section>
 
 <div id="toast" class="toast"></div>
 
 <script>
-  // Wait for Hub to be ready (deferred script).
+  const $ = id => document.getElementById(id);
+
   window.addEventListener('DOMContentLoaded', async () => {
     await Hub.whenReady();
     init();
   });
 
-
-
   function init() {
-    renderSyncBanner();
-    Hub.onSyncStatus(renderSyncBanner);
     const profiles = Hub.getProfiles();
     if (profiles.length === 0) { show('view-empty'); bindFirstRun(); return; }
     const active = Hub.getActiveProfile();
     if (!active) { renderProfiles(); show('view-profiles'); return; }
-    renderGames(active);
+    renderDashboard(active);
     show('view-games');
-    $('nav-switch').classList.remove('hidden');
-    $('nav-switch').onclick = (e) => {
-      e.preventDefault();
-      Hub.setActiveProfile(null);
-      renderProfiles();
-      show('view-profiles');
-      $('nav-switch').classList.add('hidden');
-    };
   }
 
+  function show(id) {
+    ['view-profiles', 'view-empty', 'view-games'].forEach(v => {
+      $(v).classList.toggle('hidden', v !== id);
+    });
+  }
+
+  // ── First run ──────────────────────────────────────────────────
   function bindFirstRun() {
     $('first-create').onclick = () => {
       const name = $('first-name').value.trim() || 'Kid';
@@ -138,11 +795,12 @@
       Hub.setActiveProfile(p.id);
       init();
     };
-    $('first-name').addEventListener('keydown', (e) => {
+    $('first-name').addEventListener('keydown', e => {
       if (e.key === 'Enter') $('first-create').click();
     });
   }
 
+  // ── Profile picker ─────────────────────────────────────────────
   function renderProfiles() {
     const grid = $('profile-grid');
     grid.innerHTML = '';
@@ -151,69 +809,285 @@
       card.className = 'profile-card';
       card.innerHTML = `
         <div class="profile-avatar" style="background:${p.color}">${initials(p.name)}</div>
-        <div class="profile-name">${escapeHtml(p.name)}</div>
+        <div class="profile-name">${esc(p.name)}</div>
         <div class="profile-age">${ageLabel(p.ageGroup)}</div>
       `;
-      card.onclick = () => {
-        Hub.setActiveProfile(p.id);
-        init();
-      };
+      card.onclick = () => { Hub.setActiveProfile(p.id); init(); };
       grid.appendChild(card);
     });
-    // add card
     const add = document.createElement('div');
     add.className = 'profile-card add';
-    add.innerHTML = '+ Add a kid';
+    add.textContent = '+ Add a kid';
     add.onclick = () => { window.location.href = 'parent.html#profiles'; };
     grid.appendChild(add);
   }
 
+  // ── Dashboard ──────────────────────────────────────────────────
+  function renderDashboard(profile) {
+    renderLeftRail(profile);
+    renderHero(profile);
+    renderGames(profile);
+    renderRightRail(profile);
+
+    const switchBtn = $('nav-switch');
+    switchBtn.classList.remove('hidden');
+    switchBtn.onclick = () => {
+      Hub.setActiveProfile(null);
+      renderProfiles();
+      show('view-profiles');
+    };
+    $('rail-add-btn').onclick = () => { window.location.href = 'parent.html#profiles'; };
+  }
+
+  // ── Left rail ──────────────────────────────────────────────────
+  function renderLeftRail(active) {
+    const container = $('rail-profiles');
+    container.innerHTML = '';
+    Hub.getProfiles().forEach(p => {
+      const isActive = p.id === active.id;
+      const size = isActive ? 42 : 36;
+      const fontSize = isActive ? 16 : 13;
+      const wrap = document.createElement('div');
+      wrap.className = 'rail-avatar' + (isActive ? ' active' : '');
+      wrap.title = p.name;
+      wrap.innerHTML = `
+        ${isActive ? '<div class="rail-active-bar"></div>' : ''}
+        <div class="rail-avatar-img" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:${p.color}">
+          ${initials(p.name)}
+        </div>
+      `;
+      if (!isActive) {
+        wrap.onclick = () => { Hub.setActiveProfile(p.id); init(); };
+      }
+      container.appendChild(wrap);
+    });
+  }
+
+  // ── Hero banner ────────────────────────────────────────────────
+  function renderHero(profile) {
+    const games = Hub.GAMES.filter(g => g.ageGroups.includes(profile.ageGroup));
+    const allProg = games.map(g => Hub.getProgress(profile.id, g.id));
+
+    const totalPlays = allProg.reduce((s, p) => s + (p.plays || 0), 0);
+    const totalMins  = Math.round(allProg.reduce((s, p) => s + (p.totalSeconds || 0), 0) / 60);
+    const totalStars = allProg.filter(p => (p.bestScore || 0) >= 60).length;
+
+    // Avatar + gradient
+    const av = $('hero-avatar');
+    av.textContent = initials(profile.name);
+    const grad2 = blendToward(profile.color, '#6c5ce7', 0.40);
+    $('hero-banner').style.background = `linear-gradient(135deg, ${profile.color} 0%, ${grad2} 100%)`;
+
+    $('hero-name').textContent = `Hey ${profile.name}!`;
+    $('hero-sub').innerHTML = totalPlays > 0
+      ? `You've played <b>${totalPlays} time${totalPlays !== 1 ? 's' : ''}</b>. Pick up where you left off, or try something new!`
+      : `Welcome! Pick a game below to start your adventure.`;
+
+    $('hero-stats').innerHTML = `
+      <div class="hero-stat">
+        <div class="hero-stat-label">PLAYS</div>
+        <div class="hero-stat-val">${totalPlays}</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">STARS</div>
+        <div class="hero-stat-val">${totalStars}★</div>
+      </div>
+      <div class="hero-stat-sep"></div>
+      <div class="hero-stat">
+        <div class="hero-stat-label">MINS</div>
+        <div class="hero-stat-val">${totalMins}</div>
+      </div>
+    `;
+
+    // Continue CTA: most recently played enabled game
+    const recent = games
+      .filter(g => Hub.isGameEnabled(profile.id, g.id))
+      .map(g => ({ g, prog: Hub.getProgress(profile.id, g.id) }))
+      .filter(x => x.prog.lastPlayed)
+      .sort((a, b) => b.prog.lastPlayed > a.prog.lastPlayed ? 1 : -1);
+
+    const cta = $('hero-cta');
+    if (recent.length > 0) {
+      cta.href = recent[0].g.path;
+      $('hero-cta-label').textContent = `Continue ${recent[0].g.title}`;
+      cta.classList.remove('hidden');
+    } else {
+      cta.classList.add('hidden');
+    }
+  }
+
+  // ── Game grid ──────────────────────────────────────────────────
   function renderGames(profile) {
-    $('hello-title').textContent = `Hi, ${profile.name}!`;
-    $('hello-sub').textContent = `Pick a game. ${ageLabel(profile.ageGroup)}.`;
-
-    const grid = $('game-grid');
-    grid.innerHTML = '';
-
-    const games = Hub.GAMES.filter(g =>
+    const enabled = Hub.GAMES.filter(g =>
       g.ageGroups.includes(profile.ageGroup) && Hub.isGameEnabled(profile.id, g.id)
     );
 
-    if (games.length === 0) { $('no-games').classList.remove('hidden'); return; }
-    $('no-games').classList.add('hidden');
+    const subjects = ['All', ...new Set(enabled.map(g => g.subject))];
+    const tabsEl = $('games-tabs');
+    tabsEl.innerHTML = '';
 
+    function drawGrid(subject) {
+      tabsEl.querySelectorAll('.games-tab').forEach(t =>
+        t.classList.toggle('active', t.dataset.subject === subject)
+      );
+      const filtered = subject === 'All' ? enabled : enabled.filter(g => g.subject === subject);
+      $('games-count').textContent = `${filtered.length} game${filtered.length !== 1 ? 's' : ''}`;
+      buildGrid(profile, filtered);
+    }
+
+    subjects.forEach((s, i) => {
+      const tab = document.createElement('span');
+      tab.className = 'games-tab' + (i === 0 ? ' active' : '');
+      tab.dataset.subject = s;
+      tab.textContent = s;
+      tab.onclick = () => drawGrid(s);
+      tabsEl.appendChild(tab);
+    });
+
+    drawGrid('All');
+    $('no-games').classList.toggle('hidden', enabled.length > 0);
+  }
+
+  function buildGrid(profile, games) {
+    const grid = $('game-grid');
+    grid.innerHTML = '';
     games.forEach(g => {
       const prog = Hub.getProgress(profile.id, g.id);
+      const stars = scoreToStars(prog.bestScore || 0);
       const a = document.createElement('a');
       a.className = 'game-card';
       a.href = g.path;
-      a.style.borderTopColor = g.accent;
       a.innerHTML = `
-        <div class="game-icon" style="background:${hexAlpha(g.accent, 0.15)};color:${g.accent}">${g.icon}</div>
-        <div class="game-title">${escapeHtml(g.title)}</div>
-        <div class="game-tag">${escapeHtml(g.tagline)}</div>
-        <div class="game-meta">
-          <span class="badge" style="background:${hexAlpha(g.accent,0.15)};color:${g.accent}">${escapeHtml(g.subject)}</span>
-          <span>${prog.bestScore ? '★ ' + prog.bestScore + '%' : 'New!'}</span>
+        <div class="game-card-art" style="background:linear-gradient(145deg,${hexA(g.accent,0.18)},${hexA(g.accent,0.32)});">
+          <span class="game-card-emoji">${g.icon}</span>
+          <span class="game-card-art-mono">${esc(g.title).slice(0,2).toUpperCase()}</span>
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-meta">
+            <span class="game-subject-tag" style="color:${g.accent}">${esc(g.subject).toUpperCase()}</span>
+            <div class="star-row">${renderStars(stars)}</div>
+          </div>
+          <div class="game-card-title">${esc(g.title)}</div>
+          <div class="game-card-tag">${esc(g.tagline)}</div>
         </div>
       `;
       grid.appendChild(a);
     });
   }
 
-  function renderSyncBanner() {
-    const meta = Hub.getRemoteSyncMeta();
-    $('sync-banner').innerHTML = `Permanent shared save active • endpoint: ${escapeHtml(Hub.getEndpointLabel())} • rev ${meta.revision || 0} • pull: ${meta.lastPullAt || 'never'} • push: ${meta.lastPushAt || 'never'}${meta.lastConflict ? ' • conflict detected' : ''}`;
+  // ── Right rail ─────────────────────────────────────────────────
+  function renderRightRail(profile) {
+    // Family
+    const others = Hub.getProfiles().filter(p => p.id !== profile.id);
+    const familyEl = $('rail-family');
+    if (others.length > 0) {
+      familyEl.innerHTML = `
+        <div class="rail-section-title">
+          Family
+          <span class="rail-section-count">· ${others.length}</span>
+        </div>
+        ${others.map(p => `
+          <div class="family-card" onclick="switchTo('${p.id}')">
+            <div class="family-avatar" style="background:${p.color}">${initials(p.name)}</div>
+            <div class="family-info">
+              <div class="family-name">${esc(p.name)}</div>
+              <div class="family-sub">${ageLabel(p.ageGroup)}</div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    } else {
+      familyEl.innerHTML = '';
+    }
+
+    // Badges: games where bestScore >= 60
+    const games = Hub.GAMES.filter(g => g.ageGroups.includes(profile.ageGroup));
+    const earned = games.filter(g => (Hub.getProgress(profile.id, g.id).bestScore || 0) >= 60);
+    const badgesEl = $('rail-badges');
+    if (earned.length > 0) {
+      badgesEl.innerHTML = `
+        <div class="rail-section-title">Badges</div>
+        <div class="badge-wrap">
+          ${earned.map(g => `
+            <div class="badge-chip">
+              <span class="badge-chip-icon">${g.icon}</span>
+              <span>${esc(g.title)}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else {
+      badgesEl.innerHTML = '';
+    }
+
+    // Recently played
+    const withPlay = games
+      .map(g => ({ g, prog: Hub.getProgress(profile.id, g.id) }))
+      .filter(x => x.prog.lastPlayed)
+      .sort((a, b) => b.prog.lastPlayed > a.prog.lastPlayed ? 1 : -1)
+      .slice(0, 5);
+
+    const recentEl = $('rail-recent');
+    if (withPlay.length > 0) {
+      recentEl.innerHTML = `
+        <div class="rail-section-title">Recently played</div>
+        ${withPlay.map(({ g, prog }) => `
+          <div class="recent-item">
+            <div class="recent-icon" style="background:${hexA(g.accent,0.15)}">${g.icon}</div>
+            <div class="recent-info">
+              <div class="recent-title">${esc(g.title)}</div>
+              <div class="recent-sub">${prog.plays} play${prog.plays !== 1 ? 's' : ''} · ${prog.bestScore ? prog.bestScore + '% best' : 'In progress'}</div>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    } else {
+      recentEl.innerHTML = '';
+    }
   }
 
-  // ---------- helpers ----------
-  function hexAlpha(hex, a) {
+  function switchTo(id) { Hub.setActiveProfile(id); init(); }
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function scoreToStars(score) {
+    if (score >= 90) return 5;
+    if (score >= 75) return 4;
+    if (score >= 60) return 3;
+    if (score >= 40) return 2;
+    if (score > 0)  return 1;
+    return 0;
+  }
+
+  function renderStars(count) {
+    return [1,2,3,4,5].map(i =>
+      `<span class="${i <= count ? 'star-filled' : 'star-empty'}">★</span>`
+    ).join('');
+  }
+
+  function hexA(hex, a) {
     const h = hex.replace('#','');
     const n = parseInt(h.length === 3 ? h.split('').map(c=>c+c).join('') : h, 16);
-    const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-    return `rgba(${r},${g},${b},${a})`;
+    return `rgba(${(n>>16)&255},${(n>>8)&255},${n&255},${a})`;
+  }
+
+  function blendToward(hexA, hexB, t) {
+    const parse = h => { const n=parseInt(h.replace('#',''),16); return [(n>>16)&255,(n>>8)&255,n&255]; };
+    const [r1,g1,b1] = parse(hexA), [r2,g2,b2] = parse(hexB);
+    return `rgb(${Math.round(r1*(1-t)+r2*t)},${Math.round(g1*(1-t)+g2*t)},${Math.round(b1*(1-t)+b2*t)})`;
+  }
+
+  function initials(name) {
+    return name.trim().split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  }
+
+  function ageLabel(g) {
+    return { toddler:'Toddler (2–4)', 'early-elem':'Early Elementary (5–7)', adult:'Adult (18+)' }[g] || g;
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 </script>
-
 </body>
 </html>
