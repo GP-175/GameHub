@@ -575,6 +575,9 @@ body {
   max-width: 840px;
 }
 .profile-card {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
   background: var(--hub-card) !important;
   border-radius: 24px !important;
   padding: 26px 16px !important;
@@ -583,6 +586,8 @@ body {
   border: 1px solid var(--hub-border) !important;
   box-shadow: var(--hub-shadow) !important;
   transition: transform 0.15s, box-shadow 0.15s !important;
+  font: inherit;
+  color: inherit;
 }
 .profile-card:hover { transform: translateY(-4px) !important; }
 .profile-card.add {
@@ -773,14 +778,14 @@ body {
 
   function init() {
     const profiles = Hub.getProfiles();
-    if (profiles.length === 0) { show('view-empty'); bindFirstRun(); return; }
+    if (profiles.length === 0) { switchView('view-empty'); bindFirstRun(); return; }
     const active = Hub.getActiveProfile();
-    if (!active) { renderProfiles(); show('view-profiles'); return; }
+    if (!active) { renderProfiles(); switchView('view-profiles'); return; }
     renderDashboard(active);
-    show('view-games');
+    switchView('view-games');
   }
 
-  function show(id) {
+  function switchView(id) {
     ['view-profiles', 'view-empty', 'view-games'].forEach(v => {
       $(v).classList.toggle('hidden', v !== id);
     });
@@ -805,21 +810,36 @@ body {
     const grid = $('profile-grid');
     grid.innerHTML = '';
     Hub.getProfiles().forEach(p => {
-      const card = document.createElement('div');
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = 'profile-card';
+      card.dataset.profileId = p.id;
       card.innerHTML = `
         <div class="profile-avatar" style="background:${p.color}">${initials(p.name)}</div>
         <div class="profile-name">${esc(p.name)}</div>
         <div class="profile-age">${ageLabel(p.ageGroup)}</div>
       `;
-      card.onclick = () => { Hub.setActiveProfile(p.id); init(); };
       grid.appendChild(card);
     });
-    const add = document.createElement('div');
+    const add = document.createElement('button');
+    add.type = 'button';
     add.className = 'profile-card add';
+    add.dataset.action = 'add-profile';
     add.textContent = '+ Add a kid';
-    add.onclick = () => { window.location.href = 'parent.html#profiles'; };
     grid.appendChild(add);
+
+    grid.onclick = (event) => {
+      const card = event.target.closest('.profile-card');
+      if (!card || !grid.contains(card)) return;
+      if (card.dataset.action === 'add-profile') {
+        window.location.href = 'parent.html#profiles';
+        return;
+      }
+      if (card.dataset.profileId) {
+        Hub.setActiveProfile(card.dataset.profileId);
+        init();
+      }
+    };
   }
 
   // ── Dashboard ──────────────────────────────────────────────────
@@ -834,7 +854,7 @@ body {
     switchBtn.onclick = () => {
       Hub.setActiveProfile(null);
       renderProfiles();
-      show('view-profiles');
+      switchView('view-profiles');
     };
     $('rail-add-btn').onclick = () => { window.location.href = 'parent.html#profiles'; };
   }
