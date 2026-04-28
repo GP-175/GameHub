@@ -42,6 +42,7 @@ If you omit the branch name, the script uses the current local branch.
    - `npm test`
 5. deploys with:
    - `vercel deploy --yes`
+6. inspects the deployment and prints any stable Vercel alias URLs attached to it
 
 ## Important caveats
 
@@ -75,6 +76,7 @@ These must already exist:
   - `~/.openclaw/workspace/tmp/gamehub-preview-<branch>`
 - rerunning the script for the same branch replaces the old worktree automatically
 - Vercel will create a fresh Preview deployment URL each time
+- this project also has a stable Vercel alias for its active preview/staging target; the script now prints that alias after deploy so you test the right URL instead of the one-off deployment URL
 
 ## Optional future upgrade
 
