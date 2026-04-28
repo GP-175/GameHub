@@ -140,6 +140,16 @@
       path: 'https://gp-hoot.gplange.tech/gp-hoot',
       accent: '#16213e',
     },
+    {
+      id: 'cube-crash',
+      title: 'Jaxx Runner',
+      subject: 'Arcade',
+      icon: '🚀',
+      tagline: 'Run, blast blocks, solve math to revive',
+      ageGroups: ['toddler', 'early-elem', 'adult'],
+      path: 'games/cube-crash.html',
+      accent: '#40e8ff',
+    },
   ];
 
   const AGE_GROUPS = {
