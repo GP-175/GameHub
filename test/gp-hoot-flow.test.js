@@ -332,8 +332,9 @@ test('host controls and answer rejection paths work', async (t) => {
   assert.equal((await ack(p1, 'player:submit_answer', { optionIndex: 0 })).ok, false);
   assert.equal((await ack(p2, 'player:submit_answer', { optionIndex: 99 })).ok, false);
 
+  const kickedResultsPromise = waitForState(host, (state) => state.room.phase === 'results');
   assert.equal((await ack(host, 'host:kick_player', { playerId: benId })).ok, true);
-  const kickedResults = await waitForState(host, (state) => state.room.phase === 'results');
+  const kickedResults = await kickedResultsPromise;
   assert.equal(kickedResults.players.length, 1);
   assert.equal(kickedResults.results.reason, 'all_answered');
 

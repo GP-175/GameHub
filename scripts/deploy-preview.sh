@@ -39,7 +39,23 @@ echo "==> Running tests"
 )
 
 echo "==> Deploying preview"
-(
+deploy_output="$(
   cd "$PREVIEW_ROOT"
-  vercel deploy --yes
-)
+  vercel deploy --yes 2>&1
+)"
+printf '%s\n' "$deploy_output"
+
+deployment_url="$(printf '%s\n' "$deploy_output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | head -n 1 || true)"
+
+if [[ -n "$deployment_url" ]]; then
+  inspect_output="$(vercel inspect "${deployment_url#https://}" 2>&1 || true)"
+  mapfile -t alias_urls < <(printf '%s\n' "$inspect_output" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | grep -v "${deployment_url#https://}" | awk '!seen[$0]++')
+
+  if (( ${#alias_urls[@]} > 0 )); then
+    echo
+    echo "==> Stable preview / staging target(s)"
+    for alias_url in "${alias_urls[@]}"; do
+      echo "$alias_url"
+    done
+  fi
+fi
