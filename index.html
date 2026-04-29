@@ -23,6 +23,14 @@
 
 <link rel="stylesheet" href="assets/styles.css" />
 
+<script>
+  // Pre-paint theme to avoid flash. Default for kids: light.
+  (function(){
+    var t = localStorage.getItem('gamehub.theme');
+    document.documentElement.setAttribute('data-theme', t || 'light');
+  })();
+</script>
+
 <style>
 /* ── Kid Dashboard V1 · Bright Punchy ─────────────────────────── */
 :root {
@@ -35,6 +43,32 @@
   --hub-shadow: 0 1px 0 oklch(0.96 0.005 80), 0 4px 16px rgba(20,15,40,0.06);
   --hub-radius: 22px;
 }
+
+/* ── DARK THEME (mirrors parent's dark scheme) ── */
+[data-theme="dark"] {
+  --hub-bg:     #0d1117;
+  --hub-rail:   #0f1319;
+  --hub-ink:    #e6edf3;
+  --hub-muted:  #8b949e;
+  --hub-card:   #161b22;
+  --hub-border: #21262d;
+  --hub-shadow: 0 1px 0 rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.5);
+}
+[data-theme="dark"] body {
+  background: #0d1117 !important;
+  color: var(--hub-ink);
+}
+/* Variables that use --hub-ink as a background element need an accent in dark mode */
+[data-theme="dark"] .rail-logo,
+[data-theme="dark"] .dash-switch-btn,
+[data-theme="dark"] .rail-active-bar { background: #7c3aed; color: #fff; }
+[data-theme="dark"] .rail-add { border-color: #2d333b; }
+[data-theme="dark"] .rail-add:hover { border-color: #7c3aed; color: #7c3aed; }
+[data-theme="dark"] .dash-parent-link:hover { background: #1f2937; }
+[data-theme="dark"] .hero-cta { background: #7c3aed; color: #fff; }
+[data-theme="dark"] .hero-cta:hover { color: #fff; }
+/* Section card hover/border tweaks for dark */
+[data-theme="dark"] .game-card { background: var(--hub-card); border-color: var(--hub-border); }
 
 /* Override global body styles for this page only */
 body {
@@ -220,6 +254,18 @@ body {
   transition: background 0.15s;
 }
 .dash-parent-link:hover { background: var(--hub-border); text-decoration: none; }
+
+.dash-theme-toggle {
+  width: 38px; height: 38px;
+  border-radius: 999px;
+  background: var(--hub-card);
+  border: 1px solid var(--hub-border);
+  cursor: pointer;
+  display: grid; place-items: center;
+  color: var(--hub-ink);
+  transition: background 0.15s, border-color 0.15s;
+}
+.dash-theme-toggle:hover { background: var(--hub-border); }
 
 /* ── HERO BANNER ──────────────────────────────────────────────── */
 .hero-banner {
@@ -719,6 +765,10 @@ body {
         Online
       </div>
       <button class="dash-switch-btn hidden" id="nav-switch">Switch kid</button>
+      <button class="dash-theme-toggle" id="theme-toggle" title="Toggle theme" aria-label="Toggle theme">
+        <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
       <a href="parent.html" class="dash-parent-link">Parent ↗</a>
     </div>
 
@@ -771,9 +821,28 @@ body {
 <script>
   const $ = id => document.getElementById(id);
 
+  function applyThemeIcons() {
+    const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    const moon = $('icon-moon'); const sun = $('icon-sun');
+    if (moon && sun) {
+      moon.style.display = dark ? 'none' : 'block';
+      sun.style.display  = dark ? 'block' : 'none';
+    }
+  }
+  function toggleTheme() {
+    const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+    const next = cur === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gamehub.theme', next);
+    applyThemeIcons();
+  }
+
   window.addEventListener('DOMContentLoaded', async () => {
     await Hub.whenReady();
     init();
+    applyThemeIcons();
+    const tt = $('theme-toggle');
+    if (tt) tt.addEventListener('click', toggleTheme);
   });
 
   function init() {

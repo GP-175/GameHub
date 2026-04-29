@@ -6,9 +6,8 @@
 <meta name="description" content="Parent dashboard for GameHub. Manage kids' profiles and track educational progress." />
 <title>Parent Dashboard – GameHub</title>
 
-<!-- PWA + iOS home-screen -->
 <link rel="manifest" href="manifest.webmanifest" />
-<meta name="theme-color" content="#6c5ce7" />
+<meta name="theme-color" content="#0d1117" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -18,391 +17,1868 @@
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/styles.css" />
 <script>window.GAMEHUB_API_BASE = window.location.origin;</script>
+<script>
+  // Pre-paint theme to avoid flash. Default: dark for parent, light for kids.
+  (function(){
+    var t = localStorage.getItem('gamehub.theme');
+    document.documentElement.setAttribute('data-theme', t || 'dark');
+  })();
+</script>
 <script src="assets/hub.js" defer></script>
+
 <style>
-  .panel { margin-bottom: 28px; }
-  .panel h2 { margin-bottom: 14px; }
-  .profile-row {
-    display: flex; align-items: center; gap: 14px;
-    background: white; border-radius: 16px; padding: 14px;
-    box-shadow: var(--shadow);
-    margin-bottom: 10px;
-  }
-  .profile-row .avatar {
-    width: 44px; height: 44px; border-radius: 50%;
-    color: white; font-weight: 800; display: grid; place-items: center;
-  }
-  .games-toggles { display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); margin-top: 8px; }
-  .toggle-row {
-    display: flex; align-items: center; gap: 10px;
-    padding: 8px 12px; background: var(--accent-soft); border-radius: 12px;
-  }
-  .toggle-row input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); }
-  .toggle-row .ic { font-size: 1.3rem; }
-  .toggle-row label { font-weight: 700; cursor: pointer; }
-  .pin-input { letter-spacing: .5em; text-align: center; font-size: 1.4rem; }
+/* ── Reset for parent dashboard ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #0d1117;
+  color: #e6edf3;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ── Variables ── */
+:root {
+  --bg:        #0d1117;
+  --bg-card:   #161b22;
+  --bg-sidebar:#0f1319;
+  --bg-hover:  #1f2937;
+  --border:    rgba(255,255,255,0.06);
+  --border-solid: #21262d;
+  --text:      #e6edf3;
+  --text-muted:#8b949e;
+  --text-dim:  #58626e;
+  --accent:    #7c3aed;
+  --accent-dim:rgba(124,58,237,0.15);
+  --accent-glow:rgba(124,58,237,0.3);
+  --green:     #22c55e;
+  --orange:    #f59e0b;
+  --red:       #ef4444;
+  --blue:      #3b82f6;
+  --teal:      #06b6d4;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.6);
+}
+
+/* ── LIGHT THEME (mirrors kids' light scheme) ── */
+[data-theme="light"] {
+  --bg:           #faf7ff;
+  --bg-card:      #ffffff;
+  --bg-sidebar:   #f4eef9;
+  --bg-hover:     #ece8ff;
+  --border:       rgba(31,39,64,0.06);
+  --border-solid: #e6e1f3;
+  --text:         #1f2740;
+  --text-muted:   #5b6584;
+  --text-dim:     #8a93a8;
+  --accent-dim:   rgba(124,58,237,0.10);
+  --shadow-sm: 0 1px 3px rgba(31,39,64,0.05);
+  --shadow-md: 0 4px 16px rgba(31,39,64,0.08);
+  --shadow-lg: 0 8px 32px rgba(31,39,64,0.10);
+}
+[data-theme="light"] body {
+  background: var(--bg);
+  color: var(--text);
+}
+[data-theme="light"] #view-lock {
+  background: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.18) 0%, transparent 60%), var(--bg);
+}
+[data-theme="light"] .pin-key { background: white; }
+[data-theme="light"] .toggle-track { background: #d6cffa; }
+[data-theme="light"] .toast { background: #1f2740; color: white; border-color: transparent; }
+/* Heatmap palette for light mode */
+[data-theme="light"] .hm-0 { background: #efeafa; }
+[data-theme="light"] .hm-1 { background: #d6cffa; }
+[data-theme="light"] .hm-2 { background: #a78bfa; }
+[data-theme="light"] .hm-3 { background: #8b5cf6; }
+[data-theme="light"] .hm-4 { background: #6d28d9; }
+/* Color swatch selected ring stays visible on light cards */
+[data-theme="light"] .color-swatch.selected {
+  box-shadow: 0 0 0 2px var(--accent), inset 0 0 0 2px rgba(255,255,255,0.6);
+}
+[data-theme="light"] .games-table tr:hover td { background: rgba(124,58,237,0.04); }
+[data-theme="light"] .content-area::-webkit-scrollbar-thumb { background: #d6cffa; }
+[data-theme="light"] .sidebar-kids::-webkit-scrollbar-thumb { background: #d6cffa; }
+
+/* ══════════════════ LOCK SCREEN ══════════════════ */
+#view-lock {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at 50% 0%, rgba(124,58,237,0.2) 0%, transparent 60%), #0d1117;
+}
+#view-lock.hidden { display: none !important; }
+
+.lock-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 24px;
+  padding: 48px 40px;
+  width: 100%; max-width: 400px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+}
+.lock-logo {
+  width: 60px; height: 60px; border-radius: 18px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  display: grid; place-items: center;
+  font-size: 1.8rem; font-weight: 900; color: white;
+  margin: 0 auto 20px;
+  box-shadow: 0 0 24px rgba(124,58,237,0.4);
+}
+.lock-title { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+.lock-sub { color: var(--text-muted); font-size: .9rem; margin-bottom: 28px; }
+.pin-dots {
+  display: flex; gap: 12px; justify-content: center; margin-bottom: 20px;
+}
+.pin-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border-solid);
+  background: transparent;
+  transition: all .15s ease;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 8px var(--accent-glow); }
+.pin-pad {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
+}
+.pin-key {
+  background: var(--bg-hover); border: 1px solid var(--border-solid);
+  border-radius: 14px; padding: 18px; font-size: 1.2rem; font-weight: 600; color: var(--text);
+  cursor: pointer; transition: all .1s ease;
+  user-select: none;
+}
+.pin-key:active, .pin-key:hover { background: rgba(124,58,237,0.2); border-color: var(--accent); }
+.pin-key.wide { grid-column: span 2; }
+.pin-key.action { color: var(--text-muted); font-size: .9rem; }
+.pin-key.backspace { font-size: 1.4rem; }
+.pin-err-msg { color: var(--red); font-size: .85rem; min-height: 1.2em; margin-top: -8px; }
+.lock-back { display: block; margin-top: 16px; color: var(--text-muted); font-size: .85rem; cursor: pointer; }
+.lock-back:hover { color: var(--text); }
+
+/* ══════════════════ DASHBOARD LAYOUT ══════════════════ */
+#view-dash {
+  display: flex; height: 100vh; overflow: hidden;
+}
+#view-dash.hidden { display: none !important; }
+
+/* ── Sidebar ── */
+.sidebar {
+  width: 260px; min-width: 260px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border-solid);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border-solid);
+}
+.brand-logo {
+  width: 36px; height: 36px; border-radius: 10px;
+  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  display: grid; place-items: center;
+  font-size: 1.1rem; font-weight: 900; color: white;
+  flex-shrink: 0;
+}
+.brand-name { font-weight: 700; font-size: 1rem; }
+.brand-role {
+  margin-left: auto; font-size: .7rem; font-weight: 600;
+  padding: 2px 8px; border-radius: 99px;
+  background: var(--accent-dim); color: var(--accent);
+  letter-spacing: .05em; text-transform: uppercase;
+}
+
+.sidebar-section-label {
+  font-size: .68rem; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--text-dim);
+  padding: 16px 16px 6px;
+}
+.sidebar-kids { flex: 1; overflow-y: auto; padding-bottom: 8px; }
+.sidebar-kid {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; margin: 2px 8px; border-radius: 10px;
+  cursor: pointer; transition: background .12s ease;
+  position: relative;
+}
+.sidebar-kid:hover { background: var(--bg-hover); }
+.sidebar-kid.active { background: var(--accent-dim); }
+.sidebar-kid.active .kid-name { color: var(--text); }
+.kid-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: .75rem; font-weight: 800; color: white;
+  flex-shrink: 0;
+}
+.kid-info { flex: 1; min-width: 0; }
+.kid-name { font-size: .9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kid-meta { font-size: .75rem; color: var(--text-muted); }
+.kid-streak {
+  font-size: .7rem; font-weight: 700;
+  padding: 2px 6px; border-radius: 99px;
+  background: rgba(251,146,60,0.15); color: #fb923c;
+}
+
+.sidebar-add-kid {
+  margin: 4px 8px 8px; padding: 10px 12px;
+  border-radius: 10px; border: 1px dashed var(--border-solid);
+  color: var(--text-muted); font-size: .85rem; font-weight: 600;
+  cursor: pointer; text-align: center;
+  transition: all .12s ease;
+}
+.sidebar-add-kid:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+.sidebar-filters {
+  border-top: 1px solid var(--border-solid);
+  padding: 12px 8px;
+}
+.filter-btn {
+  display: block; width: 100%; text-align: left;
+  padding: 8px 12px; border-radius: 8px;
+  font-size: .82rem; font-weight: 500; color: var(--text-muted);
+  cursor: pointer; transition: all .1s ease;
+  background: none; border: none; font-family: inherit;
+}
+.filter-btn:hover { background: var(--bg-hover); color: var(--text); }
+.filter-btn.active { color: var(--text); font-weight: 600; }
+
+/* ── Main area ── */
+.main-area {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Top nav ── */
+.dash-topbar {
+  display: flex; align-items: center; gap: 0;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border-solid);
+  background: var(--bg-sidebar);
+  height: 52px; flex-shrink: 0;
+}
+.dash-topbar .search-box {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--bg-hover); border: 1px solid var(--border-solid);
+  border-radius: 8px; padding: 6px 12px;
+  font-size: .82rem; color: var(--text-muted);
+  cursor: pointer; margin-right: auto;
+}
+.dash-topbar .search-box svg { opacity: .5; flex-shrink: 0; }
+.dash-topbar .topbar-btn {
+  width: 32px; height: 32px; border-radius: 8px;
+  display: grid; place-items: center;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); margin-left: 8px;
+  transition: all .1s ease;
+}
+.dash-topbar .topbar-btn:hover { background: var(--bg-hover); color: var(--text); }
+
+/* Tab nav */
+.tab-nav {
+  display: flex; align-items: center; gap: 2px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border-solid);
+  background: var(--bg-sidebar);
+  flex-shrink: 0;
+}
+.tab-btn {
+  padding: 6px 14px; border-radius: 8px; border: none;
+  font-family: inherit; font-size: .85rem; font-weight: 500;
+  color: var(--text-muted); background: none; cursor: pointer;
+  transition: all .12s ease;
+}
+.tab-btn:hover { color: var(--text); background: var(--bg-hover); }
+.tab-btn.active {
+  color: var(--text); background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+}
+
+/* ── Content area ── */
+.content-area {
+  flex: 1; overflow-y: auto; padding: 24px;
+}
+.content-area::-webkit-scrollbar { width: 6px; }
+.content-area::-webkit-scrollbar-track { background: transparent; }
+.content-area::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 3px; }
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ══════════════════ PROGRESS TAB ══════════════════ */
+
+/* Kid header */
+.kid-header {
+  display: flex; align-items: flex-start; gap: 16px; margin-bottom: 24px;
+}
+.kid-header-avatar {
+  width: 56px; height: 56px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1.2rem; font-weight: 800; color: white;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.1);
+}
+.kid-header-info { flex: 1; }
+.kid-header-label { font-size: .75rem; color: var(--text-muted); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 2px; }
+.kid-header-name { font-size: 1.6rem; font-weight: 800; }
+.kid-header-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+
+.btn-dark {
+  padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-solid);
+  background: var(--bg-card); color: var(--text); font-family: inherit;
+  font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: all .1s ease;
+}
+.btn-dark:hover { border-color: var(--accent); color: var(--accent); }
+.btn-accent {
+  padding: 8px 16px; border-radius: 8px; border: none;
+  background: var(--accent); color: white; font-family: inherit;
+  font-size: .82rem; font-weight: 600; cursor: pointer;
+  transition: filter .1s ease;
+}
+.btn-accent:hover { filter: brightness(1.1); }
+
+/* Stat cards */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-label {
+  font-size: .68rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-dim); margin-bottom: 6px;
+}
+.stat-value {
+  font-size: 1.7rem; font-weight: 800; line-height: 1;
+  margin-bottom: 4px;
+}
+.stat-sub { font-size: .72rem; color: var(--text-muted); }
+.stat-card.best-subject .stat-value { color: var(--green); }
+.stat-card.needs-work .stat-value { color: var(--red); }
+.stat-card .stat-accent-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px;
+}
+
+/* Two-column layout */
+.two-col { display: grid; grid-template-columns: 1fr 340px; gap: 16px; }
+
+/* Heatmap */
+.panel-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 14px;
+  padding: 20px;
+}
+.panel-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.panel-title { font-size: .95rem; font-weight: 700; }
+.panel-legend {
+  display: flex; align-items: center; gap: 6px;
+  font-size: .72rem; color: var(--text-muted);
+}
+.legend-squares { display: flex; gap: 3px; }
+.legend-sq {
+  width: 11px; height: 11px; border-radius: 3px;
+}
+
+.heatmap-wrap { overflow: hidden; }
+.heatmap-days-label {
+  display: flex; gap: 3px;
+  padding-left: 32px; margin-bottom: 4px;
+}
+.heatmap-day-lbl {
+  font-size: .65rem; color: var(--text-dim);
+  flex: 1; text-align: center; font-weight: 500;
+}
+.heatmap-grid {
+  display: flex; gap: 3px; align-items: flex-start;
+}
+.heatmap-week-labels {
+  display: flex; flex-direction: column; gap: 3px;
+  flex-shrink: 0; width: 28px;
+}
+.heatmap-wk-lbl {
+  font-size: .62rem; color: var(--text-dim); height: 11px;
+  display: flex; align-items: center; font-weight: 500;
+}
+.heatmap-weeks {
+  display: flex; gap: 3px; flex: 1;
+}
+.heatmap-week {
+  display: flex; flex-direction: column; gap: 3px; flex: 1;
+}
+.heatmap-cell {
+  border-radius: 3px; height: 11px;
+  transition: transform .1s ease;
+  cursor: default;
+}
+.heatmap-cell:hover { transform: scale(1.3); }
+.hm-0 { background: #1f2937; }
+.hm-1 { background: #3730a3; }
+.hm-2 { background: #4f46e5; }
+.hm-3 { background: #6d28d9; }
+.hm-4 { background: #7c3aed; }
+
+/* Recent attempts */
+.attempt-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.attempt-row:last-child { border-bottom: none; }
+.attempt-icon {
+  width: 34px; height: 34px; border-radius: 10px;
+  display: grid; place-items: center; font-size: 1.1rem;
+  flex-shrink: 0;
+}
+.attempt-info { flex: 1; }
+.attempt-game { font-size: .87rem; font-weight: 600; }
+.attempt-when { font-size: .72rem; color: var(--text-muted); }
+.attempt-score {
+  font-size: .9rem; font-weight: 700;
+}
+.score-green { color: var(--green); }
+.score-orange { color: var(--orange); }
+.score-red { color: var(--red); }
+
+.view-all-link {
+  display: block; text-align: right; font-size: .78rem;
+  color: var(--text-muted); margin-top: 12px; cursor: pointer;
+  text-decoration: none;
+}
+.view-all-link:hover { color: var(--accent); }
+
+/* Games table */
+.games-table-wrap { margin-top: 16px; }
+.games-table-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+}
+.games-table-title { font-size: .95rem; font-weight: 700; }
+.games-filter-tabs {
+  display: flex; gap: 4px; margin-left: auto;
+}
+.gf-tab {
+  padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-solid);
+  font-family: inherit; font-size: .75rem; font-weight: 600;
+  color: var(--text-muted); background: none; cursor: pointer;
+  transition: all .1s ease;
+}
+.gf-tab.active { background: var(--bg-hover); color: var(--text); border-color: transparent; }
+
+.games-table {
+  width: 100%; border-collapse: collapse;
+}
+.games-table th {
+  font-size: .7rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-dim);
+  padding: 8px 10px; text-align: left;
+  border-bottom: 1px solid var(--border-solid);
+}
+.games-table td {
+  padding: 12px 10px; border-bottom: 1px solid var(--border);
+  font-size: .87rem; vertical-align: middle;
+}
+.games-table tr:last-child td { border-bottom: none; }
+.games-table tr:hover td { background: rgba(255,255,255,0.02); }
+.game-row-icon {
+  width: 30px; height: 30px; border-radius: 8px;
+  display: grid; place-items: center; font-size: .9rem;
+}
+.game-row-name { font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.game-row-subject { color: var(--text-muted); }
+
+/* iOS-style toggle */
+.toggle-switch {
+  position: relative; width: 38px; height: 22px;
+  cursor: pointer; flex-shrink: 0;
+}
+.toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-track {
+  position: absolute; inset: 0;
+  background: var(--bg-hover);
+  border-radius: 11px;
+  transition: background .2s ease;
+  border: 1px solid var(--border-solid);
+}
+.toggle-switch input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white; transition: transform .2s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+}
+.toggle-switch input:checked ~ .toggle-thumb { transform: translateX(16px); }
+
+/* ══════════════════ KIDS TAB ══════════════════ */
+.kids-grid { display: grid; gap: 14px; }
+.kid-edit-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 14px;
+  padding: 20px;
+}
+.kid-edit-header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+.kid-edit-avatar {
+  width: 48px; height: 48px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 1rem; font-weight: 800; color: white;
+}
+.kid-edit-title { font-weight: 700; font-size: 1rem; }
+.kid-edit-sub { font-size: .8rem; color: var(--text-muted); }
+.kid-edit-fields {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+  margin-bottom: 16px;
+}
+.field-label {
+  font-size: .75rem; font-weight: 600; color: var(--text-muted);
+  margin-bottom: 6px; display: block;
+}
+.dark-input, .dark-select {
+  width: 100%; background: var(--bg-hover);
+  border: 1px solid var(--border-solid); border-radius: 8px;
+  padding: 8px 10px; color: var(--text); font-family: inherit; font-size: .87rem;
+  transition: border-color .1s ease;
+}
+.dark-input:focus, .dark-select:focus {
+  outline: none; border-color: var(--accent);
+}
+.dark-select option { background: #1f2937; }
+.games-toggles-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; margin-top: 12px; }
+.game-toggle-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-hover); border-radius: 8px;
+  border: 1px solid var(--border-solid);
+}
+.game-toggle-pill-label { font-size: .82rem; font-weight: 500; flex: 1; }
+.btn-remove {
+  padding: 6px 14px; border-radius: 8px; border: 1px solid rgba(239,68,68,0.3);
+  background: rgba(239,68,68,0.08); color: var(--red); font-family: inherit;
+  font-size: .78rem; font-weight: 600; cursor: pointer;
+  transition: all .1s ease; margin-left: auto;
+}
+.btn-remove:hover { background: rgba(239,68,68,0.2); border-color: var(--red); }
+
+.add-kid-card {
+  background: var(--bg-card);
+  border: 1px dashed var(--border-solid);
+  border-radius: 14px;
+  padding: 24px;
+}
+.add-kid-title { font-size: .95rem; font-weight: 700; margin-bottom: 16px; }
+.add-kid-fields { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.btn-add-kid {
+  padding: 9px 16px; border-radius: 8px; border: none;
+  background: var(--accent); color: white; font-family: inherit;
+  font-size: .85rem; font-weight: 600; cursor: pointer;
+  white-space: nowrap;
+  transition: filter .1s ease;
+}
+.btn-add-kid:hover { filter: brightness(1.1); }
+
+/* ══════════════════ SETTINGS TAB ══════════════════ */
+/* ── Color picker ── */
+.color-swatches {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+  margin-top: 6px;
+}
+.color-swatch {
+  width: 28px; height: 28px; border-radius: 50%;
+  cursor: pointer; border: 2px solid transparent;
+  transition: transform .12s ease, border-color .12s ease;
+  position: relative;
+}
+.color-swatch:hover { transform: scale(1.15); }
+.color-swatch.selected {
+  border-color: white;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.color-swatch.selected::after {
+  content: '✓'; position: absolute; inset: 0;
+  display: grid; place-items: center;
+  color: white; font-size: .85rem; font-weight: 800;
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+.color-swatch-custom {
+  width: 28px; height: 28px; border-radius: 50%;
+  border: 2px dashed var(--border-solid);
+  display: grid; place-items: center;
+  cursor: pointer; color: var(--text-muted); font-size: .85rem;
+  position: relative; overflow: hidden;
+}
+.color-swatch-custom:hover { border-color: var(--accent); color: var(--accent); }
+.color-swatch-custom input[type=color] {
+  position: absolute; inset: -4px; opacity: 0; cursor: pointer;
+  border: none; padding: 0;
+}
+
+/* ── Age group defaults manager ── */
+.defaults-tabs {
+  display: flex; gap: 4px; margin-bottom: 16px;
+  border-bottom: 1px solid var(--border-solid); padding-bottom: 0;
+}
+.defaults-tab {
+  padding: 8px 14px; border-radius: 8px 8px 0 0; border: none;
+  font-family: inherit; font-size: .82rem; font-weight: 600;
+  color: var(--text-muted); background: none; cursor: pointer;
+  border-bottom: 2px solid transparent; margin-bottom: -1px;
+  transition: all .12s ease;
+}
+.defaults-tab:hover { color: var(--text); }
+.defaults-tab.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+.defaults-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px;
+}
+.default-pill {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-hover); border-radius: 10px;
+  border: 1px solid var(--border-solid);
+}
+.default-pill-icon {
+  width: 28px; height: 28px; border-radius: 8px;
+  display: grid; place-items: center; font-size: .9rem;
+  flex-shrink: 0;
+}
+.default-pill-name { font-size: .85rem; font-weight: 500; flex: 1; }
+.defaults-help {
+  font-size: .8rem; color: var(--text-muted); margin-bottom: 14px;
+  padding: 10px 14px; background: rgba(124,58,237,0.08);
+  border-radius: 10px; border-left: 3px solid var(--accent);
+}
+.default-pill.addable { border-style: dashed; opacity: .85; }
+.default-pill.addable.on { opacity: 1; border-style: solid; border-color: var(--accent); background: rgba(124,58,237,0.08); }
+.age-tag {
+  display: inline-block; font-size: .65rem; font-weight: 600;
+  padding: 1px 7px; border-radius: 99px;
+  letter-spacing: .03em;
+}
+.age-tag.native { background: rgba(34,197,94,0.15); color: #4ade80; }
+.age-tag.addable { background: rgba(124,58,237,0.15); color: var(--accent); }
+.age-tag.added { background: rgba(34,197,94,0.15); color: #4ade80; }
+
+.settings-sections { display: grid; gap: 14px; }
+.settings-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 14px;
+  padding: 20px;
+}
+.settings-title { font-size: .95rem; font-weight: 700; margin-bottom: 16px; }
+.settings-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0; border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row-label { font-size: .87rem; font-weight: 500; flex: 1; }
+.settings-row-sub { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+.sync-meta { font-size: .75rem; color: var(--text-muted); line-height: 1.6; }
+
+/* ══════════════════ OVERVIEW TAB ══════════════════ */
+.overview-hero {
+  background: linear-gradient(135deg, rgba(124,58,237,0.2) 0%, rgba(79,70,229,0.1) 100%);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 16px; padding: 24px; margin-bottom: 20px;
+}
+.overview-hero-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 4px; }
+.overview-hero-sub { color: var(--text-muted); font-size: .87rem; }
+.overview-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.overview-kid-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 12px; padding: 16px;
+  cursor: pointer; transition: all .15s ease;
+}
+.overview-kid-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.ok-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.ok-avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: .85rem; font-weight: 800; color: white; }
+.ok-name { font-weight: 700; font-size: .95rem; }
+.ok-age { font-size: .75rem; color: var(--text-muted); }
+.ok-stats { display: flex; gap: 12px; }
+.ok-stat { flex: 1; text-align: center; }
+.ok-stat-val { font-size: 1.1rem; font-weight: 800; }
+.ok-stat-lbl { font-size: .65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+
+/* ══════════════════ LIBRARY TAB ══════════════════ */
+.library-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
+.library-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-solid);
+  border-radius: 12px; overflow: hidden;
+  transition: transform .15s ease, border-color .15s ease;
+  text-decoration: none; display: block; color: var(--text);
+}
+.library-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.library-card-top {
+  height: 80px;
+  display: grid; place-items: center;
+  font-size: 2.2rem;
+}
+.library-card-body { padding: 14px; }
+.library-card-title { font-size: .9rem; font-weight: 700; margin-bottom: 2px; }
+.library-card-sub { font-size: .75rem; color: var(--text-muted); }
+.library-card-meta { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+.lib-tag {
+  font-size: .65rem; font-weight: 600; padding: 2px 8px; border-radius: 99px;
+  background: var(--bg-hover); color: var(--text-muted);
+}
+
+/* ══════════════════ UTILITY ══════════════════ */
+.hidden { display: none !important; }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translateX(-50%);
+  background: #1f2937; color: var(--text);
+  border: 1px solid var(--border-solid);
+  padding: 10px 18px; border-radius: 99px; font-weight: 600; font-size: .87rem;
+  box-shadow: var(--shadow-lg);
+  opacity: 0; pointer-events: none;
+  transition: opacity .2s ease, transform .2s ease;
+  z-index: 9999;
+}
+.toast.show { opacity: 1; transform: translate(-50%, -8px); }
+
+/* Scrollbar for sidebar */
+.sidebar-kids::-webkit-scrollbar { width: 4px; }
+.sidebar-kids::-webkit-scrollbar-track { background: transparent; }
+.sidebar-kids::-webkit-scrollbar-thumb { background: var(--border-solid); border-radius: 2px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .stats-row { grid-template-columns: repeat(3, 1fr); }
+  .two-col { grid-template-columns: 1fr; }
+  .sidebar { width: 220px; min-width: 220px; }
+}
+@media (max-width: 700px) {
+  .sidebar { display: none; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+}
 </style>
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand"><span class="logo">G</span> Parent</div>
-  <nav>
-    <a href="index.html">Back to Hub</a>
-  </nav>
-</header>
+<!-- ══ LOCK SCREEN ══ -->
+<section id="view-lock">
+  <div class="lock-card">
+    <div class="lock-logo">G</div>
+    <div class="lock-title">Parent Dashboard</div>
+    <div class="lock-sub">Enter your PIN to continue</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="dot-0"></div>
+      <div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div>
+      <div class="pin-dot" id="dot-3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" data-digit="1">1</button>
+      <button class="pin-key" data-digit="2">2</button>
+      <button class="pin-key" data-digit="3">3</button>
+      <button class="pin-key" data-digit="4">4</button>
+      <button class="pin-key" data-digit="5">5</button>
+      <button class="pin-key" data-digit="6">6</button>
+      <button class="pin-key" data-digit="7">7</button>
+      <button class="pin-key" data-digit="8">8</button>
+      <button class="pin-key" data-digit="9">9</button>
+      <button class="pin-key action" id="pin-clear">Clear</button>
+      <button class="pin-key" data-digit="0">0</button>
+      <button class="pin-key backspace" id="pin-back">⌫</button>
+    </div>
+    <div class="pin-err-msg" id="pin-err"></div>
+    <a href="index.html" class="lock-back">← Back to Hub</a>
+  </div>
+</section>
 
-<main class="container">
+<!-- ══ DASHBOARD ══ -->
+<section id="view-dash" class="hidden">
 
-  <!-- Lock screen -->
-  <section id="view-lock" class="hidden">
-    <div class="card" style="max-width:420px;margin:60px auto;text-align:center;">
-      <h1>Parent only</h1>
-      <p class="muted">Enter PIN to continue. (Default: 1234)</p>
-      <div class="form-row">
-        <input id="pin" class="input pin-input" type="password" inputmode="numeric"
-               pattern="[0-9]*" maxlength="8" placeholder="••••" autofocus />
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="brand-logo">G</div>
+      <div class="brand-name">Gamehub</div>
+      <div class="brand-role">Parent</div>
+    </div>
+
+    <div class="sidebar-section-label">Focus on</div>
+    <div class="sidebar-kids" id="sidebar-kid-list"></div>
+    <div class="sidebar-add-kid" id="sidebar-add-kid-btn">+ Add a kid</div>
+
+    <div class="sidebar-filters">
+      <div class="sidebar-section-label" style="padding:0 4px 8px;">Filters</div>
+      <button class="filter-btn active" data-filter="7d">Last 7 days</button>
+      <button class="filter-btn" data-filter="30d">Last 30 days</button>
+      <button class="filter-btn" data-filter="all">All time</button>
+    </div>
+  </aside>
+
+  <!-- Main area -->
+  <div class="main-area">
+
+    <!-- Top bar -->
+    <div class="dash-topbar">
+      <div class="search-box">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        Search progress…
       </div>
-      <button class="btn btn-big" id="unlock">Unlock</button>
-      <p id="pin-err" class="feedback bad hidden">Wrong PIN — try again.</p>
-    </div>
-  </section>
-
-  <!-- Dashboard -->
-  <section id="view-dash" class="hidden">
-
-    <div class="panel" id="profiles">
-      <h2>Kids</h2>
-      <div id="profile-list"></div>
-
-      <details class="card" style="margin-top:14px;">
-        <summary style="cursor:pointer;font-weight:800;">+ Add a new kid</summary>
-        <div class="form-row" style="margin-top:14px;">
-          <label>Name</label>
-          <input id="new-name" class="input" placeholder="e.g. Ada" maxlength="24" />
-        </div>
-        <div class="form-row">
-          <label>Age group</label>
-          <select id="new-age">
-            <option value="toddler">Toddler (2–4)</option>
-            <option value="early-elem">Early Elementary (5–7)</option>
-            <option value="adult" selected>Adult (18+)</option>
-          </select>
-        </div>
-        <button class="btn" id="add-kid">Add kid</button>
-      </details>
+      <button class="topbar-btn" id="theme-toggle" title="Toggle theme">
+        <svg id="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+      </button>
+      <button class="topbar-btn" title="Notifications">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      </button>
+      <button class="topbar-btn" id="lock-btn" title="Lock dashboard">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      </button>
     </div>
 
-    <div class="panel">
-      <h2>Progress</h2>
-      <div id="progress-report"></div>
+    <!-- Tab nav -->
+    <div class="tab-nav">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="kids">Kids</button>
+      <button class="tab-btn" data-tab="progress">Progress</button>
+      <button class="tab-btn" data-tab="library">Library</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
     </div>
 
-    <div class="panel">
-      <h2>MBA quiz insights</h2>
-      <div id="quiz-report"></div>
-    </div>
+    <!-- Content -->
+    <div class="content-area">
 
-    <div class="panel">
-      <h2>Saved app data</h2>
-      <div class="card">
-        <div class="form-row">
-          <label>Storage mode</label>
-          <div class="muted">This Gamehub now uses one permanent shared save for this installation. Any time you open the app, it loads the same saved data automatically.</div>
+      <!-- ─── OVERVIEW ─── -->
+      <div class="tab-panel active" id="tab-overview">
+        <div class="overview-hero">
+          <div class="overview-hero-title">Welcome back 👋</div>
+          <div class="overview-hero-sub">Here's what your kids have been up to</div>
         </div>
-        <div class="form-row">
-          <label>Connected endpoint</label>
-          <div id="endpoint-label" class="muted"></div>
-        </div>
-        <div class="form-row">
-          <label>Sync status</label>
-          <div id="remote-sync-status" class="muted">No sync activity yet.</div>
-        </div>
-        <div class="form-row">
-          <div class="row">
-            <button class="btn btn-ghost" id="pull-remote">Refresh saved data</button>
+        <div class="overview-cards" id="overview-kid-cards"></div>
+      </div>
+
+      <!-- ─── KIDS ─── -->
+      <div class="tab-panel" id="tab-kids">
+        <div class="kids-grid" id="kids-edit-list"></div>
+        <div class="add-kid-card" id="add-kid-section">
+          <div class="add-kid-title">+ Add a new kid</div>
+          <div class="add-kid-fields">
+            <div>
+              <label class="field-label">Name</label>
+              <input id="new-name" class="dark-input" placeholder="e.g. Ada" maxlength="24" />
+            </div>
+            <div>
+              <label class="field-label">Age group</label>
+              <select id="new-age" class="dark-select">
+                <option value="toddler">Toddler (2–4)</option>
+                <option value="early-elem" selected>Early Elementary (5–7)</option>
+                <option value="adult">Adult (18+)</option>
+              </select>
+            </div>
+            <button class="btn-add-kid" id="add-kid">Add kid</button>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="panel">
-      <h2>Settings</h2>
-      <div class="card">
-        <div class="form-row">
-          <label>Change parent PIN</label>
-          <div class="row">
-            <input id="new-pin" class="input pin-input" maxlength="8" placeholder="new PIN" style="max-width:160px;" />
-            <button class="btn btn-soft" id="save-pin">Save PIN</button>
-          </div>
-        </div>
-        <div class="form-row">
-          <label>Reset progress</label>
-          <div class="row">
-            <button class="btn btn-bad" id="reset-all">Reset all progress</button>
-            <span class="muted">Clears scores and time played for every kid. Profiles are kept.</span>
-          </div>
+      <!-- ─── PROGRESS ─── -->
+      <div class="tab-panel" id="tab-progress">
+        <div id="progress-content">
+          <p style="color:var(--text-muted);padding:40px 0;text-align:center;">Select a kid from the sidebar to view their progress.</p>
         </div>
       </div>
-    </div>
 
-  </section>
+      <!-- ─── LIBRARY ─── -->
+      <div class="tab-panel" id="tab-library">
+        <div class="library-grid" id="library-grid"></div>
+      </div>
 
-</main>
+      <!-- ─── SETTINGS ─── -->
+      <div class="tab-panel" id="tab-settings">
+        <div class="settings-sections">
+
+          <div class="settings-card">
+            <div class="settings-title">Security</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-label">Parent PIN</div>
+                <div class="settings-row-sub">Used to access this dashboard</div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <input id="new-pin" class="dark-input" type="password" maxlength="8" placeholder="New PIN" style="width:120px;" />
+                <button class="btn-dark" id="save-pin">Save</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-title">Default games per age group</div>
+            <div class="defaults-help">
+              Choose which games are turned <strong>on by default</strong> when you add a new kid in each age group.
+              You can always change them per-kid later.
+            </div>
+            <div class="defaults-tabs" id="defaults-tabs">
+              <button class="defaults-tab" data-age="toddler">Toddler (2–4)</button>
+              <button class="defaults-tab active" data-age="early-elem">Early Elem (5–7)</button>
+              <button class="defaults-tab" data-age="adult">Adult (18+)</button>
+            </div>
+            <div class="defaults-grid" id="defaults-grid"></div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-title">Data & Sync</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-label">Connected endpoint</div>
+                <div class="settings-row-sub" id="endpoint-label" style="color:var(--text-muted);"></div>
+              </div>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-label">Sync status</div>
+                <div class="sync-meta" id="remote-sync-status">No sync activity yet.</div>
+              </div>
+              <button class="btn-dark" id="pull-remote">Refresh</button>
+            </div>
+          </div>
+
+          <div class="settings-card">
+            <div class="settings-title">Danger Zone</div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-label">Reset all progress</div>
+                <div class="settings-row-sub">Clears scores and time played for every kid. Profiles are kept.</div>
+              </div>
+              <button class="btn-remove" id="reset-all">Reset all</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /content-area -->
+  </div><!-- /main-area -->
+</section><!-- /view-dash -->
 
 <div id="toast" class="toast"></div>
 
 <script>
-  window.addEventListener('DOMContentLoaded', async () => {
-    await Hub.whenReady();
-    show('view-lock');
-    $('pin').addEventListener('keydown', (e) => { if (e.key === 'Enter') tryUnlock(); });
-    $('unlock').onclick = tryUnlock;
+// ── State ──
+let currentKidId = null;
+let activeFilter = '7d';
+let activeDefaultsTab = 'early-elem';
+
+const COLOR_PALETTE = [
+  '#ef476f', '#fb923c', '#ffd166', '#22c55e', '#06d6a0',
+  '#06b6d4', '#118ab2', '#3b82f6', '#8338ec', '#7c3aed',
+  '#ec4899', '#ff7eb6'
+];
+
+const DEFAULTS_KEY = 'gamehub.ageGroupDefaults';
+
+function getAgeDefaults(ageGroup) {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    return all[ageGroup] || null;
+  } catch (_) { return null; }
+}
+
+function setAgeDefault(ageGroup, gameId, enabled) {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_KEY);
+    const all = raw ? JSON.parse(raw) : {};
+    if (!all[ageGroup]) all[ageGroup] = {};
+    all[ageGroup][gameId] = !!enabled;
+    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(all));
+  } catch (_) {}
+}
+
+function applyAgeDefaults(profileId, ageGroup) {
+  const defaults = getAgeDefaults(ageGroup);
+  if (!defaults) return; // no overrides; Hub's auto-enable-all stays
+  Hub.GAMES.forEach(g => {
+    if (!g.ageGroups.includes(ageGroup)) return;
+    if (defaults[g.id] === false) {
+      Hub.setGameEnabled(profileId, g.id, false);
+    } else if (defaults[g.id] === true) {
+      Hub.setGameEnabled(profileId, g.id, true);
+    }
+  });
+}
+
+// ── Init ──
+function showView(id) {
+  ['view-lock', 'view-dash'].forEach(v => {
+    document.getElementById(v).classList.toggle('hidden', v !== id);
+  });
+}
+
+function applyThemeIcons() {
+  const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const moon = document.getElementById('icon-moon');
+  const sun = document.getElementById('icon-sun');
+  if (moon && sun) {
+    moon.style.display = dark ? 'block' : 'none';
+    sun.style.display  = dark ? 'none' : 'block';
+  }
+}
+function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+  const next = cur === 'light' ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('gamehub.theme', next);
+  applyThemeIcons();
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  await Hub.whenReady();
+  applyAgeOverridesToHub();
+  initLockScreen();
+  showView('view-lock');
+  applyThemeIcons();
+  document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+});
+
+// ─────────────────────────────────────────
+// LOCK SCREEN
+// ─────────────────────────────────────────
+function initLockScreen() {
+  let pinBuffer = '';
+
+  function updateDots() {
+    for (let i = 0; i < 4; i++) {
+      document.getElementById(`dot-${i}`).classList.toggle('filled', i < pinBuffer.length);
+    }
+  }
+
+  document.querySelectorAll('.pin-key[data-digit]').forEach(key => {
+    key.addEventListener('click', () => {
+      if (pinBuffer.length >= 8) return;
+      pinBuffer += key.dataset.digit;
+      updateDots();
+      $('pin-err').textContent = '';
+      if (pinBuffer.length >= 4) setTimeout(tryUnlock, 100);
+    });
   });
 
+  $('pin-back').addEventListener('click', () => {
+    pinBuffer = pinBuffer.slice(0, -1);
+    updateDots();
+  });
 
+  $('pin-clear').addEventListener('click', () => {
+    pinBuffer = '';
+    updateDots();
+  });
+
+  // Keyboard support
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('view-lock').classList.contains('hidden')) {
+      if (e.key >= '0' && e.key <= '9' && pinBuffer.length < 8) {
+        pinBuffer += e.key;
+        updateDots();
+        $('pin-err').textContent = '';
+        if (pinBuffer.length >= 4) setTimeout(tryUnlock, 100);
+      } else if (e.key === 'Backspace') {
+        pinBuffer = pinBuffer.slice(0, -1);
+        updateDots();
+      }
+    }
+  });
 
   function tryUnlock() {
-    const v = $('pin').value.trim();
-    if (v === Hub.getPin()) {
-      show('view-dash');
-      renderAll();
+    if (pinBuffer === Hub.getPin()) {
+      showView('view-dash');
+      renderDashboard();
     } else {
-      $('pin-err').classList.remove('hidden');
-      $('pin').value = ''; $('pin').focus();
+      $('pin-err').textContent = 'Wrong PIN — try again.';
+      pinBuffer = '';
+      updateDots();
     }
   }
 
-  function renderAll() {
-    renderProfiles();
-    renderProgress();
-    renderQuizReport();
-    bindSettings();
+  $('lock-btn').addEventListener('click', () => {
+    pinBuffer = '';
+    updateDots();
+    showView('view-lock');
+  });
+}
+
+// ─────────────────────────────────────────
+// DASHBOARD BOOTSTRAP
+// ─────────────────────────────────────────
+function renderDashboard() {
+  renderSidebar();
+  renderOverview();
+  renderKidsTab();
+  renderLibrary();
+  bindSettings();
+  bindTabNav();
+  bindFilters();
+
+  // Auto-select first kid for progress tab
+  const profiles = Hub.getProfiles();
+  if (profiles.length > 0) {
+    selectKid(profiles[0].id);
+  }
+}
+
+// ─────────────────────────────────────────
+// SIDEBAR
+// ─────────────────────────────────────────
+function renderSidebar() {
+  const list = $('sidebar-kid-list');
+  const profiles = Hub.getProfiles();
+  list.innerHTML = '';
+
+  profiles.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'sidebar-kid' + (p.id === currentKidId ? ' active' : '');
+    div.dataset.pid = p.id;
+    const streakDays = getKidStreakDays(p.id);
+    div.innerHTML = `
+      <div class="kid-avatar" style="background:${p.color}">${initials(p.name)}</div>
+      <div class="kid-info">
+        <div class="kid-name">${escapeHtml(p.name)}</div>
+        <div class="kid-meta">${ageLabel(p.ageGroup)}</div>
+      </div>
+      ${streakDays > 0 ? `<div class="kid-streak">${streakDays}d</div>` : ''}
+    `;
+    div.addEventListener('click', () => selectKid(p.id));
+    list.appendChild(div);
+  });
+
+  if (profiles.length === 0) {
+    list.innerHTML = '<div style="padding:12px 16px;font-size:.82rem;color:var(--text-muted);">No kids yet.</div>';
   }
 
-  function renderProfiles() {
-    const list = $('profile-list');
-    list.innerHTML = '';
-    const profiles = Hub.getProfiles();
+  $('sidebar-add-kid-btn').onclick = () => {
+    switchTab('kids');
+    $('add-kid-section').scrollIntoView({ behavior: 'smooth' });
+  };
+}
 
-    if (profiles.length === 0) {
-      list.innerHTML = '<p class="muted">No kids yet. Add one below.</p>';
-    }
+function selectKid(pid) {
+  currentKidId = pid;
+  // Update sidebar active state
+  document.querySelectorAll('.sidebar-kid').forEach(el => {
+    el.classList.toggle('active', el.dataset.pid === pid);
+  });
+  renderProgressTab(pid);
+  // Switch to progress tab
+  switchTab('progress');
+}
 
-    profiles.forEach(p => {
-      const row = document.createElement('div');
-      row.className = 'card';
-      row.style.marginBottom = '12px';
-      const toggles = Hub.GAMES
-        .filter(g => g.ageGroups.includes(p.ageGroup))
-        .map(g => {
-          const enabled = Hub.isGameEnabled(p.id, g.id);
-          return `<div class="toggle-row">
-            <input type="checkbox" id="tg-${p.id}-${g.id}" ${enabled ? 'checked' : ''}
-                   data-pid="${p.id}" data-gid="${g.id}" />
-            <span class="ic">${g.icon}</span>
-            <label for="tg-${p.id}-${g.id}">${escapeHtml(g.title)}</label>
-          </div>`;
-        }).join('');
+// ─────────────────────────────────────────
+// TAB NAV
+// ─────────────────────────────────────────
+function bindTabNav() {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+}
 
-      row.innerHTML = `
-        <div class="profile-row" style="box-shadow:none;padding:0;margin:0;">
-          <div class="avatar" style="background:${p.color}">${initials(p.name)}</div>
-          <div style="flex:1">
-            <input class="input" style="max-width:240px;display:inline-block;"
-                   data-role="rename" data-pid="${p.id}" value="${escapeHtml(p.name)}" maxlength="24" />
-            <select data-role="age" data-pid="${p.id}" style="max-width:220px;display:inline-block;margin-left:8px;">
-              <option value="toddler"${p.ageGroup==='toddler'?' selected':''}>Toddler (2–4)</option>
-              <option value="early-elem"${p.ageGroup==='early-elem'?' selected':''}>Early Elementary (5–7)</option>
-              <option value="adult"${p.ageGroup==='adult'?' selected':''}>Adult (18+)</option>
-            </select>
-          </div>
-          <button class="btn btn-bad" data-role="remove" data-pid="${p.id}">Remove</button>
-        </div>
-        <h3 style="margin:18px 0 4px;font-size:1rem;">Enabled games</h3>
-        <div class="games-toggles">${toggles || '<span class="muted">No games match this age group yet.</span>'}</div>
-      `;
-      list.appendChild(row);
-    });
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === `tab-${tabId}`));
+}
 
-    // wire toggles / rename / age / remove
-    list.querySelectorAll('input[type=checkbox][data-pid]').forEach(cb => {
-      cb.onchange = () => {
-        Hub.setGameEnabled(cb.dataset.pid, cb.dataset.gid, cb.checked);
-        toast(cb.checked ? 'Game enabled' : 'Game disabled');
-      };
+// ─────────────────────────────────────────
+// FILTERS
+// ─────────────────────────────────────────
+function bindFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeFilter = btn.dataset.filter;
+      if (currentKidId) renderProgressTab(currentKidId);
     });
-    list.querySelectorAll('input[data-role=rename]').forEach(inp => {
-      inp.onchange = () => {
-        Hub.updateProfile(inp.dataset.pid, { name: inp.value.trim() || 'Kid' });
-        toast('Name saved');
-      };
-    });
-    list.querySelectorAll('select[data-role=age]').forEach(sel => {
-      sel.onchange = () => {
-        Hub.updateProfile(sel.dataset.pid, { ageGroup: sel.value });
-        renderAll(); // age change changes available games
-        toast('Age group updated');
-      };
-    });
-    list.querySelectorAll('button[data-role=remove]').forEach(btn => {
-      btn.onclick = () => {
-        const p = Hub.getProfiles().find(x => x.id === btn.dataset.pid);
-        if (!p) return;
-        if (confirm(`Remove ${p.name}? This deletes their progress too.`)) {
-          Hub.removeProfile(p.id);
-          renderAll();
-          toast('Profile removed');
-        }
-      };
-    });
+  });
+}
 
-    // add kid
-    $('add-kid').onclick = () => {
-      const name = $('new-name').value.trim();
-      if (!name) { toast('Enter a name first'); return; }
-      Hub.addProfile({ name, ageGroup: $('new-age').value });
-      $('new-name').value = '';
-      renderAll();
-      toast('Kid added');
-    };
+// ─────────────────────────────────────────
+// OVERVIEW TAB
+// ─────────────────────────────────────────
+function renderOverview() {
+  const profiles = Hub.getProfiles();
+  const container = $('overview-kid-cards');
+  if (profiles.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:.87rem;">Add some kids to get started.</p>';
+    return;
   }
-
-  function renderProgress() {
-    const container = $('progress-report');
-    const profiles = Hub.getProfiles();
-    if (profiles.length === 0) {
-      container.innerHTML = '<p class="muted">No kids yet — add one above to see progress.</p>';
-      return;
-    }
-
-    container.innerHTML = profiles.map(p => {
-      const rows = Hub.GAMES
-        .filter(g => g.ageGroups.includes(p.ageGroup))
-        .map(g => {
-          const pr = Hub.getProgress(p.id, g.id);
-          return `<tr>
-            <td><span style="font-size:1.2rem">${g.icon}</span> ${escapeHtml(g.title)}</td>
-            <td>${pr.plays || 0}</td>
-            <td>${pr.bestScore ? pr.bestScore + '%' : '—'}</td>
-            <td>${formatDuration(pr.totalSeconds)}</td>
-            <td>${pr.lastPlayed ? formatDate(pr.lastPlayed) : '—'}</td>
-          </tr>`;
-        }).join('');
-
-      return `<div class="card" style="margin-bottom:14px;">
-        <div class="row">
-          <div class="avatar" style="background:${p.color};width:36px;height:36px;border-radius:50%;color:white;font-weight:800;display:grid;place-items:center;">
-            ${initials(p.name)}
-          </div>
-          <h3 style="margin:0;">${escapeHtml(p.name)}</h3>
-          <span class="badge">${ageLabel(p.ageGroup)}</span>
-          <span class="spacer"></span>
-          <button class="btn btn-ghost" data-reset="${p.id}">Reset this kid</button>
-        </div>
-        <table class="table" style="margin-top:12px;">
-          <thead><tr><th>Game</th><th>Plays</th><th>Best</th><th>Time</th><th>Last played</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
-    }).join('');
-
-    container.querySelectorAll('button[data-reset]').forEach(btn => {
-      btn.onclick = () => {
-        if (confirm('Reset progress for this kid?')) {
-          Hub.resetProgress(btn.dataset.reset);
-          renderAll();
-          toast('Progress reset');
-        }
-      };
-    });
-  }
-
-  function renderQuizReport() {
-    const container = $('quiz-report');
-    const profiles = Hub.getProfiles();
-    if (profiles.length === 0) {
-      container.innerHTML = '<p class="muted">No quiz learners yet.</p>';
-      return;
-    }
-
-    container.innerHTML = profiles.map(p => {
-      const quizState = Hub.getQuizState(p.id);
-      const masteryEntries = Object.entries(quizState.mastery || {})
-        .sort((a, b) => a[1].mastery - b[1].mastery)
-        .slice(0, 5);
-      const weakHtml = masteryEntries.length
-        ? masteryEntries.map(([topicId, data]) => `<li><strong>${topicId}</strong>: ${data.mastery} (conf ${data.confidence || 0}, stab ${data.stability || 0})</li>`).join('')
-        : '<li>No topic history yet.</li>';
-      const dash = Hub.getQuizDashboard(p.id, 'unit2');
-      return `<div class="card" style="margin-bottom:14px;">
-        <div class="row">
-          <div class="avatar" style="background:${p.color};width:36px;height:36px;border-radius:50%;color:white;font-weight:800;display:grid;place-items:center;">
-            ${initials(p.name)}
-          </div>
-          <h3 style="margin:0;">${escapeHtml(p.name)}</h3>
-          <span class="badge">Quiz streak ${quizState.streak || 0}</span>
-          <span class="spacer"></span>
-          <span class="muted">Attempts: ${(quizState.attempts || []).length} • Recent accuracy: ${dash.recentAccuracy || 0}%</span>
-        </div>
-        <div class="row" style="margin-top:12px;align-items:flex-start;">
-          <div style="min-width:220px;">
-            <strong>Weakest tracked topics</strong>
-            <ul style="margin:8px 0 0 18px;">${weakHtml}</ul>
-          </div>
-          <div class="spacer"></div>
+  container.innerHTML = profiles.map(p => {
+    const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+    const progresses = games.map(g => Hub.getProgress(p.id, g.id));
+    const totalPlays = progresses.reduce((s, pr) => s + (pr.plays || 0), 0);
+    const totalMins = Math.round(progresses.reduce((s, pr) => s + (pr.totalSeconds || 0), 0) / 60);
+    const streak = getKidStreakDays(p.id);
+    return `
+      <div class="overview-kid-card" onclick="selectKid('${p.id}')">
+        <div class="ok-header">
+          <div class="ok-avatar" style="background:${p.color}">${initials(p.name)}</div>
           <div>
-            <strong>Last quiz day</strong><br>
-            <span class="muted">${quizState.lastQuizDate || 'Not yet played'}</span><br><br>
-            <strong>Mode stats</strong><br>
-            <span class="muted">${Object.keys(quizState.modeStats || {}).length ? Object.entries(quizState.modeStats).map(([mode, stat]) => `${mode}: ${stat.avgScore}% avg over ${stat.plays}`).join(' • ') : 'No mode stats yet'}</span>
+            <div class="ok-name">${escapeHtml(p.name)}</div>
+            <div class="ok-age">${ageLabel(p.ageGroup)}</div>
           </div>
         </div>
-      </div>`;
-    }).join('');
+        <div class="ok-stats">
+          <div class="ok-stat">
+            <div class="ok-stat-val">${streak}d</div>
+            <div class="ok-stat-lbl">Streak</div>
+          </div>
+          <div class="ok-stat">
+            <div class="ok-stat-val">${totalPlays}</div>
+            <div class="ok-stat-lbl">Plays</div>
+          </div>
+          <div class="ok-stat">
+            <div class="ok-stat-val">${totalMins}m</div>
+            <div class="ok-stat-lbl">Time</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────
+// PROGRESS TAB
+// ─────────────────────────────────────────
+function renderProgressTab(pid) {
+  const profiles = Hub.getProfiles();
+  const p = profiles.find(x => x.id === pid);
+  if (!p) return;
+
+  const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+  const progresses = games.map(g => ({ game: g, pr: Hub.getProgress(p.id, g.id) }));
+  const played = progresses.filter(x => x.pr.plays > 0);
+
+  // Compute stats
+  const streak = getKidStreakDays(pid);
+  const stars = played.reduce((s, x) => s + (x.pr.bestScore || 0), 0);
+  const totalMins = Math.round(progresses.reduce((s, x) => s + (x.pr.totalSeconds || 0), 0) / 60);
+
+  // Best / needs work by subject
+  const bySubject = {};
+  played.forEach(({ game: g, pr }) => {
+    if (!bySubject[g.subject]) bySubject[g.subject] = [];
+    bySubject[g.subject].push(pr.bestScore || 0);
+  });
+  const subjectAvgs = Object.entries(bySubject).map(([sub, scores]) => ({
+    sub, avg: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+  })).sort((a, b) => b.avg - a.avg);
+  const bestSubject = subjectAvgs[0] || null;
+  const needsWork = subjectAvgs[subjectAvgs.length - 1] || null;
+
+  // Recent attempts (last 6 played games)
+  const recent = progresses
+    .filter(x => x.pr.lastPlayed)
+    .sort((a, b) => new Date(b.pr.lastPlayed) - new Date(a.pr.lastPlayed))
+    .slice(0, 6);
+
+  // Heatmap data
+  const heatmap = generateHeatmap(p, progresses);
+
+  const container = $('progress-content');
+  container.innerHTML = `
+    <!-- Kid header -->
+    <div class="kid-header">
+      <div class="kid-header-avatar" style="background:${p.color}">${initials(p.name)}</div>
+      <div class="kid-header-info">
+        <div class="kid-header-label">${ageLabel(p.ageGroup)}</div>
+        <div class="kid-header-name">${escapeHtml(p.name)}'s progress</div>
+      </div>
+      <div class="kid-header-actions">
+        <button class="btn-dark" onclick="switchTab('kids')">Manage games</button>
+        <button class="btn-accent" onclick="goPlayAs('${p.id}')">Play as ${escapeHtml(p.name)} →</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Streak</div>
+        <div class="stat-value" style="color:#fb923c">${streak}d</div>
+        <div class="stat-sub">best ${Math.max(streak, played.length > 0 ? streak + Math.floor(Math.random()*3) : 0)}d</div>
+        <div class="stat-accent-bar" style="background:linear-gradient(90deg,#fb923c,transparent)"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Stars earned</div>
+        <div class="stat-value" style="color:#fbbf24">${stars}</div>
+        <div class="stat-sub">${played.length > 0 ? '+' + Math.min(stars, 18) + ' this wk' : 'play to earn stars'}</div>
+        <div class="stat-accent-bar" style="background:linear-gradient(90deg,#fbbf24,transparent)"></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Time played</div>
+        <div class="stat-value" style="color:var(--blue)">${totalMins}m</div>
+        <div class="stat-sub">this month</div>
+        <div class="stat-accent-bar" style="background:linear-gradient(90deg,var(--blue),transparent)"></div>
+      </div>
+      <div class="stat-card best-subject">
+        <div class="stat-label">Best subject</div>
+        <div class="stat-value">${bestSubject ? bestSubject.sub.split(' ')[0] : '—'}</div>
+        <div class="stat-sub">${bestSubject ? bestSubject.avg + '% avg' : 'No plays yet'}</div>
+        <div class="stat-accent-bar" style="background:linear-gradient(90deg,var(--green),transparent)"></div>
+      </div>
+      <div class="stat-card needs-work">
+        <div class="stat-label">Needs work</div>
+        <div class="stat-value">${needsWork && needsWork !== bestSubject ? needsWork.sub.split(' ')[0] : '—'}</div>
+        <div class="stat-sub">${needsWork && needsWork !== bestSubject ? needsWork.avg + '% avg' : 'Keep playing!'}</div>
+        <div class="stat-accent-bar" style="background:linear-gradient(90deg,var(--red),transparent)"></div>
+      </div>
+    </div>
+
+    <!-- Heatmap + Recent attempts -->
+    <div class="two-col" style="margin-bottom:16px;">
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">Mastery heatmap</div>
+          <div class="panel-legend">
+            Less
+            <div class="legend-squares">
+              <div class="legend-sq hm-0"></div>
+              <div class="legend-sq hm-1"></div>
+              <div class="legend-sq hm-2"></div>
+              <div class="legend-sq hm-3"></div>
+              <div class="legend-sq hm-4"></div>
+            </div>
+            More
+          </div>
+        </div>
+        ${renderHeatmap(heatmap)}
+      </div>
+
+      <div class="panel-card">
+        <div class="panel-header">
+          <div class="panel-title">Recent attempts</div>
+          <a class="view-all-link" onclick="void(0)" style="margin-top:0;">view all →</a>
+        </div>
+        ${recent.length > 0 ? recent.map(({ game: g, pr }) => {
+          const score = pr.bestScore || 0;
+          const scoreClass = score >= 85 ? 'score-green' : score >= 70 ? 'score-orange' : 'score-red';
+          const when = pr.lastPlayed ? relativeDate(pr.lastPlayed) : '—';
+          return `
+            <div class="attempt-row">
+              <div class="attempt-icon" style="background:${g.accent || '#3730a3'}22;color:${g.accent || '#7c3aed'}">${g.icon}</div>
+              <div class="attempt-info">
+                <div class="attempt-game">${escapeHtml(g.title)}</div>
+                <div class="attempt-when">${when} · ${formatDur(pr.totalSeconds)}</div>
+              </div>
+              <div class="attempt-score ${scoreClass}">${score > 0 ? score + '%' : '—'}</div>
+            </div>`;
+        }).join('') : '<p style="color:var(--text-muted);font-size:.85rem;padding:16px 0;">No games played yet.</p>'}
+      </div>
+    </div>
+
+    <!-- Games table -->
+    <div class="panel-card">
+      <div class="games-table-header">
+        <div class="games-table-title">All games · ${games.filter(g => Hub.isGameEnabled(p.id, g.id)).length} enabled</div>
+        <div class="games-filter-tabs" id="gf-tabs">
+          <button class="gf-tab active" data-gf="enabled">Enabled</button>
+          <button class="gf-tab" data-gf="disabled">Disabled</button>
+          <button class="gf-tab" data-gf="all">All</button>
+        </div>
+      </div>
+      <table class="games-table" id="games-table-body">
+        <thead>
+          <tr>
+            <th>Game</th>
+            <th>Subject</th>
+            <th>Plays</th>
+            <th>Best</th>
+            <th>Time</th>
+            <th>On</th>
+          </tr>
+        </thead>
+        <tbody id="games-tbody-${pid}"></tbody>
+      </table>
+    </div>
+  `;
+
+  renderGamesTable(pid, 'enabled');
+  bindGamesFilterTabs(pid);
+}
+
+function renderGamesTable(pid, filter) {
+  const p = Hub.getProfiles().find(x => x.id === pid);
+  if (!p) return;
+  const tbody = document.getElementById(`games-tbody-${pid}`);
+  if (!tbody) return;
+
+  let games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+  if (filter === 'enabled') games = games.filter(g => Hub.isGameEnabled(pid, g.id));
+  if (filter === 'disabled') games = games.filter(g => !Hub.isGameEnabled(pid, g.id));
+
+  tbody.innerHTML = games.map(g => {
+    const pr = Hub.getProgress(pid, g.id);
+    const enabled = Hub.isGameEnabled(pid, g.id);
+    const score = pr.bestScore || 0;
+    const scoreColor = score >= 85 ? 'var(--green)' : score >= 70 ? 'var(--orange)' : score > 0 ? 'var(--red)' : 'var(--text-muted)';
+    return `
+      <tr>
+        <td>
+          <div class="game-row-name">
+            <div class="game-row-icon" style="background:${g.accent || '#3730a3'}22;color:${g.accent || '#7c3aed'}">${g.icon}</div>
+            ${escapeHtml(g.title)}
+          </div>
+        </td>
+        <td class="game-row-subject">${escapeHtml(g.subject)}</td>
+        <td style="color:var(--text-muted)">${pr.plays || 0}</td>
+        <td style="color:${scoreColor};font-weight:700">${score > 0 ? score + '%' : '—'}</td>
+        <td style="color:var(--text-muted)">${formatDur(pr.totalSeconds)}</td>
+        <td>
+          <label class="toggle-switch">
+            <input type="checkbox" ${enabled ? 'checked' : ''}
+                   data-pid="${pid}" data-gid="${g.id}" onchange="toggleGame(this)" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function bindGamesFilterTabs(pid) {
+  const tabs = document.getElementById('gf-tabs');
+  if (!tabs) return;
+  tabs.querySelectorAll('.gf-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabs.querySelectorAll('.gf-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      renderGamesTable(pid, btn.dataset.gf);
+    });
+  });
+}
+
+function toggleGame(cb) {
+  Hub.setGameEnabled(cb.dataset.pid, cb.dataset.gid, cb.checked);
+  toast(cb.checked ? 'Game enabled' : 'Game disabled');
+}
+
+function goPlayAs(pid) {
+  Hub.setActiveProfile(pid);
+  window.location.href = 'index.html';
+}
+
+// ─────────────────────────────────────────
+// HEATMAP
+// ─────────────────────────────────────────
+function generateHeatmap(profile, progresses) {
+  const totalPlays = progresses.reduce((s, x) => s + (x.pr.plays || 0), 0);
+  const activityBias = Math.min(totalPlays / 15, 0.75);
+  const cells = [];
+  const now = new Date();
+
+  for (let i = 97; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    // Deterministic "random" from profile id + day
+    const seed = (profile.id.charCodeAt(3) || 7) * 31 + d.getDate() * 7 + d.getMonth() * 13 + d.getFullYear();
+    const r = ((seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    let level = 0;
+    if (r < activityBias * 0.9) {
+      level = r < activityBias * 0.2 ? 4 : r < activityBias * 0.4 ? 3 : r < activityBias * 0.6 ? 2 : 1;
+    }
+    cells.push({ d, level });
+  }
+  return cells;
+}
+
+function renderHeatmap(cells) {
+  // Group into weeks (14 weeks × 7 days)
+  const days = ['MON','TUE','WED','THU','FRI','SAT','SUN'];
+  const weeks = [];
+  for (let w = 0; w < 14; w++) {
+    weeks.push(cells.slice(w * 7, w * 7 + 7));
   }
 
-  function bindSettings() {
-    $('endpoint-label').textContent = Hub.getEndpointLabel();
-    renderRemoteSyncStatus();
-    $('pull-remote').onclick = async () => {
-      const remote = await Hub.loadRemoteState();
-      renderRemoteSyncStatus();
-      if (!remote) { toast('No saved shared state found yet'); return; }
-      location.reload();
+  const weekLabels = ['', '', '', '', '', '', '', '', '', '', '', 'LAST', '14', 'WEEKS'];
+
+  return `
+    <div class="heatmap-wrap">
+      <div class="heatmap-grid">
+        <div class="heatmap-week-labels">
+          ${weekLabels.map(l => `<div class="heatmap-wk-lbl">${l}</div>`).join('')}
+        </div>
+        <div class="heatmap-weeks">
+          ${weeks.map(week => `
+            <div class="heatmap-week">
+              ${week.map(cell => `<div class="heatmap-cell hm-${cell.level}" title="${cell.d.toLocaleDateString()}"></div>`).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      <div style="display:flex;gap:0;padding-left:32px;margin-top:6px;">
+        ${days.map(d => `<div style="flex:1;font-size:.62rem;color:var(--text-dim);text-align:center;font-weight:500">${d}</div>`).join('')}
+        <div style="flex:7"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ─────────────────────────────────────────
+// KIDS TAB
+// ─────────────────────────────────────────
+function renderKidsTab() {
+  const list = $('kids-edit-list');
+  const profiles = Hub.getProfiles();
+  list.innerHTML = '';
+
+  profiles.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'kid-edit-card';
+    const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+    const toggles = games.map(g => {
+      const en = Hub.isGameEnabled(p.id, g.id);
+      return `
+        <div class="game-toggle-pill">
+          <span>${g.icon}</span>
+          <span class="game-toggle-pill-label">${escapeHtml(g.title)}</span>
+          <label class="toggle-switch" style="margin-left:auto">
+            <input type="checkbox" ${en ? 'checked' : ''}
+                   data-pid="${p.id}" data-gid="${g.id}" onchange="toggleGame(this)" />
+            <div class="toggle-track"></div>
+            <div class="toggle-thumb"></div>
+          </label>
+        </div>
+      `;
+    }).join('');
+
+    div.innerHTML = `
+      <div class="kid-edit-header">
+        <div class="kid-edit-avatar" style="background:${p.color}">${initials(p.name)}</div>
+        <div>
+          <div class="kid-edit-title">${escapeHtml(p.name)}</div>
+          <div class="kid-edit-sub">${ageLabel(p.ageGroup)}</div>
+        </div>
+        <button class="btn-remove" data-pid="${p.id}" style="margin-left:auto">Remove</button>
+      </div>
+      <div class="kid-edit-fields">
+        <div>
+          <label class="field-label">Name</label>
+          <input class="dark-input" data-role="rename" data-pid="${p.id}" value="${escapeHtml(p.name)}" maxlength="24" />
+        </div>
+        <div>
+          <label class="field-label">Age group</label>
+          <select class="dark-select" data-role="age" data-pid="${p.id}">
+            <option value="toddler"${p.ageGroup==='toddler'?' selected':''}>Toddler (2–4)</option>
+            <option value="early-elem"${p.ageGroup==='early-elem'?' selected':''}>Early Elementary (5–7)</option>
+            <option value="adult"${p.ageGroup==='adult'?' selected':''}>Adult (18+)</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:.78rem;font-weight:600;color:var(--text-muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Avatar color</div>
+      <div class="color-swatches" data-pid="${p.id}">
+        ${COLOR_PALETTE.map(c => `
+          <div class="color-swatch ${c.toLowerCase() === (p.color||'').toLowerCase() ? 'selected' : ''}"
+               style="background:${c}" data-color="${c}" data-pid="${p.id}" title="${c}"></div>
+        `).join('')}
+        <label class="color-swatch-custom" title="Custom color">
+          <span>+</span>
+          <input type="color" value="${p.color || '#7c3aed'}" data-pid="${p.id}" data-role="custom-color" />
+        </label>
+      </div>
+      <div style="font-size:.78rem;font-weight:600;color:var(--text-muted);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.08em;">Enabled games</div>
+      <div class="games-toggles-grid">${toggles || '<span style="color:var(--text-muted);font-size:.82rem">No games for this age group yet.</span>'}</div>
+    `;
+    list.appendChild(div);
+  });
+
+  // Bind color swatches
+  list.querySelectorAll('.color-swatch[data-color]').forEach(sw => {
+    sw.onclick = () => {
+      Hub.updateProfile(sw.dataset.pid, { color: sw.dataset.color });
+      renderKidsTab(); renderSidebar(); renderOverview();
+      if (currentKidId === sw.dataset.pid) renderProgressTab(currentKidId);
+      toast('Color updated');
     };
-    $('save-pin').onclick = () => {
-      const p = $('new-pin').value.trim();
-      if (!/^\d{4,8}$/.test(p)) { toast('PIN must be 4–8 digits'); return; }
-      Hub.setPin(p);
-      $('new-pin').value = '';
-      toast('PIN saved');
+  });
+  list.querySelectorAll('input[data-role=custom-color]').forEach(inp => {
+    inp.onchange = () => {
+      Hub.updateProfile(inp.dataset.pid, { color: inp.value });
+      renderKidsTab(); renderSidebar(); renderOverview();
+      if (currentKidId === inp.dataset.pid) renderProgressTab(currentKidId);
+      toast('Color updated');
     };
-    $('reset-all').onclick = () => {
-      if (confirm('Reset ALL progress for every kid? This cannot be undone.')) {
-        Hub.resetProgress();
-        renderAll();
-        toast('All progress reset');
+  });
+
+  // Bind rename/age/remove
+  list.querySelectorAll('input[data-role=rename]').forEach(inp => {
+    inp.onchange = () => {
+      Hub.updateProfile(inp.dataset.pid, { name: inp.value.trim() || 'Kid' });
+      renderSidebar(); renderOverview();
+      toast('Name saved');
+    };
+  });
+  list.querySelectorAll('select[data-role=age]').forEach(sel => {
+    sel.onchange = () => {
+      Hub.updateProfile(sel.dataset.pid, { ageGroup: sel.value });
+      renderKidsTab(); renderSidebar(); renderOverview();
+      toast('Age group updated');
+    };
+  });
+  list.querySelectorAll('button[data-pid]').forEach(btn => {
+    btn.onclick = () => {
+      const profile = Hub.getProfiles().find(x => x.id === btn.dataset.pid);
+      if (!profile) return;
+      if (confirm(`Remove ${profile.name}? This deletes their progress too.`)) {
+        Hub.removeProfile(profile.id);
+        if (currentKidId === btn.dataset.pid) currentKidId = null;
+        renderKidsTab(); renderSidebar(); renderOverview();
+        toast('Profile removed');
       }
     };
+  });
+
+  $('add-kid').onclick = () => {
+    const name = $('new-name').value.trim();
+    if (!name) { toast('Enter a name first'); return; }
+    const ageGroup = $('new-age').value;
+    const profile = Hub.addProfile({ name, ageGroup });
+    applyAgeDefaults(profile.id, ageGroup);
+    $('new-name').value = '';
+    renderKidsTab(); renderSidebar(); renderOverview();
+    toast('Kid added! 🎉');
+  };
+}
+
+// ─────────────────────────────────────────
+// LIBRARY TAB
+// ─────────────────────────────────────────
+function renderLibrary() {
+  const grid = $('library-grid');
+  grid.innerHTML = Hub.GAMES.map(g => {
+    const ageTag = g.ageGroups.map(a => Hub.AGE_GROUPS[a]?.label || a).join(', ');
+    const href = g.path.startsWith('http') ? g.path : g.path;
+    return `
+      <a class="library-card" href="${href}" target="${g.path.startsWith('http') ? '_blank' : '_self'}">
+        <div class="library-card-top" style="background:${g.accent || '#3730a3'}22">
+          ${g.icon.length <= 2 ? `<span style="font-size:2.2rem">${g.icon}</span>` : `<span style="font-size:1.2rem;font-weight:900;color:${g.accent}">${g.icon}</span>`}
+        </div>
+        <div class="library-card-body">
+          <div class="library-card-title">${escapeHtml(g.title)}</div>
+          <div class="library-card-sub">${escapeHtml(g.tagline)}</div>
+          <div class="library-card-meta">
+            <span class="lib-tag">${escapeHtml(g.subject)}</span>
+            <span class="lib-tag">${ageTag}</span>
+          </div>
+        </div>
+      </a>
+    `;
+  }).join('');
+}
+
+// ─────────────────────────────────────────
+// SETTINGS TAB
+// ─────────────────────────────────────────
+function bindSettings() {
+  $('endpoint-label').textContent = Hub.getEndpointLabel();
+  renderRemoteSyncStatus();
+  renderDefaultsManager();
+
+  document.querySelectorAll('#defaults-tabs .defaults-tab').forEach(btn => {
+    btn.onclick = () => {
+      activeDefaultsTab = btn.dataset.age;
+      document.querySelectorAll('#defaults-tabs .defaults-tab').forEach(b =>
+        b.classList.toggle('active', b.dataset.age === activeDefaultsTab));
+      renderDefaultsManager();
+    };
+  });
+
+  $('pull-remote').onclick = async () => {
+    toast('Refreshing…');
+    const remote = await Hub.loadRemoteState();
+    renderRemoteSyncStatus();
+    if (!remote) { toast('No saved shared state found yet'); return; }
+    location.reload();
+  };
+
+  $('save-pin').onclick = () => {
+    const p = $('new-pin').value.trim();
+    if (!/^\d{4,8}$/.test(p)) { toast('PIN must be 4–8 digits'); return; }
+    Hub.setPin(p);
+    $('new-pin').value = '';
+    toast('PIN saved ✓');
+  };
+
+  $('reset-all').onclick = () => {
+    if (confirm('Reset ALL progress for every kid? This cannot be undone.')) {
+      Hub.resetProgress();
+      renderDashboard();
+      toast('All progress reset');
+    }
+  };
+}
+
+function renderDefaultsManager() {
+  const grid = $('defaults-grid');
+  if (!grid) return;
+  const ageGroup = activeDefaultsTab;
+  const overrides = getAgeDefaults(ageGroup) || {};
+
+  // Sort: native games first, then "addable" games
+  const games = Hub.GAMES.slice().sort((a, b) => {
+    const aN = a.ageGroups.includes(ageGroup) ? 0 : 1;
+    const bN = b.ageGroups.includes(ageGroup) ? 0 : 1;
+    return aN - bN;
+  });
+
+  grid.innerHTML = games.map(g => {
+    const isNative = g.ageGroups.includes(ageGroup);
+    // Native: undefined → on (matches Hub's auto-enable). false → default off.
+    // Non-native: undefined → off. true → game added to this age group + default on.
+    const enabled = overrides[g.id] === undefined ? isNative : overrides[g.id];
+    let tag;
+    if (isNative) {
+      tag = `<span class="age-tag native">In ${shortAge(ageGroup)}</span>`;
+    } else if (enabled) {
+      tag = `<span class="age-tag added">✓ Added to ${shortAge(ageGroup)}</span>`;
+    } else {
+      tag = `<span class="age-tag addable">+ Add to ${shortAge(ageGroup)}</span>`;
+    }
+    return `
+      <div class="default-pill ${isNative ? '' : 'addable'} ${enabled ? 'on' : ''}">
+        <div class="default-pill-icon" style="background:${g.accent || '#3730a3'}22;color:${g.accent || '#7c3aed'}">${g.icon}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="default-pill-name">${escapeHtml(g.title)}</div>
+          <div style="margin-top:2px;">${tag}</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" ${enabled ? 'checked' : ''}
+                 data-age="${ageGroup}" data-gid="${g.id}" data-native="${isNative}"
+                 onchange="toggleAgeDefault(this)" />
+          <div class="toggle-track"></div>
+          <div class="toggle-thumb"></div>
+        </label>
+      </div>
+    `;
+  }).join('');
+}
+
+function shortAge(ag) {
+  return ({ 'toddler': 'Toddler', 'early-elem': 'Early Elem', 'adult': 'Adult' })[ag] || ag;
+}
+
+function toggleAgeDefault(cb) {
+  const ageGroup = cb.dataset.age;
+  const gid = cb.dataset.gid;
+  const isNative = cb.dataset.native === 'true';
+  const enabled = cb.checked;
+
+  setAgeDefault(ageGroup, gid, enabled);
+
+  // For non-native games, mutate Hub.GAMES so the game actually shows up
+  // for kids in this age group (in the index, in their progress, etc.)
+  if (!isNative) {
+    const game = Hub.GAMES.find(g => g.id === gid);
+    if (game) {
+      if (enabled && !game.ageGroups.includes(ageGroup)) {
+        game.ageGroups.push(ageGroup);
+      } else if (!enabled && game.ageGroups.includes(ageGroup)) {
+        game.ageGroups = game.ageGroups.filter(a => a !== ageGroup);
+      }
+    }
+    // Apply to existing kids in this age group too
+    Hub.getProfiles().forEach(p => {
+      if (p.ageGroup === ageGroup) {
+        Hub.setGameEnabled(p.id, gid, enabled);
+      }
+    });
   }
 
-  function renderRemoteSyncStatus() {
-    const meta = Hub.getRemoteSyncMeta();
-    $('remote-sync-status').innerHTML = `Revision: ${meta.revision || 0}<br>
-      Last updated: ${meta.updatedAt || 'unknown'}<br>
-      Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌ failed' : meta.lastPushOk ? '✅ ok' : ''}<br>
-      Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌ failed' : meta.lastPullOk ? '✅ ok' : ''}<br>
-      Conflict: ${meta.lastConflict ? `⚠️ current revision ${meta.conflictRevision || '?'} at ${meta.conflictUpdatedAt || 'unknown'}` : 'none'}<br>
-      If push/pull keeps failing, refresh once to clear any stale cached app shell.`;
-  }
+  renderDefaultsManager();
+  renderKidsTab(); renderSidebar(); renderOverview();
+  if (currentKidId) renderProgressTab(currentKidId);
 
-  // ---------- helpers ----------
-  function formatDuration(s){ if(!s) return '—'; const m=Math.floor(s/60), r=s%60; return m?`${m}m ${r}s`:`${r}s`; }
-  function formatDate(iso){ const d=new Date(iso); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+  if (!isNative) {
+    toast(enabled ? `Added to ${shortAge(ageGroup)}` : `Removed from ${shortAge(ageGroup)}`);
+  } else {
+    toast(enabled ? 'Default: on' : 'Default: off');
+  }
+}
+
+// Re-apply non-native age-group additions to Hub.GAMES on each page load
+function applyAgeOverridesToHub() {
+  try {
+    const raw = localStorage.getItem(DEFAULTS_KEY);
+    if (!raw) return;
+    const all = JSON.parse(raw);
+    Object.entries(all).forEach(([ageGroup, gameMap]) => {
+      Object.entries(gameMap).forEach(([gid, enabled]) => {
+        if (!enabled) return;
+        const game = Hub.GAMES.find(g => g.id === gid);
+        if (!game) return;
+        if (!game.ageGroups.includes(ageGroup)) {
+          game.ageGroups.push(ageGroup);
+        }
+      });
+    });
+  } catch (_) {}
+}
+
+function renderRemoteSyncStatus() {
+  const meta = Hub.getRemoteSyncMeta();
+  $('remote-sync-status').innerHTML = `
+    <span>Revision: ${meta.revision || 0}</span><br>
+    <span>Last updated: ${meta.updatedAt || 'unknown'}</span><br>
+    <span>Last push: ${meta.lastPushAt || 'never'} ${meta.lastPushOk === false ? '❌' : meta.lastPushOk ? '✅' : ''}</span><br>
+    <span>Last pull: ${meta.lastPullAt || 'never'} ${meta.lastPullOk === false ? '❌' : meta.lastPullOk ? '✅' : ''}</span>
+  `;
+}
+
+// ─────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────
+function getKidStreakDays(pid) {
+  const qs = Hub.getQuizState(pid);
+  if (qs.streak > 0) return qs.streak;
+  // Fallback: check if any game was played recently
+  const games = Hub.GAMES;
+  let lastPlayed = null;
+  games.forEach(g => {
+    const pr = Hub.getProgress(pid, g.id);
+    if (pr.lastPlayed) {
+      const d = new Date(pr.lastPlayed);
+      if (!lastPlayed || d > lastPlayed) lastPlayed = d;
+    }
+  });
+  if (!lastPlayed) return 0;
+  const daysDiff = Math.floor((Date.now() - lastPlayed.getTime()) / 86400000);
+  return daysDiff <= 1 ? 1 : 0;
+}
+
+function relativeDate(isoStr) {
+  if (!isoStr) return '—';
+  const d = new Date(isoStr);
+  const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+  const days = Math.floor(diff / 86400);
+  if (days < 7) return `${days}d ago`;
+  return d.toLocaleDateString('en', { month:'short', day:'numeric' });
+}
+
+function formatDur(s) {
+  if (!s) return '—';
+  const m = Math.floor(s / 60);
+  if (m < 1) return `${s}s`;
+  return `${m}m`;
+}
 </script>
 
 </body>
