@@ -9,6 +9,13 @@
 <link rel="apple-touch-icon" href="../assets/icon.svg" />
 <link rel="icon" type="image/svg+xml" href="../assets/icon.svg" />
 <script src="/socket.io/socket.io.js"></script>
+<script>
+  // Pre-paint theme to avoid flash. Default for gp-hoot: dark.
+  (function(){
+    var t = localStorage.getItem('gamehub.theme');
+    document.documentElement.setAttribute('data-theme', t || 'dark');
+  })();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
 
@@ -38,6 +45,28 @@
     --glow-red: 0 0 24px rgba(239, 68, 68, .4);
     color-scheme: dark;
   }
+
+  /* ── LIGHT THEME (mirrors kids' light scheme) ── */
+  [data-theme="light"] {
+    --bg:     #faf7ff;
+    --bg2:    #f4eef9;
+    --panel:  #ffffff;
+    --panel2: #ece8ff;
+    --ink:    #1f2740;
+    --muted:  #5b6584;
+    --line:   #e6e1f3;
+    --navy:   #1f2740;
+    --shadow: 0 8px 32px rgba(31, 39, 64, .12);
+    color-scheme: light;
+  }
+  [data-theme="light"] body {
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,.10) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34,211,238,.08) 0%, transparent 50%) !important;
+  }
+  [data-theme="light"] .topbar { background: rgba(255,255,255,.88) !important; }
+  [data-theme="light"] .btn.secondary { background: var(--panel2); color: var(--ink); }
+  [data-theme="light"] .btn.secondary:hover { background: #d6cffa; }
 
   @keyframes fadeSlideIn {
     from { opacity: 0; transform: translateY(12px); }
@@ -1131,6 +1160,10 @@
     <button class="btn secondary" id="nav-host" type="button"><svg class="icon"><use href="#i-host"/></svg>Host</button>
     <button class="btn secondary" id="nav-join" type="button"><svg class="icon"><use href="#i-join"/></svg>Join</button>
     <a class="btn secondary" href="../index.html"><svg class="icon"><use href="#i-hub"/></svg>Hub</a>
+    <button class="btn secondary" id="theme-toggle" type="button" title="Toggle theme" aria-label="Toggle theme">
+      <svg id="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      <svg id="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+    </button>
     <button class="btn secondary hidden" id="logout-btn" type="button"><svg class="icon"><use href="#i-logout"/></svg>Log out</button>
   </nav>
 </header>
@@ -2220,6 +2253,24 @@
     }
     document.querySelectorAll('[data-auto-advance-label]').forEach((el) => { el.textContent = autoAdvanceLabel(room); });
   }
+
+  // ── Theme toggle ────────────────────────────────────────────────
+  function applyThemeIcons() {
+    const dark = document.documentElement.getAttribute('data-theme') !== 'light';
+    const m = $('icon-moon'), s = $('icon-sun');
+    if (m && s) {
+      m.style.display = dark ? 'block' : 'none';
+      s.style.display = dark ? 'none' : 'block';
+    }
+  }
+  applyThemeIcons();
+  $('theme-toggle').addEventListener('click', () => {
+    const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    const next = cur === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gamehub.theme', next);
+    applyThemeIcons();
+  });
 
   $('nav-host').onclick = () => {
     state.mode = 'host';
