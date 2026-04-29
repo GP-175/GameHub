@@ -111,6 +111,16 @@
       accent: '#00c9ff',
     },
     {
+      id: 'jaxx-quest',
+      title: "Jaxx's Quest 3D",
+      subject: 'Coding + Logic',
+      icon: '🧭',
+      tagline: 'Code Jaxx through 3D mazes to find family',
+      ageGroups: ['early-elem'],
+      path: 'games/jaxx-quest.html',
+      accent: '#4a90e2',
+    },
+    {
       id: 'gem-quest',
       title: 'Gem Quest',
       subject: 'Math + Reading',

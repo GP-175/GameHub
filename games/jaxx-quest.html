@@ -1,0 +1,1456 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Jaxx's Quest 3D — Minimal (3D only, resilient)</title>
+<style>
+:root{
+  --p:#7c3aed;          /* GameHub primary purple */
+  --p-soft:#ede9fe;
+  --s:#10b981;          /* success / GO */
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --info:#3b82f6;
+  --t:#111827;
+  --t-soft:#6b7280;
+  --bg:#faf7ff;
+  --bg-card:#ffffff;
+  --bg-soft:#f5f3ff;
+  --border:#e5e7eb;
+  --shadow:0 8px 24px rgba(17,24,39,.08);
+}
+[data-theme="dark"]{
+  --p:#a78bfa;
+  --p-soft:#312e81;
+  --s:#34d399;
+  --warn:#fbbf24;
+  --danger:#f87171;
+  --info:#60a5fa;
+  --t:#f3f4f6;
+  --t-soft:#9ca3af;
+  --bg:#0f172a;
+  --bg-card:#1e293b;
+  --bg-soft:#1f2937;
+  --border:#334155;
+  --shadow:0 8px 24px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{margin:0;display:flex;height:100vh;background:var(--bg);color:var(--t);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial}
+#game{flex:1;position:relative;background:linear-gradient(180deg,#87ceeb,#a2d2ff);min-height:360px;overflow:hidden}
+[data-theme="dark"] #game{background:linear-gradient(180deg,#1e3a5f,#0f1e3a)}
+#stage{position:absolute;inset:0 0 190px;touch-action:none;cursor:grab;width:100%;height:auto}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ui{width:400px;max-width:46vw;background:var(--bg-card);box-shadow:var(--shadow);padding:0;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border);position:relative}
+/* Soft cloud sky in the UI background */
+#ui::before{content:"";position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(ellipse 120px 32px at 18% 22%, rgba(255,255,255,.9) 60%, transparent 62%),
+  radial-gradient(ellipse 160px 36px at 82% 58%, rgba(255,255,255,.85) 60%, transparent 62%),
+  radial-gradient(ellipse 100px 28px at 30% 78%, rgba(255,255,255,.7) 60%, transparent 62%),
+  linear-gradient(180deg, #e0f2fe 0%, var(--bg-card) 55%);
+  z-index:0;opacity:.55}
+[data-theme="dark"] #ui::before{background:
+  radial-gradient(ellipse 120px 32px at 18% 22%, rgba(255,255,255,.06) 60%, transparent 62%),
+  radial-gradient(ellipse 160px 36px at 82% 58%, rgba(255,255,255,.05) 60%, transparent 62%),
+  linear-gradient(180deg, #1e3a5f 0%, var(--bg-card) 55%);opacity:.6}
+#ui > *{position:relative;z-index:1}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);background:var(--bg-card)}
+.iconbtn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:transparent;color:var(--t);border-radius:10px;padding:6px 10px;font-weight:700;cursor:pointer;text-decoration:none;font-size:13px}
+.iconbtn:hover{background:var(--bg-soft);border-color:var(--p)}
+h1{font-size:15px;color:var(--p);margin:0;font-weight:800;letter-spacing:.2px}
+
+/* Scroll body */
+.uibody{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+
+/* Status strip */
+.status{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--bg-soft);border:1px solid var(--border);color:var(--t);border-radius:999px;padding:4px 10px;font-weight:700;font-size:12px}
+.chip.lvl{background:var(--p-soft);border-color:transparent;color:var(--p)}
+.chip b{font-weight:800}
+#msg{margin-left:auto;background:transparent;border:0;color:var(--t-soft);font-size:12px;font-weight:600}
+
+/* Objective banner */
+.objective{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:linear-gradient(135deg,var(--p-soft),transparent);border:1px solid var(--border);font-weight:700;color:var(--t);font-size:14px}
+.objective::before{content:"🎯";font-size:18px}
+.objective .obj-text{display:flex;flex-direction:column;gap:2px;flex:1}
+.objective .obj-concept{font-size:11px;font-weight:700;color:var(--p);text-transform:uppercase;letter-spacing:.6px}
+.objective .obj-target{font-size:11px;color:var(--t-soft);font-weight:600}
+
+/* Sections */
+.section{display:flex;flex-direction:column;gap:8px}
+.section-h{display:flex;align-items:center;justify-content:space-between;font-size:11px;font-weight:800;color:var(--t-soft);text-transform:uppercase;letter-spacing:.8px;margin:0}
+.tip{font-size:11px;color:var(--t-soft);line-height:1.4}
+
+/* Toolbox: wraps to fit chunky blocks */
+.cmds{display:flex;gap:10px;flex-wrap:wrap;min-height:64px}
+
+/* Plan dock: the code workspace lives on the scene so long plans have room. */
+.plan-section{position:absolute;left:20px;right:20px;bottom:18px;z-index:5;display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:12px;border:1px solid rgba(255,255,255,.6);border-radius:18px;background:rgba(255,255,255,.86);box-shadow:0 18px 50px rgba(17,24,39,.22);backdrop-filter:blur(14px)}
+[data-theme="dark"] .plan-section{background:rgba(15,23,42,.84);border-color:rgba(148,163,184,.2)}
+.plan-section .section-h{grid-column:1/-1;color:var(--p);font-size:12px}
+.plan-main{min-width:0;display:flex;flex-direction:column;gap:8px}
+.plan-actions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;align-content:start}
+.plan-actions .row2-mini{display:contents}
+/* Plan strip: avatar · drop zone · GO, with wrapping blocks for longer plans */
+.planstrip{display:flex;align-items:flex-start;gap:8px;padding:8px;background:var(--bg-card);border:3px solid #7dd3fc;border-radius:18px;box-shadow:0 4px 14px rgba(125,211,252,.25);min-height:82px}
+[data-theme="dark"] .planstrip{border-color:#0c4a6e;background:var(--bg-soft)}
+.planavatar{flex:0 0 56px;width:56px;height:56px;border-radius:50%;background:linear-gradient(145deg,#fde68a,#f59e0b);display:flex;align-items:center;justify-content:center;font-size:30px;line-height:1;box-shadow:inset 0 -3px 0 rgba(0,0,0,.12)}
+.seq{flex:1;display:flex;gap:6px;align-items:flex-start;align-content:flex-start;flex-wrap:wrap;overflow-x:hidden;overflow-y:auto;min-height:60px;max-height:142px;padding:2px 6px;background:transparent;border:0;border-radius:12px;scrollbar-width:thin}
+.seq:empty{align-items:center;align-content:center}
+.seq:empty::before{content:"Drop blocks here...";color:var(--t-soft);font-weight:700;font-size:14px;align-self:center;width:100%;text-align:center}
+.seq.dragging-over{background:rgba(125,211,252,.18)}
+.goround{flex:0 0 56px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#38bdf8,#0284c7);color:#fff;border:0;cursor:pointer;font-size:22px;display:flex;align-items:center;justify-content:center;box-shadow:inset 0 -4px 0 rgba(0,0,0,.18),0 4px 12px rgba(2,132,199,.4);transition:transform .1s,filter .15s}
+.goround:hover{filter:brightness(1.08)}
+.goround:active{transform:translateY(1px)}
+.goround:disabled{opacity:.5;cursor:not-allowed;filter:none;transform:none}
+@keyframes pulse{0%,100%{opacity:.6}50%{opacity:1}}
+.row2-mini{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* Coachmark overlay */
+#coachmark{position:fixed;inset:0;z-index:1100;display:none;pointer-events:auto}
+#coachmark.show{display:block}
+.cm-veil{position:absolute;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px)}
+.cm-bubble{position:absolute;background:var(--bg-card);color:var(--t);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-width:280px;font-size:13px;line-height:1.5}
+.cm-bubble h3{margin:0 0 6px;font-size:14px;color:var(--p);font-weight:800}
+.cm-bubble .cm-actions{display:flex;gap:8px;justify-content:space-between;align-items:center;margin-top:10px}
+.cm-bubble .cm-step{font-size:11px;color:var(--t-soft);font-weight:700}
+.cm-bubble .cm-skip{background:transparent;border:0;color:var(--t-soft);font-weight:700;cursor:pointer;padding:6px;font-size:12px}
+.cm-bubble .cm-next{background:var(--p);color:#fff;border:0;border-radius:8px;padding:7px 14px;font-weight:800;cursor:pointer;font-size:12px}
+.cm-bubble::before{content:"";position:absolute;width:14px;height:14px;background:var(--bg-card);border:1px solid var(--border);border-right:0;border-bottom:0;transform:rotate(45deg)}
+.cm-bubble.arrow-right::before{right:-8px;top:24px;transform:rotate(135deg);border:1px solid var(--border);border-left:0;border-bottom:0}
+.cm-bubble.arrow-bottom::before{bottom:-8px;left:30px;transform:rotate(225deg);border:1px solid var(--border);border-top:0;border-right:0}
+.cm-spotlight{position:absolute;border:3px solid var(--p);border-radius:14px;box-shadow:0 0 0 9999px rgba(15,23,42,.55);pointer-events:none;transition:all .25s ease}
+/* Chunky 3D toy-block: per-command saturated color, inset highlight, drop shadow */
+.blk{
+  width:60px;height:60px;border-radius:14px;border:0;flex:0 0 60px;
+  background:var(--blk-bg,#9ca3af);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;font-size:26px;line-height:1;
+  box-shadow:
+    inset 0 -5px 0 rgba(0,0,0,.18),
+    inset 0 2px 0 rgba(255,255,255,.22),
+    0 4px 10px rgba(17,24,39,.18);
+  transition:transform .1s,filter .15s;
+  user-select:none;
+}
+.blk:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.blk:active{transform:translateY(0)}
+.blk small{display:none}
+.blk[data-id="move"]{--blk-bg:#22c55e}
+.blk[data-id="turn-left"]{--blk-bg:#ec4899}
+.blk[data-id="turn-right"]{--blk-bg:#f97316}
+.blk[data-id="jump"]{--blk-bg:#3b82f6}
+.blk[data-id="repeat"]{--blk-bg:#14b8a6}
+.blk[data-id="if-move"]{--blk-bg:#8b5cf6}
+.blk .cnt{position:absolute;right:-4px;bottom:-4px;padding:2px 7px;border-radius:999px;background:#fff;color:var(--blk-bg);font:800 11px/1.2 system-ui;display:none;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.blk.count>.cnt{display:inline-block}
+.blk .pm{position:absolute;top:-6px;width:20px;height:20px;border-radius:999px;background:#fff;color:var(--blk-bg);font:900 14px/20px system-ui;display:flex;align-items:center;justify-content:center;user-select:none;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+.blk .pm.plus{right:-6px}
+.blk .pm.minus{left:-6px}
+.blk .pm:active{transform:scale(0.92)}
+.rep{} /* legacy class — superseded by data-id selector */
+.good{background:#10b981!important;color:#fff;box-shadow:inset 0 -5px 0 rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.22),0 0 0 3px #fff,0 0 0 6px #10b981!important}
+.bad{background:#ef4444!important;color:#fff;box-shadow:inset 0 -5px 0 rgba(0,0,0,.18),inset 0 2px 0 rgba(255,255,255,.22),0 0 0 3px #fff,0 0 0 6px #ef4444!important;animation:shake .3s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+/* Buttons */
+.btn{border:0;border-radius:10px;padding:10px 12px;color:#fff;font-weight:800;cursor:pointer;font-size:13px;transition:transform .1s,filter .15s}
+.btn:hover{filter:brightness(1.06)}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;filter:none;transform:none}
+.btn-ghost{background:transparent;color:var(--t);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg-soft)}
+#go{display:none}/* legacy id kept; we forward clicks to it from .goround */
+#step{background:var(--info)}
+#pause{background:var(--warn)}
+#clear{background:transparent;color:var(--t);border:1px solid var(--border)}
+#clear:hover{background:var(--bg-soft)}
+#replay{background:#6366f1}
+#reset{background:var(--danger)}
+#levels{background:var(--p)}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* Footer (sticky reset/levels) */
+.footer{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 14px;border-top:1px solid var(--border);background:var(--bg-card)}
+
+/* Modals */
+#modal,#win,#overlay,#settings,#final{position:fixed;inset:0;background:rgba(15,23,42,.55);display:none;justify-content:center;align-items:center;z-index:1000;backdrop-filter:blur(4px)}
+.card{background:var(--bg-card);color:var(--t);padding:22px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center;width:min(92vw,520px);border:1px solid var(--border)}
+.title{font-weight:800;color:var(--p);margin:0 0 6px;font-size:18px}
+.levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px}
+.lbtn{width:56px;height:56px;border:0;border-radius:12px;background:var(--p);color:#fff;font-weight:800;cursor:pointer;font-size:16px}
+.lbtn:disabled{background:var(--border);color:var(--t-soft);cursor:not-allowed}
+.star{font-size:24px;letter-spacing:4px;color:var(--warn)}
+#diag{border:1px dashed var(--border);border-radius:10px;padding:8px;background:var(--bg-soft);color:var(--t);text-align:left}
+.pass{color:#10b981}.fail{color:var(--danger)}
+
+/* Settings dialog */
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:0}
+.settings-row label{font-weight:600;color:var(--t);font-size:13px}
+.settings-row input[type=range]{flex:1;max-width:160px}
+.settings-row .val{font-size:12px;color:var(--t-soft);min-width:48px;text-align:right}
+
+/* Responsive */
+@media (max-width:1024px){#ui{width:360px}}
+@media (max-width:768px){
+  body{flex-direction:column}
+  #game{flex:1 1 64vh;min-height:64vh}
+  #stage{inset:0 0 218px}
+  #ui{width:100%;max-width:100%;max-height:36vh;border-left:0;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+  .topbar{padding:8px 12px}
+  h1{font-size:14px}
+  .uibody{padding:10px 12px;gap:8px}
+  .blk{width:48px;height:48px;flex:0 0 48px;font-size:21px;border-radius:12px}
+  .planavatar{display:none}
+  .goround{flex:0 0 52px;width:52px;height:52px;font-size:19px}
+  .plan-section{left:8px;right:8px;bottom:8px;padding:8px;grid-template-columns:1fr;gap:7px;border-radius:16px}
+  .plan-section .section-h{font-size:11px}
+  .planstrip{padding:5px;min-height:112px}
+  .seq{min-height:52px;max-height:110px;flex-wrap:wrap;overflow-x:hidden;overflow-y:auto}
+  .plan-actions{grid-template-columns:repeat(3,1fr)}
+  .plan-actions .row2-mini{display:grid;grid-column:1/-1}
+  .footer{padding:8px 12px}
+}
+</style><link rel="icon" href="data:,"><script>
+  // Inherit GameHub theme before paint to avoid a flash.
+  try{var t=localStorage.getItem('gamehub.theme');document.documentElement.setAttribute('data-theme',t||'light');}catch(e){}
+</script>
+<script src="../assets/hub.js" defer></script></head>
+<body>
+  <div id="game" aria-label="Game canvas">
+    <div id="stage"></div>
+    <!-- Plan strip: avatar · drop zone · GO -->
+    <div class="plan-section section">
+      <p class="section-h">Your Plan</p>
+      <div class="plan-main">
+        <div class="planstrip">
+          <div class="planavatar" aria-hidden="true">🦊</div>
+          <div id="seq" class="seq" aria-label="Plan sequence area"></div>
+          <button id="goPrimary" class="goround" title="Run your plan now" aria-label="Run plan">GO</button>
+        </div>
+        <button id="go" aria-hidden="true" style="display:none"></button>
+      </div>
+      <div class="plan-actions">
+        <button id="step" class="btn" title="Run one block at a time">Step</button>
+        <button id="pause" class="btn" title="Pause execution">Pause</button>
+        <button id="replay" class="btn" title="Replay last run">Replay</button>
+        <div class="row2-mini">
+          <button id="undo" class="btn" title="Undo last change">↶ Undo</button>
+          <button id="clear" class="btn" title="Clear all blocks">Clear plan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="ui" aria-label="Game controls">
+    <!-- Top bar: back to hub, title, settings -->
+    <div class="topbar">
+      <a class="iconbtn" href="../index.html" title="Back to GameHub" aria-label="Back to GameHub">← Hub</a>
+      <h1>Jaxx's Quest 3D</h1>
+      <button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+
+    <div class="uibody">
+      <!-- Status strip -->
+      <div class="status">
+        <span class="chip lvl">Level <b id="lvl">1</b></span>
+        <span class="chip">🧭 <b id="mv">0</b></span>
+        <span class="chip">🪙 <b id="cc">0</b>/<span id="ct">0</span></span>
+        <span id="msg" aria-live="polite">Loading…</span>
+      </div>
+
+      <!-- Objective banner -->
+      <div id="objective" class="objective" title="Level objective">
+        <div class="obj-text">
+          <div class="obj-concept" id="objConcept">—</div>
+          <div id="objText">Objective: —</div>
+          <div class="obj-target" id="objTarget"></div>
+        </div>
+      </div>
+
+      <!-- Toolbox -->
+      <div class="section">
+        <p class="section-h">Toolbox</p>
+        <div id="tb" class="cmds"></div>
+        <p class="tip">Tap a block to add it. Click a placed block to remove. On Level 3+, use the Repeat 🔁 block's +/− to set how many times.</p>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div class="footer">
+      <button id="reset" class="btn" title="Reset the maze with a new layout">Reset Maze</button>
+      <button id="levels" class="btn" title="Pick a level">Levels</button>
+    </div>
+  </div>
+
+  <!-- Settings dialog (config moved here) -->
+  <div id="settings" role="dialog" aria-label="Settings">
+    <div class="card" style="text-align:left;position:relative">
+      <button id="closeSettings" class="iconbtn" style="position:absolute;right:14px;top:14px">✕</button>
+      <p class="title">Settings</p>
+      <details id="config" open>
+        <summary style="display:none"></summary>
+        <div class="settings-row">
+          <label for="spd">Animation speed</label>
+          <input id="spd" type="range" min="200" max="1200" step="50" value="600"/>
+          <span id="spdms" class="val">600ms</span>
+        </div>
+        <div class="settings-row"><label for="sfx">Sound effects</label><input id="sfx" type="checkbox" checked/></div>
+        <div class="settings-row"><label for="orbit">Orbit camera</label><input id="orbit" type="checkbox" checked/></div>
+        <div class="settings-row"><label for="envon">Environment</label><input id="envon" type="checkbox" checked/></div>
+        <div class="settings-row">
+          <label for="env">Env density</label>
+          <input id="env" type="range" min="0" max="100" step="5" value="45"/>
+          <span id="envl" class="val">45%</span>
+        </div>
+        <div class="settings-row"><label>Maze seed</label><span class="val">🌱 <b id="seed">0</b></span></div>
+        <details id="diag" style="margin-top:10px">
+          <summary style="cursor:pointer;font-weight:700;font-size:12px;color:var(--t-soft)">Diagnostics</summary>
+          <ul id="dlist" style="margin:6px 0 0 18px;font-size:12px"></ul>
+        </details>
+      </details>
+    </div>
+  </div>
+
+  <div id="modal"><div class="card" style="position:relative"><button id="closeLevels" class="iconbtn" style="position:absolute;right:14px;top:14px">✕</button><p class="title" style="margin-top:0">Choose a Level</p><div id="lbuttons" class="levels"></div></div></div>
+  <div id="final" style="z-index:1001"><div class="card"><p class="title">Congratulations! 🎉</p><p>You completed all levels!</p><div style="display:flex;justify-content:center;margin-top:10px"><button id="restart" class="btn" style="background:var(--s)">Start Again</button></div></div></div>
+  <div id="win"><div class="card"><p class="title">Level Complete!</p><div id="stars" class="star">⭐⭐⭐</div><p>Moves: <b id="smv">0</b> • Coins: <b id="scc">0</b>/<span id="sct">0</span></p><p id="winHint" style="color:var(--t-soft);font-size:12px;margin:4px 0 0"></p><div style="display:flex;gap:8px;justify-content:center;margin-top:10px"><button id="again" class="btn" style="background:var(--info)">Replay</button><button id="next" class="btn" style="background:var(--s)">Next Level →</button></div></div></div>
+  <!-- Coachmark host (first-run tutorial) -->
+  <div id="coachmark" aria-hidden="true">
+    <div class="cm-veil"></div>
+    <div class="cm-spotlight" id="cmSpot"></div>
+    <div class="cm-bubble" id="cmBubble">
+      <span class="cm-step" id="cmStepLabel">Step 1 of 3</span>
+      <h3 id="cmTitle"></h3>
+      <p id="cmBody" style="margin:0"></p>
+      <div class="cm-actions">
+        <button class="cm-skip" id="cmSkip">Skip</button>
+        <button class="cm-next" id="cmNext">Next →</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="overlay"><div class="card"><p class="title">Couldn't load 3D</p><p id="ovmsg" style="margin:8px 0 0;color:var(--t-soft)"></p><div style="display:flex;justify-content:center;margin-top:10px"><button id="retry" class="btn" style="background:var(--p)">Retry</button></div></div></div>
+
+<script>
+// ========== Helper: log to UI
+function setMsg(t,c){const m=document.getElementById('msg');m.textContent=t;m.style.color=c||'#333'}
+
+// ========== Robust CDN loader with multi-CDN fallback
+function loadScript(url,{timeout=9000,sri}={}){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=url;s.async=true;if(sri){s.integrity='sha384-'+sri;s.crossOrigin='anonymous'}let to=setTimeout(()=>{s.remove();rej(new Error('Timeout '+url))},timeout);s.onload=()=>{clearTimeout(to);res()};s.onerror=()=>{clearTimeout(to);rej(new Error('Failed '+url))};document.head.appendChild(s)})}
+async function tryLoad(urls){let last;for(const u of urls){try{if(typeof u==='string'){await loadScript(u)}else if(u&&u.url){await loadScript(u.url,{sri:u.sri})}else{throw new Error('Invalid URL entry')}}catch(e){last=e;console.info('CDN failed:',(typeof u==='string'?u:u&&u.url),e);continue}return}throw last||new Error('All CDNs failed')}
+async function load3DLibs(){
+  // Prefer local vendor copies; fall back to pinned CDNs
+  await tryLoad([
+    'vendor/three/three-0.128.0.min.js',
+    {url:'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',sri:'CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu'},
+    {url:'https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js',sri:'CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu'},
+    {url:'https://unpkg.com/three@0.128.0/build/three.min.js',sri:'CI3ELBVUz9XQO+97x6nwMDPosPR5XvsxW2ua7N1Xeygeh1IxtgqtCkGfQY9WWdHu'}]);
+  await tryLoad([
+    'vendor/three/OrbitControls-0.128.0.js',
+    {url:'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js',sri:'wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf'},
+    {url:'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js',sri:'wagZhIFgY4hD+7awjQjR4e2E294y6J2HSnd8eTNc15ZubTeQeVRZwhQJ+W6hnBsf'}]);
+  await tryLoad([
+    'vendor/gsap/gsap-3.9.1.min.js',
+    {url:'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js',sri:'lI86CGWNchoT9leGBpVR41iGrRTRbHRDsPI4Zo/atPOIodjl8YyDaVefcpgkCg4u'},
+    {url:'https://cdn.jsdelivr.net/npm/gsap@3.9.1/dist/gsap.min.js',sri:'lI86CGWNchoT9leGBpVR41iGrRTRbHRDsPI4Zo/atPOIodjl8YyDaVefcpgkCg4u'},
+    {url:'https://unpkg.com/gsap@3.9.1/dist/gsap.min.js',sri:'lI86CGWNchoT9leGBpVR41iGrRTRbHRDsPI4Zo/atPOIodjl8YyDaVefcpgkCg4u'}]);
+}
+
+function webglAvailable(){try{const c=document.createElement('canvas');return !!(window.WebGLRenderingContext&&(c.getContext('webgl')||c.getContext('experimental-webgl')))}catch(e){return false}}
+function showOverlay(msg){const o=document.getElementById('overlay');const m=document.getElementById('ovmsg');m.textContent=msg;o.style.display='flex'}
+function hideOverlay(){document.getElementById('overlay').style.display='none'}
+
+// ========== Diagnostics
+const D={ul:null,add(ok,msg){const li=document.createElement('li');li.textContent=(ok?'PASS: ':'FAIL: ')+msg;li.className=ok?'pass':'fail';this.ul&&this.ul.appendChild(li);(ok?console.log:console.warn)(msg)}};
+
+// ========== Config & data
+const CFG={LEVEL:1,MAX:1,TILE:2,HEIGHT:0.2,SEED:Math.floor(Math.random()*1e9)};
+const HUB_GAME_ID='jaxx-quest';
+function _legacyLoad(){try{return JSON.parse(localStorage.getItem('jq_progress')||'{}')}catch{return{}}}
+function loadProgress(){
+  // Prefer per-profile Hub config; fall back to legacy localStorage so existing
+  // players don't lose progress on first open after the GameHub integration.
+  let s={};
+  try{ s=window.Hub?.getGameConfig?.(HUB_GAME_ID)||{}; }catch{}
+  if(!s||(s.maxUnlocked==null&&s.level==null&&s.seed==null)) s=_legacyLoad();
+  if(s.maxUnlocked)CFG.MAX=s.maxUnlocked;
+  if(s.level)CFG.LEVEL=s.level;
+  if(s.seed!=null)CFG.SEED=s.seed;
+}
+loadProgress();
+// Each level has F=family targets, C=coin count, target=optimal block count for
+// 3-star rating, concept=the CS skill being introduced.
+const LV={
+  1:{G:5,F:[{name:'Dad',color:0x4a90e2}],C:2,target:6,concept:'Sequencing'},
+  2:{G:6,F:[{name:'Mommy',color:0xf5a623}],C:3,target:8,concept:'Hazards & Jumping'},
+  3:{G:7,F:[{name:'Joash',color:0xbd10e0}],C:3,target:5,concept:'Repetition (Loops)'},
+  4:{G:8,F:[{name:'Dad',color:0x4a90e2},{name:'Mommy',color:0xf5a623},{name:'Joash',color:0xbd10e0}],C:4,target:9,concept:'Multiple Goals'},
+  5:{G:9,F:[{name:'Dad',color:0x4a90e2},{name:'Mommy',color:0xf5a623},{name:'Joash',color:0xbd10e0}],C:5,target:8,concept:'Conditionals'}
+};
+const CM={
+  1:[{id:'move',e:'➡️',l:'Forward'},{id:'turn-left',e:'↪️',l:'Left'},{id:'turn-right',e:'↩️',l:'Right'}],
+  2:[{id:'move',e:'➡️',l:'Forward'},{id:'turn-left',e:'↪️',l:'Left'},{id:'turn-right',e:'↩️',l:'Right'},{id:'jump',e:'🤸',l:'Jump'}],
+  3:[{id:'move',e:'➡️',l:'Forward'},{id:'turn-left',e:'↪️',l:'Left'},{id:'turn-right',e:'↩️',l:'Right'},{id:'repeat',e:'🔁',l:'Repeat'}],
+  4:[{id:'move',e:'➡️',l:'Forward'},{id:'turn-left',e:'↪️',l:'Left'},{id:'turn-right',e:'↩️',l:'Right'},{id:'jump',e:'🤸',l:'Jump'},{id:'repeat',e:'🔁',l:'Repeat'}],
+  // L5 introduces "If clear" — moves only if there's a path tile ahead. Lets
+  // kids write robust plans that don't crash when the world surprises them.
+  5:[{id:'move',e:'➡️',l:'Forward'},{id:'turn-left',e:'↪️',l:'Left'},{id:'turn-right',e:'↩️',l:'Right'},{id:'jump',e:'🤸',l:'Jump'},{id:'repeat',e:'🔁',l:'Repeat'},{id:'if-move',e:'❓➡️',l:'If clear'}]
+};
+
+// ========== State
+let player={x:0,z:0,dir:'east'},start={x:0,z:0,dir:'east'},family=[],grid=[],seq=[],running=false,fail=false,lastRun=[];let coins=[],speed=600,timer=null,idx=0,expanded=[];let sfx=true,audioCtx=null; let envOn=true, envDensity=45;
+// Audio helpers (movement, coins, celebration, background)
+let bgmTimer=null, bgmOn=false, audioPrimed=false;
+function ensureAudio(){
+  try{ if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+       if(audioCtx.state==='suspended'){ audioCtx.resume && audioCtx.resume(); } }
+  catch{}
+}
+function note(f=440,d=0.1,vol=0.12,type='sine',when=0){ if(!sfx) return; ensureAudio(); const ctx=audioCtx; if(!ctx) return; const t=ctx.currentTime+when; const o=ctx.createOscillator(); const g=ctx.createGain(); o.type=type; o.frequency.value=f; o.connect(g); g.connect(ctx.destination); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol,t+0.01); g.gain.exponentialRampToValueAtTime(0.0001,t+d); o.start(t); o.stop(t+d+0.02); }
+function startBgm(){ if(bgmOn||!sfx) return; ensureAudio(); const ctx=audioCtx; if(!ctx) return; bgmOn=true; const scale=[261.63,293.66,329.63,392.00,440.00,523.25]; let i=0; bgmTimer=setInterval(()=>{ if(!sfx){ stopBgm(); return; } for(let n=0;n<4;n++){ const f=scale[(i+n)%scale.length]; note(f*0.5,0.18,0.06,'triangle',n*0.22); } i=(i+1)%scale.length; },1100); }
+function stopBgm(){ if(bgmTimer){ clearInterval(bgmTimer); bgmTimer=null; } bgmOn=false; }
+function playStep(){ note(520,0.05,0.10,'square'); }
+function playCoin(){ note(880,0.08,0.14,'sine'); note(1320,0.12,0.10,'sine',0.05); }
+function playCelebrate(){ const base=[523.25,659.25,783.99,1046.5]; base.forEach((f,idx)=>note(f,0.18,0.14,'triangle',idx*0.2)); }
+
+// ========== DOM
+const STAGE=document.getElementById('stage'),MSG=document.getElementById('msg'),MV=document.getElementById('mv'),CC=document.getElementById('cc'),CT=document.getElementById('ct'),LVLBL=document.getElementById('lvl');
+const TB=document.getElementById('tb'),SEQ=document.getElementById('seq');
+let dragItem=null; // currently dragged sequence block
+const GO=document.getElementById('go'),RESET=document.getElementById('reset'),LEVELS=document.getElementById('levels');
+const STEP=document.getElementById('step'),PAUSE=document.getElementById('pause'),CLEAR=document.getElementById('clear'),REPLAY=document.getElementById('replay');
+const SPD=document.getElementById('spd'),SPDL=document.getElementById('spdms'),SFX=document.getElementById('sfx'),ORBIT=document.getElementById('orbit');
+const ENVON=document.getElementById('envon'), ENVD=document.getElementById('env'), ENVL=document.getElementById('envl');
+const MOD=document.getElementById('modal'),LB=document.getElementById('lbuttons');
+const WIN=document.getElementById('win'),STARS=document.getElementById('stars'),SMV=document.getElementById('smv'),SCC=document.getElementById('scc'),SCT=document.getElementById('sct');
+D.ul=document.getElementById('dlist');
+
+// ========== 3D globals
+let scene,camera,renderer,controls,car,fObjs=[],tiles=[];let ro=null, gridLines=null, envObjs=[]; let dirArrow=null;
+function stageDims(){const r=STAGE.getBoundingClientRect();return{w:Math.max(1,Math.floor(r.width)),h:Math.max(1,Math.floor(r.height))}}
+function applySize(){
+  if(!renderer||!camera) return;
+  const {w,h}=stageDims();
+  renderer.setSize(w,h,true); // update CSS size too
+  renderer.setPixelRatio(window.devicePixelRatio||1);
+  camera.aspect=w/h; camera.updateProjectionMatrix();
+  controls&&controls.update();
+}
+function world(x,z){const t=CFG.TILE;return{x:x*t,y:0,z:z*t}}
+function makeCar(){
+  // Stylized African child avatar built from basic geometries
+  const g=new THREE.Group();
+
+  // Materials
+  const skinMat=new THREE.MeshStandardMaterial({color:0x6d4c41, roughness:0.8}); // rich brown skin tone
+  const hairMat=new THREE.MeshStandardMaterial({color:0x1b1b1b, roughness:0.9}); // dark hair
+  const shirtMat=new THREE.MeshStandardMaterial({color:0xf94144, roughness:0.6}); // bright red shirt
+  const pantMat=new THREE.MeshStandardMaterial({color:0x2d6cdf, roughness:0.6}); // blue pants/shorts
+  const shoeMat=new THREE.MeshStandardMaterial({color:0x222222, metalness:0.1, roughness:0.9});
+
+  // Geometries
+  const legGeo=new THREE.CylinderGeometry(0.08,0.09,0.6,16);
+  const armGeo=new THREE.CylinderGeometry(0.06,0.06,0.5,16);
+  const torsoGeo=new THREE.BoxGeometry(0.6,0.7,0.3);
+  const headGeo=new THREE.SphereGeometry(0.25,24,20);
+  const neckGeo=new THREE.CylinderGeometry(0.08,0.08,0.12,12);
+  const shoeGeo=new THREE.BoxGeometry(0.18,0.08,0.28);
+
+  // Legs
+  const legL=new THREE.Mesh(legGeo,pantMat); legL.position.set(-0.15,0.3,0); g.add(legL);
+  const legR=new THREE.Mesh(legGeo,pantMat); legR.position.set( 0.15,0.3,0); g.add(legR);
+
+  // Shoes (slightly forward)
+  const shoeL=new THREE.Mesh(shoeGeo,shoeMat); shoeL.position.set(-0.15,0.05,0.06); g.add(shoeL);
+  const shoeR=new THREE.Mesh(shoeGeo,shoeMat); shoeR.position.set( 0.15,0.05,0.06); g.add(shoeR);
+
+  // Torso
+  const torso=new THREE.Mesh(torsoGeo,shirtMat); torso.position.set(0,0.95,0); g.add(torso);
+
+  // Arms
+  const armL=new THREE.Mesh(armGeo,skinMat); armL.position.set(-0.38,0.95,0); armL.rotation.z= Math.PI/16; g.add(armL);
+  const armR=new THREE.Mesh(armGeo,skinMat); armR.position.set( 0.38,0.95,0); armR.rotation.z=-Math.PI/16; g.add(armR);
+
+  // Neck and Head
+  const neck=new THREE.Mesh(neckGeo,skinMat); neck.position.set(0,1.28,0); g.add(neck);
+  const head=new THREE.Mesh(headGeo,skinMat); head.position.set(0,1.45,0); g.add(head);
+
+  // Hair cap
+  const hair=new THREE.Mesh(new THREE.SphereGeometry(0.24,24,18),hairMat);
+  hair.position.set(0,1.58,0); hair.scale.y=0.6; g.add(hair);
+
+  // Simple face features to indicate forward (-Z)
+  const eyeWhiteMat=new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6});
+  const pupilMat=new THREE.MeshStandardMaterial({color:0x111111, roughness:1});
+  const eyeGeo=new THREE.SphereGeometry(0.04,12,10);
+  const pupilGeo=new THREE.SphereGeometry(0.015,10,8);
+  const mouthGeo=new THREE.PlaneGeometry(0.14,0.04);
+  const mouthMat=new THREE.MeshStandardMaterial({color:0x7b2d26, side:THREE.DoubleSide, roughness:0.8});
+
+  const eyeL=new THREE.Mesh(eyeGeo,eyeWhiteMat); eyeL.position.set(-0.09,1.50,-0.26); g.add(eyeL);
+  const eyeR=new THREE.Mesh(eyeGeo,eyeWhiteMat); eyeR.position.set( 0.09,1.50,-0.26); g.add(eyeR);
+  const pupL=new THREE.Mesh(pupilGeo,pupilMat); pupL.position.set(-0.09,1.50,-0.275); g.add(pupL);
+  const pupR=new THREE.Mesh(pupilGeo,pupilMat); pupR.position.set( 0.09,1.50,-0.275); g.add(pupR);
+  const mouth=new THREE.Mesh(mouthGeo,mouthMat); mouth.position.set(0,1.40,-0.27); g.add(mouth);
+
+  // Shadows
+  g.castShadow=true; g.children.forEach(c=>{c.castShadow=true; c.receiveShadow=true});
+
+  return g;
+}
+// Simple NPC person used for family members (Dad, Mommy, Joash)
+function makePerson(opts={}){
+  const skin=opts.skin??0x6d4c41, hair=opts.hair??0x1b1b1b, shirt=opts.shirt??0x4a90e2, pants=opts.pants??0x2d6cdf, skirt=opts.skirt??false, scale=opts.scale??1.0;
+  const g=new THREE.Group();
+  const skinMat=new THREE.MeshStandardMaterial({color:skin, roughness:0.8, transparent:true});
+  const hairMat=new THREE.MeshStandardMaterial({color:hair, roughness:0.9, transparent:true});
+  const shirtMat=new THREE.MeshStandardMaterial({color:shirt, roughness:0.6, transparent:true});
+  const pantsMat=new THREE.MeshStandardMaterial({color:pants, roughness:0.7, transparent:true});
+  const shoeMat=new THREE.MeshStandardMaterial({color:0x222222, metalness:0.1, roughness:0.9, transparent:true});
+
+  const legGeo=new THREE.CylinderGeometry(0.08,0.09,0.6,16);
+  const armGeo=new THREE.CylinderGeometry(0.06,0.06,0.5,16);
+  const torsoGeo=new THREE.BoxGeometry(0.6,0.7,0.3);
+  const headGeo=new THREE.SphereGeometry(0.25,24,20);
+  const neckGeo=new THREE.CylinderGeometry(0.08,0.08,0.12,12);
+  const shoeGeo=new THREE.BoxGeometry(0.18,0.08,0.28);
+
+  const legL=new THREE.Mesh(legGeo,skirt?skinMat:pantsMat); legL.position.set(-0.15,0.3,0); g.add(legL);
+  const legR=new THREE.Mesh(legGeo,skirt?skinMat:pantsMat); legR.position.set( 0.15,0.3,0); g.add(legR);
+  const shoeL=new THREE.Mesh(shoeGeo,shoeMat); shoeL.position.set(-0.15,0.05,0.06); g.add(shoeL);
+  const shoeR=new THREE.Mesh(shoeGeo,shoeMat); shoeR.position.set( 0.15,0.05,0.06); g.add(shoeR);
+
+  const torso=new THREE.Mesh(torsoGeo,shirtMat); torso.position.set(0,0.95,0); g.add(torso);
+  if(skirt){ const skirtGeo=new THREE.ConeGeometry(0.38,0.5,20); const skirtMesh=new THREE.Mesh(skirtGeo,pantsMat); skirtMesh.position.set(0,0.65,0); g.add(skirtMesh); }
+
+  const armL=new THREE.Mesh(armGeo,skinMat); armL.position.set(-0.38,0.95,0); armL.rotation.z= Math.PI/16; g.add(armL);
+  const armR=new THREE.Mesh(armGeo,skinMat); armR.position.set( 0.38,0.95,0); armR.rotation.z=-Math.PI/16; g.add(armR);
+
+  const neck=new THREE.Mesh(neckGeo,skinMat); neck.position.set(0,1.28,0); g.add(neck);
+  const head=new THREE.Mesh(headGeo,skinMat); head.position.set(0,1.45,0); g.add(head);
+  const hairCap=new THREE.Mesh(new THREE.SphereGeometry(0.24,24,18),hairMat); hairCap.position.set(0,1.58,0); hairCap.scale.y=0.6; g.add(hairCap);
+
+  // face (-Z)
+  const eyeWhiteMat=new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.6, transparent:true});
+  const pupilMat=new THREE.MeshStandardMaterial({color:0x111111, roughness:1, transparent:true});
+  const mouthMat=new THREE.MeshStandardMaterial({color:0x7b2d26, side:THREE.DoubleSide, roughness:0.8, transparent:true});
+  const eyeGeo=new THREE.SphereGeometry(0.04,12,10);
+  const pupilGeo=new THREE.SphereGeometry(0.015,10,8);
+  const mouthGeo=new THREE.PlaneGeometry(0.14,0.04);
+  const eyeL=new THREE.Mesh(eyeGeo,eyeWhiteMat); eyeL.position.set(-0.09,1.50,-0.26); g.add(eyeL);
+  const eyeR=new THREE.Mesh(eyeGeo,eyeWhiteMat); eyeR.position.set( 0.09,1.50,-0.26); g.add(eyeR);
+  const pupL=new THREE.Mesh(pupilGeo,pupilMat); pupL.position.set(-0.09,1.50,-0.275); g.add(pupL);
+  const pupR=new THREE.Mesh(pupilGeo,pupilMat); pupR.position.set( 0.09,1.50,-0.275); g.add(pupR);
+  const mouth=new THREE.Mesh(mouthGeo,mouthMat); mouth.position.set(0,1.40,-0.27); g.add(mouth);
+
+  // Normalize so feet rest at local y=0 (anchor at ground)
+  try{
+    const bbox=new THREE.Box3().setFromObject(g);
+    const minY=bbox.min.y;
+    const root=new THREE.Group();
+    root.add(g);
+    g.position.y-=minY; // shift up so bottom touches y=0
+    root.traverse(n=>{ if(n.isMesh){ n.castShadow=true; n.receiveShadow=true }});
+    root.scale.setScalar(scale);
+    return root;
+  }catch(e){
+    g.traverse(n=>{ if(n.isMesh){ n.castShadow=true; n.receiveShadow=true }});
+    g.scale.setScalar(scale);
+    return g;
+  }
+}
+function init3D(){scene=new THREE.Scene();camera=new THREE.PerspectiveCamera(75,1,0.1,1000);renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});renderer.setPixelRatio(devicePixelRatio||1);renderer.shadowMap.enabled=true;STAGE.appendChild(renderer.domElement);applySize();
+renderer.domElement.addEventListener('pointerdown',()=>renderer.domElement.style.cursor='grabbing');renderer.domElement.addEventListener('pointerup',()=>renderer.domElement.style.cursor='grab');
+scene.add(new THREE.AmbientLight(0xffffff,0.7));const dl=new THREE.DirectionalLight(0xffffff,0.85);dl.position.set(10,15,10);dl.castShadow=true;scene.add(dl);
+car=makeCar();scene.add(car);
+// Ground arrow indicating facing direction (lies on tile top)
+const arrowGeo=new THREE.ConeGeometry(0.24,0.42,24);
+arrowGeo.rotateX(-Math.PI/2); // point along -Z in local space
+const arrowMat=new THREE.MeshStandardMaterial({color:0x2dd4bf, roughness:0.6, metalness:0.05, transparent:true, opacity:0.85});
+dirArrow=new THREE.Mesh(arrowGeo,arrowMat);
+dirArrow.castShadow=false; dirArrow.receiveShadow=false; dirArrow.userData={indicator:true};
+scene.add(dirArrow);
+if(THREE.OrbitControls){controls=new THREE.OrbitControls(camera,renderer.domElement);controls.enablePan=false;controls.enableDamping=true;controls.dampingFactor=0.08;controls.minDistance=6;controls.maxDistance=28;if(THREE.MOUSE&&controls.mouseButtons){controls.mouseButtons={LEFT:THREE.MOUSE.ROTATE,MIDDLE:THREE.MOUSE.DOLLY,RIGHT:THREE.MOUSE.PAN}}if(THREE.TOUCH&&controls.touches){controls.touches={ONE:THREE.TOUCH.ROTATE,TWO:THREE.TOUCH.DOLLY_PAN}}controls.enabled=ORBIT.checked}
+(function loop(){requestAnimationFrame(loop);controls&&controls.update();renderer.render(scene,camera)})()
+if(window.ResizeObserver){
+  ro=new ResizeObserver(()=>applySize());
+  ro.observe(STAGE);
+  ro.observe(renderer.domElement);
+}
+}
+function resize(){applySize()}
+
+function renderBoard(){
+  // remove previous tiles/coins/family/env/grid
+  scene.children.filter(o=>o.userData&&(o.userData.tile||o.userData.family||o.userData.coin||o.userData.env||o.userData.grid)).forEach(o=>scene.remove(o));
+  if(gridLines){scene.remove(gridLines);gridLines=null}
+  envObjs=[]; fObjs=[]; tiles=[];
+  const N=LV[CFG.LEVEL].G,T=CFG.TILE,H=CFG.HEIGHT;
+  const matP=new THREE.MeshStandardMaterial({color:0xa9d4b7});
+  const matG=new THREE.MeshStandardMaterial({color:0xd4edda});
+  const matU=new THREE.MeshStandardMaterial({color:0x6db5d1,transparent:true,opacity:0.85});
+  const g=new THREE.BoxGeometry(T,H,T);
+  for(let z=0;z<N;z++){tiles[z]=[];for(let x=0;x<N;x++){
+    const tt=grid[z][x];
+    const m=tt==='grass'?matG:matP;
+    const t=new THREE.Mesh(g,m);
+    t.position.set(x*T,0,z*T);t.receiveShadow=true; t.userData={tile:true,x,z,tt};
+    scene.add(t); tiles[z][x]=t;
+    if(tt==='puddle'){
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(T*0.4,T*0.4,0.1,32),matU);
+      p.position.set(x*T,H/2+0.05,z*T); p.userData={tile:true}; scene.add(p);
+    }
+  }}
+  renderCoins(); renderFamily(); renderGridLines(); renderDecor();
+}
+function renderFamily(){
+  fObjs.forEach(o=>scene.remove(o));
+  fObjs=[];
+  family.forEach((m,i)=>{
+    const opts={shirt:m.color};
+    if(m.name&&/mom/i.test(m.name)) opts.skirt=true;
+    if(m.name&&/joash/i.test(m.name)) opts.scale=0.9;
+    const o=makePerson(opts);
+    const p=world(m.x,m.y);
+    // place feet on tile top (y = HEIGHT/2)
+    o.position.set(p.x,CFG.HEIGHT/2,p.z);
+    o.userData={family:true};
+    if(m.found){ o.scale.set(0.8,0.8,0.8); setOpacityRecursive(o,0.3); }
+    scene.add(o); fObjs.push(o);
+  })
+}
+function renderCoins(){scene.children.filter(o=>o.userData&&o.userData.coin).forEach(o=>scene.remove(o));coins.forEach(c=>{if(c.obj)scene.remove(c.obj);c.obj=null});const mat=new THREE.MeshStandardMaterial({color:0xffd54f,metalness:0.6,roughness:0.2});coins.forEach(c=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.12,24),mat);const p=world(c.x,c.y);o.position.set(p.x,0.6,p.z);o.rotation.x=Math.PI/2;o.castShadow=true;o.userData={coin:true};scene.add(o);c.obj=o})}
+function renderGridLines(){
+  if(gridLines) scene.remove(gridLines);
+  const N=LV[CFG.LEVEL].G, T=CFG.TILE;
+  // Align lines to TILE EDGES, not centers
+  const size=N*T;           // full board width/height
+  const div=N;              // one cell per tile
+  const gh=new THREE.GridHelper(size,div,0x4b5563,0xa7b0bb);
+  // Center the helper at the board center (tile[ (N-1)/2 ])
+  gh.position.set((N-1)/2*T, CFG.HEIGHT/2+0.011, (N-1)/2*T);
+  gh.material.transparent=true; gh.material.opacity=0.28; gh.material.depthWrite=false;
+  gh.userData={grid:true,size:size,div:div};
+  gridLines=gh; scene.add(gh);
+}
+function renderDecor(){
+  // remove old
+  scene.children.filter(o=>o.userData&&o.userData.env).forEach(o=>scene.remove(o));
+  envObjs=[];
+  if(!envOn || envDensity<=0) return;
+  const N=LV[CFG.LEVEL].G, T=CFG.TILE, H=CFG.HEIGHT/2;
+  // deterministic per tile (stable per x,z)
+  const rnd=(x,z)=>{const s=Math.sin((x+1)*12.9898+(z+1)*78.233)*43758.5453;return s-Math.floor(s)};
+  // geometry/material caches
+  const trunkGeo=new THREE.CylinderGeometry(0.12,0.16,0.7,8);
+  const leafGeo=new THREE.ConeGeometry(0.6,1.0,12);
+  const pineGeo=new THREE.ConeGeometry(0.7,1.2,12);
+  const stoneGeo=new THREE.IcosahedronGeometry(0.35,0);
+  const bushGeo=new THREE.SphereGeometry(0.38,16,12);
+  const logGeo=new THREE.CylinderGeometry(0.18,0.18,1.1,10);
+  const stemGeo=new THREE.CylinderGeometry(0.04,0.04,0.25,8);
+  const flowerGeo=new THREE.SphereGeometry(0.12,12,10);
+  const trunkMat=new THREE.MeshStandardMaterial({color:0x8e5a33,roughness:0.9});
+  const leafMat=new THREE.MeshStandardMaterial({color:0x3da16b,roughness:0.6});
+  const pineMat=new THREE.MeshStandardMaterial({color:0x2f7b57,roughness:0.6});
+  const stoneMat=new THREE.MeshStandardMaterial({color:0x808893,roughness:0.95,metalness:0.05});
+  const bushMat=new THREE.MeshStandardMaterial({color:0x4caf50,roughness:0.7});
+  const logMat=new THREE.MeshStandardMaterial({color:0x7a5238,roughness:0.95});
+  const stemMat=new THREE.MeshStandardMaterial({color:0x2e7d32});
+  const flowerColors=[0xff6b6b,0xffc107,0xff8fab,0x8ecae6,0x90ee90].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:0.4}));
+  const prob=envDensity/100;
+  for(let z=0;z<N;z++){
+    for(let x=0;x<N;x++){
+      if(grid[z][x]!=='grass') continue;
+      const r1=rnd(x,z);
+      if(r1<prob){
+        const r2=rnd(x+13,z+31);
+        const gx=x*T, gz=z*T;
+        const ox=(r1*97%1-0.5)*T*0.4; // in-tile offset
+        const oz=((r1*197)%1-0.5)*T*0.4;
+        let obj;
+        if(r2<0.2){ // tall pine
+          const g=new THREE.Group();
+          const tr=new THREE.Mesh(trunkGeo,trunkMat); tr.position.y=H+0.35; tr.castShadow=true; g.add(tr);
+          const c1=new THREE.Mesh(pineGeo,pineMat); c1.position.y=H+0.35+0.9; c1.castShadow=true; g.add(c1);
+          const c2=c1.clone(); c2.scale.set(0.85,0.85,0.85); c2.position.y+=0.6; g.add(c2);
+          const c3=c1.clone(); c3.scale.set(0.7,0.7,0.7); c3.position.y+=1.0; g.add(c3);
+          obj=g;
+        }else if(r2<0.45){ // normal tree
+          const g=new THREE.Group();
+          const tr=new THREE.Mesh(trunkGeo,trunkMat); tr.position.y=H+0.35; tr.castShadow=true; g.add(tr);
+          const lf=new THREE.Mesh(leafGeo,leafMat); lf.position.y=H+0.35+0.7/2+0.6; lf.castShadow=true; g.add(lf);
+          obj=g;
+        }else if(r2<0.65){ // bush
+          const bu=new THREE.Mesh(bushGeo,bushMat); bu.position.y=H+0.25; bu.castShadow=true; obj=bu;
+        }else if(r2<0.85){ // stone
+          const st=new THREE.Mesh(stoneGeo,stoneMat); st.position.y=H+0.2; st.rotation.y=r2*Math.PI*2; st.castShadow=true; obj=st;
+        }else{ // flower or log randomly
+          if(rnd(x+99,z+7)<0.5){
+            const g=new THREE.Group();
+            const st=new THREE.Mesh(stemGeo,stemMat); st.position.y=H+0.15; g.add(st);
+            const fl=new THREE.Mesh(flowerGeo, flowerColors[Math.floor(r2*flowerColors.length)%flowerColors.length]);
+            fl.position.y=H+0.3; g.add(fl); obj=g;
+          }else{
+            const lg=new THREE.Mesh(logGeo,logMat); lg.position.y=H+0.15; if(rnd(x+5,z+5)<0.5){lg.rotation.z=Math.PI/2}else{lg.rotation.x=Math.PI/2} lg.castShadow=true; obj=lg;
+          }
+        }
+        obj.position.x=gx+ox; obj.position.z=gz+oz; obj.userData={env:true,x,z};
+        scene.add(obj); envObjs.push(obj);
+      }
+    }
+  }
+}
+// Smoothly rotate around Y to target angle using shortest path
+function rotYTo(obj,targetY,dur=0.35){
+  if(!window.gsap){ obj.rotation.y=targetY; return; }
+  const cur=obj.rotation.y;
+  let diff=targetY-cur;
+  while(diff>Math.PI) diff-=Math.PI*2;
+  while(diff<-Math.PI) diff+=Math.PI*2;
+  const dest=cur+diff;
+  gsap.to(obj.rotation,{duration:dur,y:dest});
+}
+function renderCar(snap=false){
+  const p=world(player.x,player.z);
+  if(window.gsap && !snap){
+    gsap.to(car.position,{duration:0.35,x:p.x,y:p.y,z:p.z});
+  }else{
+    car.position.set(p.x,p.y,p.z);
+  }
+  // Model faces -Z at yaw=0; map dirs so forward matches movement
+  const ang={north:0,east:-Math.PI/2,south:Math.PI,west:Math.PI/2}[player.dir]||0;
+  if(window.gsap && !snap){
+    rotYTo(car,ang,0.35);
+  }else{
+    car.rotation.y=ang;
+  }
+  // Update ground arrow position/rotation
+  if(dirArrow){
+    const ay=CFG.HEIGHT/2+0.012;
+    if(window.gsap && !snap){
+      gsap.to(dirArrow.position,{duration:0.28,x:p.x,y:ay,z:p.z});
+      rotYTo(dirArrow,ang,0.28);
+    }else{
+      dirArrow.position.set(p.x,ay,p.z);
+      dirArrow.rotation.y=ang;
+    }
+  }
+}
+
+// ========== Helpers
+function beep(f=660,d=0.08){ note(f,d,0.18,'sine'); }
+function setMoves(n){MV.textContent=n}function setCoins(n,t){CC.textContent=n;if(t!=null)CT.textContent=t}
+function setSeed(n){ const S=document.getElementById('seed'); if(S) S.textContent=String(n); }
+
+// Material opacity helpers (for group-based family models)
+function setOpacityRecursive(obj,alpha){
+  if(!obj || !obj.traverse) return;
+  obj.traverse(n=>{
+    if(n.isMesh && n.material){
+      const mats=Array.isArray(n.material)?n.material:[n.material];
+      mats.forEach(m=>{m.transparent=true; m.opacity=alpha});
+    }
+  });
+}
+function tweenOpacityRecursive(obj,alpha,dur){
+  if(!window.gsap){ setOpacityRecursive(obj,alpha); return; }
+  if(!obj || !obj.traverse) return;
+  obj.traverse(n=>{
+    if(n.isMesh && n.material){
+      const mats=Array.isArray(n.material)?n.material:[n.material];
+      mats.forEach(m=>{ m.transparent=true; gsap.to(m,{duration:dur,opacity:alpha}) });
+    }
+  });
+}
+
+// ========== Levels
+function carve(g,x,y,p){if(g[y]&&g[y][x]!=null){g[y][x]='path';p&&p.push({x,y})}}
+
+// Tiny seeded RNG (LCG)
+function makeRng(seed){let s=(seed|0)||1;return ()=>{s=(s*1664525+1013904223)|0;return ((s>>>0)/4294967296)};}
+
+// Dynamic generator: left-edge start to right-edge goal with bias to create straight runs
+function genDynamic(N, seed, opts={}){
+  grid=Array.from({length:N},()=>Array(N).fill('grass'));
+  const rnd=makeRng(seed);
+  const path=[];
+  const sy=Math.floor(rnd()*N);
+  start={x:0,z:sy,dir:'east'};
+  let x=0,y=sy; carve(grid,x,y,path);
+  let last='R';
+  const maxSteps=N*N*3;
+  let steps=0;
+  while(x<N-1 && steps<maxSteps){
+    steps++;
+    // Bias move probabilities. Encourage right, create straight runs.
+    const progressBias=0.3 + (x/(N-1))*0.4; // increases as we move right
+    const straightBias=0.25;                 // prefer to continue straight
+    const r=rnd();
+    let dir=last;
+    if(r<progressBias){ dir='R'; }
+    else if(r<progressBias+0.35){ dir=(last==='U'||last==='D')?last:(rnd()<0.5?'U':'D'); }
+    else { dir=(last==='R' && rnd()<straightBias)?'R':(rnd()<0.5?'U':'D'); }
+    // Apply move with bounds; fallback to right if blocked
+    let nx=x, ny=y;
+    if(dir==='R'){ nx=x+1; ny=y; }
+    else if(dir==='U'){ nx=x; ny=y-1; }
+    else if(dir==='D'){ nx=x; ny=y+1; }
+    // Avoid immediate backtrack off-board
+    if(ny<0||ny>=N){ dir='R'; nx=x+1; ny=y; }
+    if(nx<0) { nx=0; dir='R'; }
+    if(nx>=N){ nx=N-1; dir='R'; }
+    // Ensure we always can progress right
+    if(nx===x && ny===y){ dir='R'; nx=x+1; ny=y; }
+    x=nx; y=ny; last=dir; carve(grid,x,y,path);
+  }
+  // If somehow not at right edge, force a horizontal tunnel to the end
+  while(x<N-1){ x++; carve(grid,x,y,path); }
+
+  // Place family targets — ensure every member sits ON the carved path
+  family=[];
+  const fm=LV[CFG.LEVEL].F;
+  if(fm.length<=1){
+    const m={...fm[0],found:false}; m.x=x; m.y=y; family.push(m);
+  }else{
+    // Choose spaced positions from the last segment of the path near the goal
+    const tailCount=Math.min(path.length, Math.max(N, fm.length*3));
+    const tail=path.slice(-tailCount);
+    // Deduplicate by x,y just in case
+    const uniq=[]; const seen=new Set();
+    for(const p of tail){ const k=p.x+','+p.y; if(!seen.has(k)){ seen.add(k); uniq.push(p); } }
+    const step=Math.max(1, Math.floor(uniq.length/(fm.length+1)));
+    for(let i=0;i<fm.length;i++){
+      const idx=Math.min(uniq.length-1, step*(i+1));
+      const p=uniq[idx]||uniq[uniq.length-1];
+      const m={...fm[i],found:false}; m.x=p.x; m.y=p.y; family.push(m);
+    }
+  }
+
+  // Optional hazard: puddle only if Jump is available for this level
+  const tools=CM[CFG.LEVEL]||[];
+  const hasJump=tools.some(t=>t.id==='jump');
+  if(hasJump){
+    let candidates=[];
+    for(let i=1;i<path.length-1;i++){
+      const a=path[i-1], b=path[i], c=path[i+1];
+      if(a.y===b.y && b.y===c.y){ candidates.push(i); }
+    }
+    if(candidates.length){
+      const pick=candidates[Math.floor(candidates.length/2)];
+      const p=path[pick]; grid[p.y][p.x]='puddle';
+    }
+  }
+  return path;
+}
+function gen1(){const N=LV[1].G;grid=Array.from({length:N},()=>Array(N).fill('grass'));const path=[];const sy=Math.floor(Math.random()*N);start={x:0,z:sy,dir:'east'};carve(grid,0,sy,path);let x=0,y=sy;for(let i=0;i<1+Math.floor(Math.random()*(N-3));i++){x++;carve(grid,x,y,path)}if(Math.random()>0.5&&y>0){while(y>0){y--;carve(grid,x,y,path)}}else{while(y<N-1){y++;carve(grid,x,y,path)}}family[0].x=x;family[0].y=y;return path}
+function gen2(){
+  const N=LV[2].G;
+  grid=Array.from({length:N},()=>Array(N).fill('grass'));
+  const path=[];
+  const sy=1+Math.floor(Math.random()*(N-2));
+  start={x:0,z:sy,dir:'east'};
+  let x=0,y=sy; carve(grid,x,y,path);
+  // 1) a couple of steps to the right
+  for(let i=0;i<1+Math.floor(Math.random()*2);i++){ if(x+1<N){ x++; carve(grid,x,y,path);} }
+  // 2) a small vertical detour
+  let d=Math.random()>0.5?1:-1;
+  for(let i=0;i<1+Math.floor(Math.random()*2);i++){ if(y+d>=0&&y+d<N){ y+=d; carve(grid,x,y,path);} }
+  // 3) go right to the end
+  while(x<N-1){ x++; carve(grid,x,y,path); }
+  family[0].x=x; family[0].y=y;
+  // Choose a puddle on a horizontal straight segment so jump-over works
+  let candidates=[];
+  for(let i=1;i<path.length-1;i++){
+    const a=path[i-1], b=path[i], c=path[i+1];
+    if(a.y===b.y && b.y===c.y){ candidates.push(i); }
+  }
+  if(candidates.length){
+    const pick=candidates[Math.floor(candidates.length/2)];
+    const p=path[pick]; grid[p.y][p.x]='puddle';
+  }else if(path.length>2){
+    // Fallback: put puddle one step before the last tile on the long horizontal run
+    const p=path[path.length-2]; grid[p.y][p.x]='puddle';
+  }
+  return path
+}
+function gen3(){const N=LV[3].G;grid=Array.from({length:N},()=>Array(N).fill('grass'));const path=[];const sy=Math.floor(Math.random()*N);start={x:0,z:sy,dir:'east'};let x=0,y=sy;carve(grid,x,y,path);const seg=Math.random()>0.5?1+Math.floor(Math.random()*2):0;for(let i=0;i<seg;i++){if(x+1<N){x++;carve(grid,x,y,path)}}let td=y<Math.floor(N/2)?1:-1;if(seg>0){if(td===1){if(y+1<N){y++;carve(grid,x,y,path)}else{td=-1;y--;carve(grid,x,y,path)}}else{if(y-1>=0){y--;carve(grid,x,y,path)}else{td=1;y++;carve(grid,x,y,path)}}}for(let i=0;i<4+Math.floor(Math.random()*2);i++){if(td===1){if(y+1<N){y++;carve(grid,x,y,path)}else break}else{if(y-1>=0){y--;carve(grid,x,y,path)}else break}}if(x+1<N){x++;carve(grid,x,y,path)}while(x<N-1){x++;carve(grid,x,y,path)}family[0].x=x;family[0].y=y;return path}
+function gen4(){const N=LV[4].G;grid=Array.from({length:N},()=>Array(N).fill('grass'));const path=[];start={x:0,z:Math.floor(N/2),dir:'east'};for(let i=0;i<N;i++)carve(grid,i,start.z,path);family=[];const fm=LV[4].F,cols=[2,4,6];for(let i=0;i<fm.length;i++){const m={...fm[i],found:false};const col=cols[i];let y=start.z,d=Math.random()>0.5?1:-1;for(let j=0;j<2;j++){if(y+d>=0&&y+d<N){y+=d;carve(grid,col,y,path)}}m.x=col;m.y=y;family.push(m)}return path}
+function pathLen(sx,sy,tx,ty){const N=LV[CFG.LEVEL].G,q=[[sx,sy,0]],seen=new Set([`${sx},${sy}`]),dirs=[[1,0],[-1,0],[0,1],[0,-1]];while(q.length){const [x,y,d]=q.shift();if(x===tx&&y===ty)return d;for(const[dx,dy]of dirs){const nx=x+dx,ny=y+dy;if(nx>=0&&nx<N&&ny>=0&&ny<N&&!seen.has(`${nx},${ny}`)){const t=grid[ny][nx];if(t==='path'||t==='puddle'){seen.add(`${nx},${ny}`);q.push([nx,ny,d+1])}}}}return Infinity}
+
+// ========== UI
+function toolbox(){
+  TB.innerHTML='';
+  // Show all tools for the level (Repeat appears on L3+)
+  const tools = CM[CFG.LEVEL] || CM[Math.max(...Object.keys(CM).map(Number))] || CM[1] || [];
+  if(!tools || !tools.length){
+    const msg=document.createElement('div');
+    msg.className='badge';
+    msg.textContent='No tools available';
+    TB.appendChild(msg);
+    return;
+  }
+  tools.forEach(c=>{
+    const b=document.createElement('div');
+    b.className='blk';
+    b.dataset.id=c.id;
+    b.setAttribute('draggable','true');
+    b.innerHTML=`<div style="font-size:20px">${c.e}</div><small>${c.l}</small>`;
+    b.onclick=()=>addBlock(c.id);
+    TB.appendChild(b);
+  });
+}
+
+  function addBlock(id, anchor=null, before=true){
+    if(!_rebuilding) pushUndo();
+    const b=document.createElement('div');
+    b.className='blk';
+    b.dataset.id=id;
+    b.setAttribute('draggable','true');
+    // Default repeat count to 2 to encourage loop usage; others fixed at 1
+    b.dataset.count=(id==='repeat')?'2':'1';
+    b.innerHTML=`<div style="font-size:18px">${(CM[CFG.LEVEL].find(x=>x.id===id)||{e:'❓'}).e}</div>`;
+
+    // Only Repeat shows/uses a count badge and +/- controls
+    let badge=null;
+    if(id==='repeat'){
+      badge=document.createElement('span');
+      badge.className='cnt';
+      badge.textContent='×2';
+      b.appendChild(badge);
+    }
+
+    function updateBadge(){
+      if(!badge) return;
+      const c=+b.dataset.count||1; badge.textContent='×'+c;
+      if(c>1){b.classList.add('count')} else {b.classList.remove('count')}
+    }
+
+    // single click: remove
+    b.addEventListener('click',e=>{ if(e.button===0 && !e.shiftKey && !e.altKey){ pushUndo(); b.remove(); updateSeq(); }});
+
+    if(id==='repeat'){
+      // +/- controls (visible buttons)
+      const plus=document.createElement('div'); plus.className='pm plus'; plus.textContent='+';
+      const minus=document.createElement('div'); minus.className='pm minus'; minus.textContent='−';
+      plus.addEventListener('click',e=>{ e.stopPropagation(); pushUndo(); let c=+b.dataset.count||1; c=Math.min(9,c+1); b.dataset.count=String(c); updateBadge(); updateSeq(); });
+      minus.addEventListener('click',e=>{ e.stopPropagation(); pushUndo(); let c=+b.dataset.count||1; c=Math.max(1,c-1); b.dataset.count=String(c); updateBadge(); updateSeq(); });
+      b.appendChild(plus); b.appendChild(minus);
+
+      // Keep dblclick/right-click for accessibility
+      b.addEventListener('dblclick',()=>{ pushUndo(); let c=+b.dataset.count||1; c=Math.min(9,c+1); b.dataset.count=String(c); updateBadge(); updateSeq(); });
+      b.addEventListener('contextmenu',e=>{ e.preventDefault(); pushUndo(); let c=+b.dataset.count||1; c=Math.max(1,c-1); b.dataset.count=String(c); updateBadge(); updateSeq(); });
+    }
+
+    // Insert at requested position (if provided), else append
+    if(anchor && anchor.parentElement===SEQ){
+      SEQ.insertBefore(b, before ? anchor : anchor.nextSibling);
+    }else{
+      SEQ.appendChild(b);
+    }
+    updateBadge();
+    updateSeq();
+  }
+
+function isRepeatUnlocked(){
+  return CM[CFG.LEVEL].some(c=>c.id==='repeat'); // unlocked on L3+
+}
+
+  function updateSeq(){
+    seq=[];
+    SEQ.querySelectorAll('.blk').forEach(b=>{
+      const id=b.dataset.id; const count=parseInt(b.dataset.count||'1',10);
+      const obj={id, count: id==='repeat' ? Math.max(1,Math.min(9,count)) : 1};
+      seq.push(obj);
+    });
+  }
+
+  // ---- Undo history ----
+  // Stack of plan snapshots (JSON-serialized seq arrays). Push BEFORE each
+  // mutation so Undo restores the prior state. Capped to keep memory tidy.
+  const UNDO_MAX=40;
+  let undoStack=[];
+  let _rebuilding=false;
+  function snapshotPlan(){
+    const snap=[];
+    SEQ.querySelectorAll('.blk').forEach(b=>{
+      snap.push({id:b.dataset.id,count:parseInt(b.dataset.count||'1',10)});
+    });
+    return snap;
+  }
+  function pushUndo(){
+    if(_rebuilding) return;
+    undoStack.push(JSON.stringify(snapshotPlan()));
+    if(undoStack.length>UNDO_MAX) undoStack.shift();
+    refreshUndoBtn();
+  }
+  function rebuildPlan(snap){
+    _rebuilding=true;
+    SEQ.innerHTML='';
+    snap.forEach(item=>{
+      addBlock(item.id);
+      const last=SEQ.lastElementChild;
+      if(last && item.count){
+        last.dataset.count=String(item.count);
+        const cnt=last.querySelector('.cnt');
+        if(cnt){ cnt.textContent='×'+item.count; if(item.count>1) last.classList.add('count'); else last.classList.remove('count'); }
+      }
+    });
+    _rebuilding=false;
+    updateSeq();
+  }
+  function doUndo(){
+    if(!undoStack.length) return;
+    const snap=JSON.parse(undoStack.pop());
+    rebuildPlan(snap);
+    refreshUndoBtn();
+  }
+  function refreshUndoBtn(){
+    const u=document.getElementById('undo'); if(!u) return;
+    u.disabled = undoStack.length===0;
+  }
+
+// ========== Run
+function resetExec(){running=false;fail=false;idx=0;expanded=[];if(timer)clearTimeout(timer);GO.disabled=false;RESET.disabled=false;PAUSE.textContent='Pause';setMoves(0)}
+function expand(a){
+  const out=[];
+  a.forEach(c=>{
+    const n=Math.max(1,Math.min(9,c.count||1));
+    if(c.id==='repeat'){
+      for(let i=0;i<n;i++) out.push('move');
+    }else{
+      for(let i=0;i<n;i++) out.push(c.id);
+    }
+  });
+  return out
+}
+function begin(a){if(running||!a.length)return;running=true;GO.disabled=true;RESET.disabled=true;SEQ.querySelectorAll('.good,.bad').forEach(x=>x.classList.remove('good','bad'));player={...start};family.forEach(m=>m.found=false);coins.forEach(c=>c.collected=false);renderFamily();renderCoins();renderCar(true);expanded=expand(a);lastRun=[...a];idx=0;setMoves(0);fail=false;stepLoop()}
+function stepLoop(){
+  if(!running)return;
+  if(idx>=expanded.length){winCheck();return}
+  const cmd=expanded[idx];
+  const ok=doCmd(cmd);
+  famCheck();
+  coinCheck();
+  let bi=0,steps=0;const blocks=SEQ.querySelectorAll('.blk');
+  for(let j=0;j<seq.length;j++){if(steps>idx)break;bi=j;steps+=(seq[j].count||1)}
+  blocks[bi]&&blocks[bi].classList.add(ok?'good':'bad');
+  if(!ok){ fail=true; beep(220,0.08); }
+  else {
+    if(cmd==='move' || cmd==='jump') playStep();
+    setMoves(idx+1);
+  }
+  idx++;
+  timer=setTimeout(stepLoop,speed)
+}
+function doCmd(cmd){
+  const before={...player};
+  let didCustom=false;
+  if(cmd==='turn-left'){
+    player.dir={north:'west',west:'south',south:'east',east:'north'}[player.dir];
+  }else if(cmd==='turn-right'){
+    player.dir={north:'east',east:'south',south:'west',west:'north'}[player.dir];
+  }else{
+    const N=LV[CFG.LEVEL].G;
+    let dx=0,dz=0; if(player.dir==='east')dx=1; if(player.dir==='west')dx=-1; if(player.dir==='south')dz=1; if(player.dir==='north')dz=-1;
+    const inBounds=(x,z)=>x>=0&&x<N&&z>=0&&z<N;
+    const nx=player.x+dx, nz=player.z+dz;
+    if(cmd==='move'){
+      if(inBounds(nx,nz) && grid[nz][nx]==='path'){ player.x=nx; player.z=nz; }
+    }else if(cmd==='if-move'){
+      // Conditional move: if the cell ahead is a path, step forward; otherwise
+      // do nothing. Crucially, this is NEVER a fail — the whole point of the
+      // block is that "no path = no move" is the intended outcome.
+      if(inBounds(nx,nz) && grid[nz][nx]==='path'){ player.x=nx; player.z=nz; }
+    }else if(cmd==='jump'){
+      if(inBounds(nx,nz)){
+        const t1=grid[nz][nx];
+        if(t1==='puddle'){
+          const nx2=nx+dx, nz2=nz+dz;
+          if(inBounds(nx2,nz2) && grid[nz2][nx2]==='path'){
+            player.x=nx2; player.z=nz2;
+            if(window.gsap){
+              const p2=world(nx2,nz2); const d=0.45;
+              gsap.to(car.position,{duration:d,x:p2.x,z:p2.z,ease:'power1.inOut'});
+              gsap.to(car.position,{duration:d/2,y:'+=1.2',yoyo:true,repeat:1,ease:'sine.out'});
+              // keep arrow glued to ground target position
+              if(dirArrow){ const ay=CFG.HEIGHT/2+0.012; gsap.to(dirArrow.position,{duration:d,x:p2.x,y:ay,z:p2.z}); }
+              didCustom=true;
+            }
+          }
+        }else if(t1==='path'){
+          player.x=nx; player.z=nz;
+          if(window.gsap){
+            const p1=world(nx,nz); const d=0.32;
+            gsap.to(car.position,{duration:d,x:p1.x,z:p1.z,ease:'power1.inOut'});
+            gsap.to(car.position,{duration:d/2,y:'+=0.9',yoyo:true,repeat:1,ease:'sine.out'});
+            if(dirArrow){ const ay=CFG.HEIGHT/2+0.012; gsap.to(dirArrow.position,{duration:d,x:p1.x,y:ay,z:p1.z}); }
+            didCustom=true;
+          }
+        }
+      }
+    }
+  }
+  if(!didCustom) renderCar(); else { // still rotate to the direction immediately
+    const ang={north:0,east:-Math.PI/2,south:Math.PI,west:Math.PI/2}[player.dir]||0; if(window.gsap){rotYTo(car,ang,0.2); if(dirArrow) rotYTo(dirArrow,ang,0.2)} else {car.rotation.y=ang; if(dirArrow) dirArrow.rotation.y=ang}
+  }
+  // if-move is intentionally a no-op when the path is blocked — don't fail it.
+  if(cmd==='if-move') return true;
+  return before.x!==player.x||before.z!==player.z||before.dir!==player.dir;
+}
+function pause(){if(!running)return;if(timer){clearTimeout(timer);timer=null;PAUSE.textContent='Resume'}else{PAUSE.textContent='Pause';timer=setTimeout(stepLoop,0)}}
+function stepOnce(){if(!running){expanded=expand(seq);idx=0;running=true;GO.disabled=true;RESET.disabled=true;SEQ.querySelectorAll('.good,.bad').forEach(x=>x.classList.remove('good','bad'));player={...start};family.forEach(m=>m.found=false);coins.forEach(c=>c.collected=false);renderFamily();renderCoins();renderCar(true);setMoves(0);fail=false}if(idx<expanded.length){const cmd=expanded[idx];const ok=doCmd(cmd);famCheck();coinCheck();if(!ok)fail=true;setMoves(idx+1);idx++}else{winCheck()}}
+function replay(){if(lastRun.length)begin(lastRun)}
+function famCheck(){
+  family.forEach((m,i)=>{
+    if(!m.found&&player.x===m.x&&player.z===m.y){
+      m.found=true;
+      const o=fObjs[i];
+      if(o){
+        if(window.gsap){
+          gsap.to(o.scale,{duration:0.4,x:0.8,y:0.8,z:0.8});
+          tweenOpacityRecursive(o,0.3,0.4);
+        }else{
+          o.scale.set(0.8,0.8,0.8);
+          setOpacityRecursive(o,0.3);
+        }
+      }
+      beep(880,0.1)
+    }
+  })
+}
+function coinCheck(){let n=0;coins.forEach(c=>{if(!c.collected&&c.x===player.x&&c.y===player.z){c.collected=true;if(c.obj){if(window.gsap){gsap.to(c.obj.scale,{duration:0.22,x:0.01,y:0.01,z:0.01,onComplete:()=>{if(c.obj)scene.remove(c.obj)}})}else{scene.remove(c.obj)}}playCoin()}if(c.collected)n++});setCoins(n)}
+ function winCheck(){
+   const all=family.every(m=>m.found);
+   if(all){
+     const allCoins=coins.every(c=>c.collected);
+     // 3-star rating now rewards COMPACT code, not just success:
+     //   3⭐ = clean run + all coins + plan within target block count
+     //   2⭐ = clean run + all coins (verbose plan)
+     //   1⭐ = reached the goal at all
+     // Plan length is measured in user-placed blocks (lastRun.length), so a
+     // single Repeat block counts as one — the whole point is that loops let
+     // kids write less code.
+     const planLen=(lastRun&&lastRun.length)||0;
+     const target=LV[CFG.LEVEL].target||9999;
+     const cleanFull=(!fail)&&allCoins;
+     const stars = cleanFull && planLen<=target ? 3 : (cleanFull ? 2 : 1);
+     const used=idx,got=coins.filter(c=>c.collected).length,total=coins.length;
+     SMV.textContent=used;SCC.textContent=got;SCT.textContent=total;
+     STARS.textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
+     const wh=document.getElementById('winHint');
+     if(wh){
+       if(stars===3){ wh.textContent=`Perfect! ${planLen}/${target} blocks — concise code.`; }
+       else if(stars===2){ wh.textContent=`Nice run! Try solving in ${target} blocks or fewer for 3 stars.`; }
+       else if(allCoins){ wh.textContent='You got the coins, but Jaxx hit some walls. Plan more carefully!'; }
+       else { wh.textContent='Try again to collect every coin for more stars.'; }
+     }
+     // Unlock next level and persist progress
+     const totalLvls=Object.keys(LV).length;
+     if(CFG.LEVEL<totalLvls){
+       CFG.MAX=Math.max(CFG.MAX, CFG.LEVEL+1);
+       save();
+     }
+     // Report progress to GameHub: score = (level/total)*70 + stars/3*30,
+     // so finishing every level with 3 stars maxes at 100 and bestScore on
+     // the parent dashboard reflects both reach and quality of play.
+     try{
+       if(window.Hub?.recordPlay){
+         const score=Math.round((CFG.LEVEL/totalLvls)*70 + (stars/3)*30);
+         const elapsed=Math.max(0,Math.round((Date.now()-(window._jqSessionStart||Date.now()))/1000));
+         window.Hub.recordPlay(HUB_GAME_ID,score,elapsed);
+         window._jqSessionStart=Date.now();
+       }
+     }catch{}
+     WIN.style.display='flex';
+     document.getElementById('next').onclick=()=>{WIN.style.display='none';nextLvl()};
+     document.getElementById('again').onclick=()=>{WIN.style.display='none';resetLvl(true)};
+     running=false;GO.disabled=false;RESET.disabled=false;
+     SEQ.querySelectorAll('.good,.bad').forEach(x=>x.classList.remove('good','bad'))
+     playCelebrate();
+   }else{
+     setMsg('Uh oh! Try again.','red');
+     setTimeout(()=>{player={...start};running=false;GO.disabled=false;RESET.disabled=false;SEQ.querySelectorAll('.good,.bad').forEach(x=>x.classList.remove('good','bad'));renderCar(true)},900)
+   }
+ }
+function nextLvl(){
+  if(CFG.LEVEL<Object.keys(LV).length){
+    CFG.LEVEL++;
+    resetLvl(true);
+    // resetLvl already called setObjective(true); ensure speech fires now that
+    // audio is primed (the user just clicked "Next Level").
+    try{ setObjective(true); }catch{}
+  } else {
+    document.getElementById('final').style.display='flex';
+  }
+}
+function save(){
+  const data={maxUnlocked:CFG.MAX,level:CFG.LEVEL,seed:CFG.SEED};
+  try{ if(window.Hub?.setGameConfig){ window.Hub.setGameConfig(HUB_GAME_ID,data); return; } }catch{}
+  try{localStorage.setItem('jq_progress',JSON.stringify(data))}catch{}
+}
+
+// ========== Events & level flow
+function showLevels(){LB.innerHTML='';for(let i=1;i<=Object.keys(LV).length;i++){const b=document.createElement('button');b.className='lbtn';b.textContent=i;b.disabled=i>CFG.MAX;b.onclick=()=>{CFG.LEVEL=i;resetLvl(true);hideLevels()};LB.appendChild(b)}MOD.style.display='flex'}
+function hideLevels(){MOD.style.display='none'}
+function setObjective(speak){
+  const lv=LV[CFG.LEVEL];
+  const tgt=lv.F.length>1? 'Find everyone!' : `Find ${lv.F[0].name}!`;
+  const oc=document.getElementById('objConcept');
+  const ot=document.getElementById('objText');
+  const og=document.getElementById('objTarget');
+  if(oc) oc.textContent=lv.concept||'';
+  if(ot) ot.textContent=tgt;
+  if(og) og.textContent=lv.target ? `⭐⭐⭐ in ≤ ${lv.target} blocks` : '';
+  // Speak only on new-level entry (not soft replays/resets) and only after the
+  // user has interacted with the page — browsers block speech otherwise.
+  if(speak && audioPrimed){
+    try{ window.Hub?.speak?.(tgt,{rate:0.95}); }catch{}
+  }
+}
+function resetLvl(newLvl=false){if(running&&!newLvl)return;SEQ.innerHTML='';seq=[];undoStack=[];refreshUndoBtn();resetExec();initLevel(CFG.LEVEL);setObjective(newLvl);setMsg(newLvl?`Level ${CFG.LEVEL} ready!`:'Ready!','#00529B')}
+function placeCoins(path,count){coins=[];if(!path||!path.length)return;const taken=new Set(),ban=new Set([`${start.x},${start.z}`,...family.map(m=>`${m.x},${m.y}`)]);let tries=0;while(coins.length<count&&tries<200){const p=path[Math.floor(Math.random()*path.length)],k=`${p.x},${p.y}`;if(!ban.has(k)&&!taken.has(k)&&(grid[p.y][p.x]==='path')){coins.push({x:p.x,y:p.y,collected:false,obj:null});taken.add(k)}tries++}}
+function initLevel(n){
+  CFG.LEVEL=n; LVLBL.textContent=n; family=LV[n].F.map(f=>({...f,found:false}));
+  let path=[];
+  if(n===1){ path=gen1(); }
+  else {
+    const seed=(CFG.SEED ^ (n*2654435761))>>>0; // per-level deterministic
+    path=genDynamic(LV[n].G, seed, {});
+  }
+  placeCoins(path,LV[n].C||0);
+  const N=LV[n].G,center=(N-1)/2*CFG.TILE;camera.position.set(center+12,12,center+12);camera.lookAt(center,0,center);controls&&controls.target.set(center,0,center);controls&&controls.update();
+  player={...start}; renderBoard(); renderCar(true); toolbox(); setCoins(0,coins.length); save();
+  setSeed(CFG.SEED);
+}
+
+// ========== Self-tests (layout + tiles + expand, plus a few more)
+function tests(){
+  try{D.add(STAGE.clientWidth>0&&STAGE.clientHeight>0,'Stage has size')}catch(e){D.add(false,'Stage size read failed')}
+  try{D.add(renderer&&renderer.domElement&&renderer.domElement.clientWidth===STAGE.clientWidth&&renderer.domElement.clientHeight===STAGE.clientHeight,'Canvas matches stage size')}catch(e){D.add(false,'Canvas-size mismatch')}
+  try{D.add(!!THREE,'Three present');D.add(!!THREE.OrbitControls,'OrbitControls present');D.add(!!controls,'Controls created');if(controls&&THREE.MOUSE){D.add(controls.mouseButtons.LEFT===THREE.MOUSE.ROTATE,'Left-drag rotates')}}catch(e){D.add(false,'Orbit test failed')}
+  try{const arr=(function(){return (function expand(a){const out=[];a.forEach(c=>{for(let i=0;i<(c.count||1);i++)out.push(c.id)});return out})([{id:'move',count:4},{id:'turn-left'}])})();D.add(Array.isArray(arr)&&arr.join(',')==='move,move,move,move,turn-left','Repeat expands (per-block counts)')}catch(e){D.add(false,'Expand test failed')}
+  try{
+    const okAll = family.length>0 && family.every(m=>pathLen(start.x,start.z,m.x,m.y)<Infinity);
+    D.add(okAll,'All family reachable');
+  }catch(e){D.add(false,'Path test failed')}
+  try{const tileCount=scene.children.filter(o=>o.userData&&o.userData.tile).length;D.add(tileCount>0,'Tiles rendered to scene'); const pathCells=grid.flat().filter(t=>t==='path').length; D.add(pathCells>0,'Path cells exist')}catch(e){D.add(false,'Tile/path checks failed')}
+  try{const a=expand([]);D.add(Array.isArray(a)&&a.length===0,'Expand handles empty sequence')}catch(e){D.add(false,'Empty sequence test failed')}
+  try{const p=world(start.x,start.z);D.add(Math.abs(car.position.x-p.x)<1e-6 && Math.abs(car.position.z-p.z)<1e-6,'Car at start position')}catch(e){D.add(false,'Car start position failed')}
+  try{D.add(isFinite(camera.aspect)&&camera.aspect>0,'Camera aspect positive')}catch(e){D.add(false,'Camera aspect check failed')}
+  try{const r0=expand([{id:'move',count:0}]);const r1=expand([{id:'move',count:1}]);D.add(r0.length===0,'Repeat count 0 yields empty');D.add(r1.join(',')==='move','Repeat x1 yields single move')}catch(e){D.add(false,'Repeat edge-case tests failed')}
+  try{const gl=scene.children.some(o=>o.userData&&o.userData.grid);D.add(gl,'Grid lines present')}catch(e){D.add(false,'Grid lines check failed')}
+  try{const N=LV[CFG.LEVEL].G,T=CFG.TILE;const ok=gridLines&&gridLines.userData&&gridLines.userData.size===N*T&&gridLines.userData.div===N;D.add(ok,'Grid aligns to tile edges')}catch(e){D.add(false,'Grid alignment check failed')}
+  try{const env=scene.children.filter(o=>o.userData&&o.userData.env);const ok=env.length>=1 && env.every(o=>grid[o.userData.z][o.userData.x]==='grass');D.add(ok,'Environment placed on grass only')}catch(e){D.add(false,'Environment placement check failed')}
+  try{let ok=true;const N=LV[CFG.LEVEL].G;for(let y=0;y<N;y++){for(let x=1;x<N-1;x++){if(grid[y][x]==='puddle'){ok= ok && grid[y][x-1]==='path' && grid[y][x+1]==='path';}}}D.add(ok,'Puddle is jumpable (path on both sides)')}catch(e){D.add(false,'Puddle jumpable check failed')}
+}
+
+// ========== Boot with resilient init
+async function boot(){
+  D.ul=document.getElementById('dlist');
+  document.getElementById('retry').onclick=async()=>{hideOverlay();await initApp()};
+  await initApp();
+}
+
+async function waitForStage(retries=20){for(let i=0;i<retries;i++){const {w,h}=stageDims();if(w>10&&h>10)return;await new Promise(r=>requestAnimationFrame(r))}throw new Error('Stage has zero size')}
+
+async function initApp(){
+  if(!webglAvailable()){showOverlay('Your browser/device does not appear to support WebGL. Try a different browser or enable hardware acceleration.');return}
+  try{setMsg('Loading 3D…');await load3DLibs()}catch(e){console.warn(e);showOverlay('3D scripts failed to load. Please ensure you are online or serve this file via a local server (e.g., "python -m http.server"). Then click Retry.');wireUIStubs();return}
+  try{
+    await waitForStage();
+    init3D();
+    applySize();
+    window.addEventListener('resize',resize);
+    document.addEventListener('dragover',e=>e.preventDefault());
+    TB.addEventListener('dragstart',e=>{const blk=e.target.closest('.blk'); if(blk){e.dataTransfer.setData('text/plain',blk.dataset.id); e.dataTransfer.effectAllowed='copy';}});
+
+    // Reordering within sequence
+    SEQ.addEventListener('dragstart',e=>{
+      const blk=e.target.closest('.blk');
+      if(!blk) return;
+      dragItem=blk;
+      blk.style.opacity='0.4';
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/seq','reorder');
+    });
+    SEQ.addEventListener('dragover',e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect= dragItem ? 'move' : 'copy';
+      SEQ.classList.add('dragging-over');
+    });
+    SEQ.addEventListener('dragleave',e=>{
+      // Only clear when truly leaving SEQ, not children
+      if(!SEQ.contains(e.relatedTarget)) SEQ.classList.remove('dragging-over');
+    });
+    SEQ.addEventListener('dragend',()=>{
+      if(dragItem) dragItem.style.opacity='';
+      dragItem=null;
+      SEQ.classList.remove('dragging-over');
+    });
+    SEQ.addEventListener('drop',e=>{
+      e.preventDefault();
+      SEQ.classList.remove('dragging-over');
+      const tgt=e.target.closest('.blk');
+      if(dragItem){
+        // Reorder: snapshot first, then insert before/after target, or append.
+        pushUndo();
+        if(tgt && tgt!==dragItem){
+          const r=tgt.getBoundingClientRect();
+          const before=e.clientX < r.left + r.width/2;
+          SEQ.insertBefore(dragItem, before? tgt : tgt.nextSibling);
+        }else if(!tgt){
+          SEQ.appendChild(dragItem);
+        }
+        dragItem.style.opacity='';
+        dragItem=null;
+        updateSeq();
+        return;
+      }
+      // Dropped from toolbox (addBlock handles its own snapshot)
+      const id=e.dataTransfer.getData('text/plain');
+      if(id){
+        if(tgt){
+          const r=tgt.getBoundingClientRect();
+          const before=e.clientX < r.left + r.width/2;
+          addBlock(id, tgt, before);
+        }else{
+          addBlock(id);
+        }
+      }
+    });
+    // Prime audio on first interaction
+    const prime=()=>{ if(!audioPrimed){ audioPrimed=true; ensureAudio(); if(sfx) startBgm(); } document.removeEventListener('pointerdown',prime,{capture:true}); };
+    document.addEventListener('pointerdown',prime,{capture:true,once:true});
+
+    GO.onclick=()=>{ ensureAudio(); if(sfx&&!bgmOn) startBgm(); begin(seq) };
+    RESET.onclick=()=>{ CFG.SEED=Math.floor(Math.random()*1e9); resetLvl(false); save(); };
+    LEVELS.onclick=showLevels; STEP.onclick=stepOnce; PAUSE.onclick=pause;
+    CLEAR.onclick=()=>{ if(SEQ.children.length){ pushUndo(); SEQ.innerHTML=''; updateSeq(); } };
+    REPLAY.onclick=replay;
+    const UNDO_BTN=document.getElementById('undo');
+    if(UNDO_BTN){ UNDO_BTN.onclick=doUndo; refreshUndoBtn(); }
+    SPD.oninput=()=>{speed=+SPD.value;SPDL.textContent=speed+'ms'}; SFX.onchange=()=>{sfx=SFX.checked;if(sfx){beep(520,0.05); startBgm();} else { stopBgm(); }}; ORBIT.onchange=()=>{if(controls)controls.enabled=ORBIT.checked};
+    ENVON.onchange=()=>{envOn=ENVON.checked; renderDecor()}; ENVD.oninput=()=>{envDensity=+ENVD.value; ENVL.textContent=envDensity+'%'; renderDecor()};
+    document.addEventListener('pointerup',()=>STAGE.style.cursor='grab');
+    initLevel(CFG.LEVEL); tests(); setObjective(false); setMsg('Ready!','#1f883d');
+    // First-run coachmark (waits for layout settle so spotlight measures right).
+    setTimeout(()=>{ try{ maybeCoachmark(); }catch{} }, 300);
+    // Speak objective on first user gesture (browsers gate speech behind it).
+    const speakOnce=()=>{ try{ setObjective(true); }catch{} document.removeEventListener('pointerdown',speakOnce,true); };
+    document.addEventListener('pointerdown',speakOnce,true);
+    // Modal close & backdrop
+    document.getElementById('closeLevels').onclick=hideLevels; MOD.addEventListener('click',e=>{ if(e.target===MOD) hideLevels(); });
+    // Final screen restart
+    document.getElementById('restart').onclick=()=>{ document.getElementById('final').style.display='none'; CFG.LEVEL=1; CFG.SEED=Math.floor(Math.random()*1e9); resetLvl(true); save(); };
+  }catch(e){console.error(e); showOverlay('Initialization failed (layout/WebGL). Try resizing the window or click Retry.');}
+}
+
+function wireUIStubs(){SPD.oninput=()=>{speed=+SPD.value;SPDL.textContent=speed+'ms'};SFX.onchange=()=>{sfx=SFX.checked}};
+
+// ---- First-run coachmark (3 steps) ----
+// Shown once per profile on Level 1. Persists "seen" via Hub config so each
+// kid sees it exactly once, never on returning sessions or other profiles.
+function maybeCoachmark(){
+  try{
+    const cfg=window.Hub?.getGameConfig?.(HUB_GAME_ID)||{};
+    if(cfg.coachmarkSeen) return;
+    if(CFG.LEVEL!==1) return;
+    if(SEQ.children.length) return; // returning user mid-plan; skip
+  }catch{ return; }
+  const STEPS=[
+    {target:'#tb',title:'Your toolbox',body:'These are your code blocks. Tap one to add it to your plan.',arrow:'arrow-right'},
+    {target:'#seq',title:'Your plan',body:'This is the list of moves Jaxx will follow. Drag blocks to reorder, click to remove.',arrow:'arrow-right'},
+    {target:'#goPrimary',title:'Press GO!',body:'When your plan is ready, press GO and watch Jaxx follow your code.',arrow:'arrow-bottom'},
+  ];
+  let i=0;
+  const root=document.getElementById('coachmark');
+  const spot=document.getElementById('cmSpot');
+  const bub=document.getElementById('cmBubble');
+  const stepLbl=document.getElementById('cmStepLabel');
+  const title=document.getElementById('cmTitle');
+  const body=document.getElementById('cmBody');
+  const next=document.getElementById('cmNext');
+  const skip=document.getElementById('cmSkip');
+  function place(){
+    const s=STEPS[i]; const el=document.querySelector(s.target);
+    if(!el){ end(); return; }
+    const r=el.getBoundingClientRect();
+    const pad=8;
+    spot.style.top=(r.top-pad)+'px';
+    spot.style.left=(r.left-pad)+'px';
+    spot.style.width=(r.width+pad*2)+'px';
+    spot.style.height=(r.height+pad*2)+'px';
+    bub.className='cm-bubble '+(s.arrow||'');
+    stepLbl.textContent=`Step ${i+1} of ${STEPS.length}`;
+    title.textContent=s.title;
+    body.textContent=s.body;
+    next.textContent= i===STEPS.length-1 ? 'Got it!' : 'Next →';
+    // Position bubble: prefer left of target (arrow-right means bubble-on-left)
+    const bw=300; const bh=bub.offsetHeight||140;
+    let left, top;
+    if(s.arrow==='arrow-right'){
+      left = r.left - bw - 18;
+      top  = r.top - 8;
+    }else if(s.arrow==='arrow-bottom'){
+      left = r.left - 16;
+      top  = r.top - bh - 18;
+    }else{
+      left = r.left + r.width + 18;
+      top  = r.top;
+    }
+    // Clamp to viewport
+    left = Math.max(12, Math.min(window.innerWidth - bw - 12, left));
+    top  = Math.max(12, Math.min(window.innerHeight - bh - 12, top));
+    bub.style.left=left+'px'; bub.style.top=top+'px'; bub.style.maxWidth=bw+'px';
+  }
+  function end(){
+    root.classList.remove('show');
+    root.setAttribute('aria-hidden','true');
+    try{ window.Hub?.setGameConfig?.(HUB_GAME_ID, Object.assign({}, window.Hub.getGameConfig(HUB_GAME_ID)||{}, {coachmarkSeen:true})); }catch{}
+  }
+  next.onclick=()=>{ i++; if(i>=STEPS.length) end(); else place(); };
+  skip.onclick=end;
+  root.classList.add('show'); root.setAttribute('aria-hidden','false');
+  // Wait one frame so the bubble has measurable height before placing.
+  requestAnimationFrame(place);
+  window.addEventListener('resize', place, {passive:true});
+}
+
+async function bootWithHub(){
+  // Hub script is defer-loaded, so it should exist by `load`. Wait for its
+  // async storage init, then re-read per-profile progress before we boot.
+  try{
+    if(window.Hub?.whenReady) await window.Hub.whenReady();
+    loadProgress();
+  }catch{}
+  window._jqSessionStart=Date.now();
+  try{ window.Hub?.startSession?.(HUB_GAME_ID); }catch{}
+  boot();
+}
+// New-UI wiring: primary GO, settings open/close, Esc to close modals.
+document.addEventListener('DOMContentLoaded',()=>{
+  const goPrimary=document.getElementById('goPrimary');
+  const go=document.getElementById('go');
+  if(goPrimary&&go){ goPrimary.addEventListener('click',()=>go.click()); }
+  const setBtn=document.getElementById('settingsBtn');
+  const setDlg=document.getElementById('settings');
+  const setClose=document.getElementById('closeSettings');
+  if(setBtn&&setDlg){ setBtn.addEventListener('click',()=>setDlg.style.display='flex'); }
+  if(setClose&&setDlg){ setClose.addEventListener('click',()=>setDlg.style.display='none'); }
+  if(setDlg){ setDlg.addEventListener('click',e=>{if(e.target===setDlg)setDlg.style.display='none'}); }
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Escape'){
+      ['settings','modal','win','final','overlay'].forEach(id=>{
+        const el=document.getElementById(id); if(el&&el.style.display==='flex') el.style.display='none';
+      });
+    }
+  });
+  // Disable primary GO while running, mirroring legacy #go state.
+  const obs=new MutationObserver(()=>{ if(goPrimary&&go) goPrimary.disabled=go.disabled; });
+  if(go) obs.observe(go,{attributes:true,attributeFilter:['disabled']});
+});
+window.addEventListener('load',()=>{bootWithHub()});
+</script>
+</body></html>
