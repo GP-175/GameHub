@@ -32,11 +32,41 @@
   --shadow:0 8px 24px rgba(0,0,0,.4);
 }
 *{box-sizing:border-box}
-body{margin:0;display:flex;height:100vh;background:var(--bg);color:var(--t);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial}
-#game{flex:1;position:relative;background:linear-gradient(180deg,#87ceeb,#a2d2ff);min-height:360px;overflow:hidden}
+body{margin:0;display:flex;flex-direction:column;height:100vh;background:var(--bg);color:var(--t);font:500 14px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Arial;overflow:hidden}
+#game{flex:1;position:relative;background:linear-gradient(180deg,#87ceeb,#a2d2ff);min-height:0;overflow:hidden}
 [data-theme="dark"] #game{background:linear-gradient(180deg,#1e3a5f,#0f1e3a)}
-#stage{position:absolute;inset:0 0 190px;touch-action:none;cursor:grab;width:100%;height:auto}
+#stage{position:absolute;inset:0;touch-action:none;cursor:grab;width:100%;height:100%}
 #stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+
+/* ===== Top banner ===== */
+#topbar{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:8px 16px;background:var(--bg-card);border-bottom:1px solid var(--border);box-shadow:0 1px 3px rgba(0,0,0,.04);z-index:5}
+.tb-l,.tb-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tb-c{display:flex;justify-content:center;min-width:0}
+.tb-r #msg{font-size:12px;color:var(--t-soft);font-weight:600;margin-right:4px}
+#topbar h1{font-size:15px;color:var(--p);margin:0;font-weight:800;letter-spacing:.2px;white-space:nowrap}
+
+/* ===== Bottom panel ===== */
+#bottom{background:var(--bg-card);border-top:1px solid var(--border);padding:12px 16px 14px;box-shadow:0 -2px 12px rgba(0,0,0,.04);z-index:5}
+.bottom-inner{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:9px}
+.planhead{display:flex;justify-content:space-between;align-items:center}
+.planhead-title{font-size:11px;font-weight:800;color:var(--t-soft);text-transform:uppercase;letter-spacing:.8px}
+.planhead-actions{display:flex;gap:6px}
+.iconaction{width:34px;height:34px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--t);cursor:pointer;font-size:15px;display:inline-flex;align-items:center;justify-content:center;line-height:1;transition:background .15s,border-color .15s,color .15s}
+.iconaction:hover{background:var(--bg-soft);border-color:var(--p);color:var(--p)}
+.iconaction:active{transform:translateY(1px)}
+.iconaction:disabled{opacity:.4;cursor:not-allowed;background:var(--bg-card);border-color:var(--border);color:var(--t-soft)}
+
+/* Toolbox row inside bottom panel */
+.tbwrap{display:flex;align-items:center;gap:14px;padding-top:8px;border-top:1px dashed var(--border)}
+.tbwrap .planhead-title{flex:0 0 auto}
+.tbwrap .cmds{flex:1;flex-wrap:wrap;min-height:60px}
+
+/* Compact objective pill (inline in banner) */
+#topbar .objective{padding:6px 14px;gap:8px;border-radius:999px;font-size:13px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis}
+#topbar .objective::before{font-size:15px}
+#topbar .objective .obj-text{flex-direction:row;align-items:baseline;gap:8px}
+#topbar .objective .obj-concept{font-size:10px}
+#topbar .objective .obj-target{font-size:11px}
 #ui{width:400px;max-width:46vw;background:var(--bg-card);box-shadow:var(--shadow);padding:0;display:flex;flex-direction:column;overflow:hidden;border-left:1px solid var(--border);position:relative}
 /* Soft cloud sky in the UI background */
 #ui::before{content:"";position:absolute;inset:0;pointer-events:none;background:
@@ -191,25 +221,24 @@ h1{font-size:15px;color:var(--p);margin:0;font-weight:800;letter-spacing:.2px}
 .settings-row .val{font-size:12px;color:var(--t-soft);min-width:48px;text-align:right}
 
 /* Responsive */
-@media (max-width:1024px){#ui{width:360px}}
+@media (max-width:900px){
+  #topbar{grid-template-columns:auto 1fr;grid-template-areas:"l r" "c c";row-gap:8px}
+  .tb-l{grid-area:l}
+  .tb-r{grid-area:r;justify-self:end}
+  .tb-c{grid-area:c}
+  #topbar .objective{font-size:12px}
+}
 @media (max-width:768px){
-  body{flex-direction:column}
-  #game{flex:1 1 64vh;min-height:64vh}
-  #stage{inset:0 0 218px}
-  #ui{width:100%;max-width:100%;max-height:36vh;border-left:0;border-top:1px solid var(--border);box-shadow:0 -8px 24px rgba(0,0,0,.12)}
-  .topbar{padding:8px 12px}
-  h1{font-size:14px}
-  .uibody{padding:10px 12px;gap:8px}
-  .blk{width:48px;height:48px;flex:0 0 48px;font-size:21px;border-radius:12px}
-  .planavatar{display:none}
-  .goround{flex:0 0 52px;width:52px;height:52px;font-size:19px}
-  .plan-section{left:8px;right:8px;bottom:8px;padding:8px;grid-template-columns:1fr;gap:7px;border-radius:16px}
-  .plan-section .section-h{font-size:11px}
-  .planstrip{padding:5px;min-height:112px}
-  .seq{min-height:52px;max-height:110px;flex-wrap:wrap;overflow-x:hidden;overflow-y:auto}
-  .plan-actions{grid-template-columns:repeat(3,1fr)}
-  .plan-actions .row2-mini{display:grid;grid-column:1/-1}
-  .footer{padding:8px 12px}
+  #topbar{padding:6px 10px}
+  #topbar h1{font-size:14px}
+  #bottom{padding:10px 10px 12px}
+  .bottom-inner{gap:7px}
+  .blk{width:50px;height:50px;flex:0 0 50px;font-size:22px;border-radius:12px}
+  .planavatar{flex:0 0 44px;width:44px;height:44px;font-size:24px}
+  .goround{flex:0 0 50px;width:50px;height:50px;font-size:18px}
+  .planstrip{padding:5px}
+  .iconaction{width:32px;height:32px;font-size:14px}
+  .tbwrap{gap:8px}
 }
 </style><link rel="icon" href="data:,"><script>
   // Inherit GameHub theme before paint to avoid a flash.
@@ -217,71 +246,62 @@ h1{font-size:15px;color:var(--p);margin:0;font-weight:800;letter-spacing:.2px}
 </script>
 <script src="../assets/hub.js" defer></script></head>
 <body>
-  <div id="game" aria-label="Game canvas">
-    <div id="stage"></div>
-    <!-- Plan strip: avatar · drop zone · GO -->
-    <div class="plan-section section">
-      <p class="section-h">Your Plan</p>
-      <div class="plan-main">
-        <div class="planstrip">
-          <div class="planavatar" aria-hidden="true">🦊</div>
-          <div id="seq" class="seq" aria-label="Plan sequence area"></div>
-          <button id="goPrimary" class="goround" title="Run your plan now" aria-label="Run plan">GO</button>
-        </div>
-        <button id="go" aria-hidden="true" style="display:none"></button>
-      </div>
-      <div class="plan-actions">
-        <button id="step" class="btn" title="Run one block at a time">Step</button>
-        <button id="pause" class="btn" title="Pause execution">Pause</button>
-        <button id="replay" class="btn" title="Replay last run">Replay</button>
-        <div class="row2-mini">
-          <button id="undo" class="btn" title="Undo last change">↶ Undo</button>
-          <button id="clear" class="btn" title="Clear all blocks">Clear plan</button>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div id="ui" aria-label="Game controls">
-    <!-- Top bar: back to hub, title, settings -->
-    <div class="topbar">
+  <!-- Top banner: back · title · status · objective · top-level actions · settings -->
+  <header id="topbar">
+    <div class="tb-l">
       <a class="iconbtn" href="../index.html" title="Back to GameHub" aria-label="Back to GameHub">← Hub</a>
       <h1>Jaxx's Quest 3D</h1>
-      <button class="iconbtn" id="settingsBtn" title="Settings" aria-label="Settings">⚙</button>
+      <span class="chip lvl">Level <b id="lvl">1</b></span>
+      <span class="chip">🧭 <b id="mv">0</b></span>
+      <span class="chip">🪙 <b id="cc">0</b>/<span id="ct">0</span></span>
     </div>
-
-    <div class="uibody">
-      <!-- Status strip -->
-      <div class="status">
-        <span class="chip lvl">Level <b id="lvl">1</b></span>
-        <span class="chip">🧭 <b id="mv">0</b></span>
-        <span class="chip">🪙 <b id="cc">0</b>/<span id="ct">0</span></span>
-        <span id="msg" aria-live="polite">Loading…</span>
-      </div>
-
-      <!-- Objective banner -->
+    <div class="tb-c">
       <div id="objective" class="objective" title="Level objective">
         <div class="obj-text">
-          <div class="obj-concept" id="objConcept">—</div>
-          <div id="objText">Objective: —</div>
-          <div class="obj-target" id="objTarget"></div>
+          <span class="obj-concept" id="objConcept">—</span>
+          <span id="objText">Objective: —</span>
+          <span class="obj-target" id="objTarget"></span>
         </div>
       </div>
+    </div>
+    <div class="tb-r">
+      <span id="msg" aria-live="polite">Loading…</span>
+      <button id="undo" class="iconaction" title="Undo last change" aria-label="Undo">↶</button>
+      <button id="reset" class="iconaction" title="Reset maze with a new layout" aria-label="Reset maze">⟳</button>
+      <button id="levels" class="iconaction" title="Pick a level" aria-label="Levels">≡</button>
+      <button id="settingsBtn" class="iconaction" title="Settings" aria-label="Settings">⚙</button>
+    </div>
+  </header>
 
-      <!-- Toolbox -->
-      <div class="section">
-        <p class="section-h">Toolbox</p>
-        <div id="tb" class="cmds"></div>
-        <p class="tip">Tap a block to add it. Click a placed block to remove. On Level 3+, use the Repeat 🔁 block's +/− to set how many times.</p>
+  <!-- 3D game canvas (full width) -->
+  <main id="game" aria-label="Game canvas">
+    <div id="stage"></div>
+  </main>
+
+  <!-- Bottom panel: plan controls · plan strip · toolbox -->
+  <section id="bottom">
+    <div class="bottom-inner">
+      <div class="planhead">
+        <span class="planhead-title">Your Plan</span>
+        <div class="planhead-actions">
+          <button id="step" class="iconaction" title="Run one block at a time" aria-label="Step">⇥</button>
+          <button id="pause" class="iconaction" title="Pause execution" aria-label="Pause">⏸</button>
+          <button id="replay" class="iconaction" title="Replay last run" aria-label="Replay">↻</button>
+          <button id="clear" class="iconaction" title="Clear all blocks" aria-label="Clear plan">⌫</button>
+        </div>
       </div>
-
+      <div class="planstrip">
+        <div class="planavatar" aria-hidden="true">🦊</div>
+        <div id="seq" class="seq" aria-label="Plan sequence area"></div>
+        <button id="goPrimary" class="goround" title="Run your plan now" aria-label="Run plan">GO</button>
+      </div>
+      <button id="go" aria-hidden="true" style="display:none"></button>
+      <div class="tbwrap">
+        <span class="planhead-title">Toolbox</span>
+        <div id="tb" class="cmds"></div>
+      </div>
     </div>
-
-    <!-- Footer -->
-    <div class="footer">
-      <button id="reset" class="btn" title="Reset the maze with a new layout">Reset Maze</button>
-      <button id="levels" class="btn" title="Pick a level">Levels</button>
-    </div>
-  </div>
+  </section>
 
   <!-- Settings dialog (config moved here) -->
   <div id="settings" role="dialog" aria-label="Settings">
