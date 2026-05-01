@@ -209,13 +209,49 @@ body {
 .dash-search {
   background: var(--hub-card);
   border-radius: 999px;
-  padding: 10px 18px;
+  padding: 6px 8px 6px 16px;
   border: 1px solid var(--hub-border);
   flex: 1; max-width: 340px;
   display: flex; align-items: center; gap: 8px;
   color: var(--hub-muted);
   font-size: 14px;
+  transition: border-color .15s, box-shadow .15s;
 }
+.dash-search:focus-within {
+  border-color: var(--hub-ink);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--hub-ink) 14%, transparent);
+}
+.dash-search-icon {
+  font-size: 15px; opacity: 0.7;
+  flex-shrink: 0;
+}
+#search-input {
+  flex: 1;
+  appearance: none; -webkit-appearance: none;
+  border: 0; outline: none; background: transparent;
+  font: inherit; color: var(--hub-ink);
+  padding: 6px 0;
+  min-width: 0;
+}
+#search-input::placeholder { color: var(--hub-muted); }
+#search-input::-webkit-search-decoration,
+#search-input::-webkit-search-cancel-button,
+#search-input::-webkit-search-results-button,
+#search-input::-webkit-search-results-decoration { display: none; }
+.dash-search-clear {
+  appearance: none; -webkit-appearance: none;
+  border: 0; cursor: pointer;
+  width: 24px; height: 24px; line-height: 1;
+  border-radius: 50%;
+  background: var(--hub-rail); color: var(--hub-muted);
+  font-size: 16px; font-weight: 700;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  transition: background .15s, color .15s;
+}
+.dash-search-clear:hover { background: var(--hub-border); color: var(--hub-ink); }
+[data-theme="dark"] .dash-search-clear { background: #21262d; }
+[data-theme="dark"] .dash-search-clear:hover { background: #30363d; color: #fff; }
 .dash-status {
   margin-left: auto;
   padding: 8px 14px;
@@ -756,10 +792,23 @@ body {
 
     <!-- Top bar -->
     <div class="dash-topbar">
-      <div class="dash-search">
-        <span style="font-size:15px;opacity:0.7">⌕</span>
-        <span>Find a game…</span>
-      </div>
+      <form class="dash-search" id="dash-search" role="search" onsubmit="return false;">
+        <span class="dash-search-icon" aria-hidden="true">⌕</span>
+        <input
+          id="search-input"
+          type="search"
+          placeholder="Find a game…"
+          autocomplete="off"
+          spellcheck="false"
+          aria-label="Search games"
+        />
+        <button
+          type="button"
+          id="search-clear"
+          class="dash-search-clear hidden"
+          aria-label="Clear search"
+        >×</button>
+      </form>
       <div class="dash-status">
         <span class="dash-status-dot"></span>
         Online
@@ -843,6 +892,7 @@ body {
     applyThemeIcons();
     const tt = $('theme-toggle');
     if (tt) tt.addEventListener('click', toggleTheme);
+    bindSearch();
   });
 
   function init() {
@@ -1007,35 +1057,105 @@ body {
   }
 
   // ── Game grid ──────────────────────────────────────────────────
+  let _gamesCtx = { profile: null, enabled: [], subject: 'All', query: '' };
+
+  function matchesQuery(game, q) {
+    if (!q) return true;
+    const hay = (
+      (game.title || '') + ' ' +
+      (game.subject || '') + ' ' +
+      (game.tagline || '')
+    ).toLowerCase();
+    // every whitespace-separated token must match
+    return q.toLowerCase().split(/\s+/).filter(Boolean).every(tok => hay.includes(tok));
+  }
+
+  function applyFilters() {
+    const { profile, enabled, subject, query } = _gamesCtx;
+    if (!profile) return;
+    const tabsEl = $('games-tabs');
+    tabsEl.querySelectorAll('.games-tab').forEach(t =>
+      t.classList.toggle('active', t.dataset.subject === subject)
+    );
+    let filtered = subject === 'All' ? enabled : enabled.filter(g => g.subject === subject);
+    if (query) filtered = filtered.filter(g => matchesQuery(g, query));
+
+    const noGames = $('no-games');
+    if (filtered.length === 0) {
+      $('games-count').textContent = '0 games';
+      buildGrid(profile, []);
+      if (enabled.length === 0) {
+        noGames.innerHTML =
+          'No games are enabled for this profile yet. Ask a grown-up to enable some in the ' +
+          '<a href="parent.html">Parent</a> area.';
+      } else if (query) {
+        noGames.innerHTML = `No games match “<b>${esc(query)}</b>”${
+          subject !== 'All' ? ` in <b>${esc(subject)}</b>` : ''
+        }. Try another word or clear the search.`;
+      } else {
+        noGames.textContent = `No games in ${subject} for this profile yet.`;
+      }
+      noGames.classList.remove('hidden');
+    } else {
+      $('games-count').textContent = `${filtered.length} game${filtered.length !== 1 ? 's' : ''}`;
+      buildGrid(profile, filtered);
+      noGames.classList.add('hidden');
+    }
+  }
+
   function renderGames(profile) {
     const enabled = Hub.GAMES.filter(g =>
       g.ageGroups.includes(profile.ageGroup) && Hub.isGameEnabled(profile.id, g.id)
     );
-
     const subjects = ['All', ...new Set(enabled.map(g => g.subject))];
     const tabsEl = $('games-tabs');
     tabsEl.innerHTML = '';
-
-    function drawGrid(subject) {
-      tabsEl.querySelectorAll('.games-tab').forEach(t =>
-        t.classList.toggle('active', t.dataset.subject === subject)
-      );
-      const filtered = subject === 'All' ? enabled : enabled.filter(g => g.subject === subject);
-      $('games-count').textContent = `${filtered.length} game${filtered.length !== 1 ? 's' : ''}`;
-      buildGrid(profile, filtered);
-    }
 
     subjects.forEach((s, i) => {
       const tab = document.createElement('span');
       tab.className = 'games-tab' + (i === 0 ? ' active' : '');
       tab.dataset.subject = s;
       tab.textContent = s;
-      tab.onclick = () => drawGrid(s);
+      tab.onclick = () => { _gamesCtx.subject = s; applyFilters(); };
       tabsEl.appendChild(tab);
     });
 
-    drawGrid('All');
-    $('no-games').classList.toggle('hidden', enabled.length > 0);
+    _gamesCtx = {
+      profile,
+      enabled,
+      subject: 'All',
+      query: ($('search-input') && $('search-input').value.trim()) || '',
+    };
+    applyFilters();
+  }
+
+  function bindSearch() {
+    const input = $('search-input');
+    const clear = $('search-clear');
+    if (!input || input.dataset.bound) return;
+    input.dataset.bound = '1';
+
+    const update = () => {
+      const v = input.value.trim();
+      _gamesCtx.query = v;
+      clear.classList.toggle('hidden', v.length === 0);
+      if (_gamesCtx.profile) applyFilters();
+    };
+    input.addEventListener('input', update);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { input.value = ''; update(); input.blur(); }
+    });
+    clear.addEventListener('click', () => {
+      input.value = ''; update(); input.focus();
+    });
+
+    // Cmd/Ctrl+K focuses the search
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        const visible = !document.getElementById('view-games').classList.contains('hidden');
+        if (visible) { e.preventDefault(); input.focus(); input.select(); }
+      }
+    });
   }
 
   function buildGrid(profile, games) {
