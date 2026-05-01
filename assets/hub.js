@@ -160,6 +160,16 @@
       path: 'games/cube-crash.html',
       accent: '#40e8ff',
     },
+    {
+      id: 'snake',
+      title: 'Snake',
+      subject: 'Arcade',
+      icon: '🐍',
+      tagline: 'Eat, grow, don’t crash',
+      ageGroups: ['early-elem', 'adult'],
+      path: 'games/snake.html',
+      accent: '#3ddc97',
+    },
   ];
 
   const AGE_GROUPS = {
