@@ -1,0 +1,1189 @@
+<!--
+  Jaxx World — Active development build
+
+  Release history:
+    v1 game-v1-foundation.html   — M1: Foundation         (JP-28→JP-33)
+    v2 game-v2-interaction.html  — M2: Block Interaction  (JP-34→JP-38)
+    v3 game-v3-hotbar.html       — M3: Building Tools     (JP-39→JP-43)
+    v4 game-v4-persistence.html  — M4: World & Persistence(JP-44→JP-48)
+    v5 game-v5-polish.html       — M5: Polish             (JP-49→JP-53)
+    v6 game-v6-terrain.html      — M6: Terrain & Weather  (JP-54→JP-58)
+
+  Current milestone: M6 — Terrain Generation
+    JP-54 [M6-T1] Heightmap terrain generator         ✓
+    JP-55 [M6-T2] Trees scattered on surface          ✓
+    JP-56 [M6-T3] Water blocks below sea level        ✓
+    JP-57 [M6-T4] Day/night cycle with sun rotation   ✓
+    JP-58 [M6-T5] Tag release: game-v6-terrain.html   ✓
+
+  How to run: open in Chrome, or serve with python3 -m http.server 8765.
+  Active file — do not treat as a rollback snapshot.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Jaxx World | GameHub</title>
+
+  <!-- Fredoka One — rounded, fun display font for the whole game UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #87CEEB; }
+    canvas { display: block; }
+
+    /* ── Design token ──────────────────────────────────────────────── */
+    :root { --font-game: 'Fredoka One', 'Segoe UI', system-ui, sans-serif; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       TITLE SCREEN  (JP-49)
+       Full-screen launch card. The 3D world renders behind it so the
+       scene peeks through the gradient overlay.
+    ══════════════════════════════════════════════════════════════════ */
+    #title-screen {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(
+        160deg,
+        rgba(15, 40, 100, 0.84) 0%,
+        rgba(10, 60, 20,  0.82) 100%
+      );
+      font-family: var(--font-game);
+      user-select: none;
+    }
+    #title-screen.hidden { display: none; }
+
+    #game-logo {
+      font-size: clamp(52px, 9vw, 100px);
+      line-height: 1.06;
+      text-align: center;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #ffffff 25%, #a8ffc4 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55));
+      margin-bottom: 14px;
+    }
+    #welcome-msg {
+      font-size: clamp(22px, 4vw, 40px);
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      margin-bottom: 42px;
+      opacity: 0.95;
+    }
+    #play-btn {
+      font-family: var(--font-game);
+      font-size: clamp(20px, 3vw, 30px);
+      padding: 15px 68px;
+      background: linear-gradient(160deg, #5CCE5A 0%, #2E9E2C 100%);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #1a6e19, 0 10px 26px rgba(0, 0, 0, 0.38);
+      transition: transform 100ms, box-shadow 100ms;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
+    }
+    #play-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 9px 0 #1a6e19, 0 14px 32px rgba(0, 0, 0, 0.42);
+    }
+    #play-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 0 #1a6e19, 0 6px 16px rgba(0, 0, 0, 0.30);
+    }
+    #title-controls {
+      margin-top: 28px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.62);
+      font-family: system-ui, sans-serif;
+      letter-spacing: 0.3px;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       PAUSE OVERLAY
+       Shown when Esc releases the pointer mid-game. Starts hidden.
+    ══════════════════════════════════════════════════════════════════ */
+    #overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(3px);
+      color: white;
+      font-family: var(--font-game);
+      font-size: clamp(24px, 4vw, 38px);
+      cursor: pointer;
+      user-select: none;
+    }
+    #overlay.hidden { display: none; }
+    #overlay small {
+      display: block;
+      font-size: 15px;
+      font-family: system-ui, sans-serif;
+      font-weight: 400;
+      opacity: 0.78;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       HOTBAR  (JP-51 consistent font; JP-52 supports gradient swatches)
+    ══════════════════════════════════════════════════════════════════ */
+    #hotbar {
+      position: fixed;
+      left: 50%; bottom: 18px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      pointer-events: none;
+      user-select: none;
+      font-family: var(--font-game);
+    }
+    .slot {
+      width: 58px; height: 72px;
+      background: rgba(0, 0, 0, 0.44);
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      border-radius: 8px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding-top: 6px;
+      box-sizing: border-box;
+      transition: border-color 120ms, transform 120ms, box-shadow 120ms;
+    }
+    .slot.selected {
+      border-color: #fff;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
+      transform: translateY(-4px);
+    }
+    /* Astro Block gets an extra starry glow when selected */
+    .slot.selected.astro-slot {
+      border-color: #60BAFF;
+      box-shadow: 0 0 18px rgba(96, 186, 255, 0.70);
+    }
+    .slot .swatch {
+      width: 36px; height: 36px;
+      border-radius: 5px;
+      box-shadow: inset 0 -5px 0 rgba(0,0,0,0.20), inset 0 4px 0 rgba(255,255,255,0.15);
+    }
+    .slot .label {
+      margin-top: 4px;
+      font-size: 11px;
+      color: white;
+      letter-spacing: 0.2px;
+    }
+    /* Astro Block label shimmers in blue */
+    .astro-slot .label { color: #90CAFF; }
+    .slot .key {
+      position: absolute;
+      transform: translate(21px, -4px);
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.72);
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 3px;
+      padding: 1px 4px;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       ACTION BUTTONS  (JP-50 screenshot, JP-51 consistent style)
+    ══════════════════════════════════════════════════════════════════ */
+    #actions {
+      position: fixed;
+      top: 14px; right: 14px;
+      display: flex; gap: 8px;
+      z-index: 60;
+    }
+    #actions button, #actions a {
+      padding: 9px 18px;
+      background: rgba(0, 0, 0, 0.52);
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      border-radius: 8px;
+      color: white;
+      font-family: var(--font-game);
+      font-size: 15px;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: border-color 120ms, background 120ms;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #actions button:hover, #actions a:hover { border-color: white; background: rgba(0, 0, 0, 0.68); }
+    #new-btn { color: #ffd1d1; }
+    #screenshot-btn { padding: 9px 13px; font-size: 18px; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       BLOCK-NAME INDICATOR  (fades in above hotbar on block switch)
+    ══════════════════════════════════════════════════════════════════ */
+    #block-name-toast {
+      position: fixed;
+      left: 50%; bottom: 100px;
+      transform: translateX(-50%);
+      font-family: var(--font-game);
+      font-size: 20px;
+      color: white;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+      opacity: 0;
+      transition: opacity 0.22s;
+      pointer-events: none;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #block-name-toast.show { opacity: 1; }
+    /* Astro Block name toasts in blue */
+    #block-name-toast.astro { color: #90CAFF; text-shadow: 0 0 12px rgba(96,186,255,0.6), 0 2px 8px rgba(0,0,0,0.7); }
+
+    /* ══════════════════════════════════════════════════════════════════
+       SAVE / ERROR TOAST
+    ══════════════════════════════════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      top: 60px; right: 14px;
+      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.68);
+      border-radius: 8px;
+      color: white;
+      font-family: var(--font-game);
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      z-index: 61;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CROSSHAIR  (JP-51 — black outline, visible on any background)
+    ══════════════════════════════════════════════════════════════════ */
+    #crosshair {
+      position: fixed;
+      left: 50%; top: 50%;
+      width: 16px; height: 16px;
+      margin-left: -8px; margin-top: -8px;
+      pointer-events: none;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ""; position: absolute;
+      background: white;
+      box-shadow: 0 0 0 1.5px rgba(0,0,0,0.72), 0 0 4px 1px rgba(0,0,0,0.32);
+    }
+    #crosshair::before { left: 7px; top: 0;  width: 2px; height: 16px; }
+    #crosshair::after  { left: 0;  top: 7px; width: 16px; height: 2px; }
+  </style>
+
+  <!-- SimplexNoise for terrain generation (pinned version) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+  <!-- Importmap: pins Three.js to 0.160.0 — never @latest -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ── TITLE SCREEN ── shown on first launch ──────────────────── -->
+  <div id="title-screen">
+    <div id="game-logo">Jaxx World</div>
+    <div id="welcome-msg">Welcome, Jaxx! 🚀</div>
+    <button id="play-btn" type="button">▶ Play</button>
+    <div id="title-controls">
+      WASD to move &nbsp;·&nbsp; Space to jump &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Esc to pause &nbsp;·&nbsp; N for day/night &nbsp;·&nbsp; F2 for screenshot
+    </div>
+  </div>
+
+  <!-- ── PAUSE OVERLAY ── shown when Esc releases the pointer ───── -->
+  <div id="overlay" class="hidden">
+    ⏸ Paused — Click to Resume
+    <small>Mouse released · click anywhere to keep building</small>
+  </div>
+
+  <!-- Crosshair at screen centre -->
+  <div id="crosshair"></div>
+
+  <!-- Hotbar — populated by JS from the BLOCKS registry -->
+  <div id="hotbar"></div>
+
+  <!-- Block-name indicator that fades in above the hotbar -->
+  <div id="block-name-toast"></div>
+
+  <!-- Top-right action buttons -->
+  <div id="actions">
+    <a href="../index.html" id="hub-btn" title="Back to GameHub">🏠 Hub</a>
+    <button id="save-btn"       type="button">💾 Save</button>
+    <button id="screenshot-btn" type="button" title="Screenshot (F2)">📷</button>
+    <button id="new-btn"        type="button">🌱 New World</button>
+  </div>
+  <div id="toast"></div>
+
+  <script src="../assets/hub.js"></script>
+  <script type="module">
+    import * as THREE from 'three';
+
+    console.log('Three.js loaded', THREE.REVISION);
+
+    const HUB_GAME_ID = 'jaxx-world';
+
+    // ── Scene, camera, renderer ──────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // sky blue
+
+    const camera = new THREE.PerspectiveCamera(
+      75, window.innerWidth / window.innerHeight, 0.1, 1000
+    );
+    const EYE_HEIGHT = 1.62;
+    // Spawn position is set after world generation (see spawnPlayer below)
+    camera.position.set(0, 20, 0); // temporary — overwritten by spawnPlayer()
+
+    // preserveDrawingBuffer:true lets toDataURL() capture any frame on demand
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // ── Lights & Day/Night Cycle (JP-57) ─────────────────────────────
+    let alwaysDay = false;
+    let timeOfDay = 0; // 0 to 1 over CYCLE_DURATION
+    const CYCLE_DURATION = 600; // 10 minutes in seconds
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    const celestialGroup = new THREE.Group();
+    scene.add(celestialGroup);
+    
+    // Sun
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    sunLight.position.set(0, 50, 0);
+    celestialGroup.add(sunLight);
+    
+    const sunGeo = new THREE.SphereGeometry(4, 16, 16);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.set(0, 50, 0);
+    celestialGroup.add(sunMesh);
+    
+    // Moon
+    const moonGeo = new THREE.SphereGeometry(3, 16, 16);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddff });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    moonMesh.position.set(0, -50, 0);
+    celestialGroup.add(moonMesh);
+
+    // Moonlight
+    const moonLight = new THREE.DirectionalLight(0xaaccff, 0.0); // Intensity set dynamically
+    moonLight.position.set(0, -50, 0);
+    celestialGroup.add(moonLight);
+
+    const skyColorDay = new THREE.Color(0x87CEEB);
+    const skyColorSunset = new THREE.Color(0xFF8C00); // orange
+    const skyColorNight = new THREE.Color(0x0B1021); // deep blue
+    const currentSkyColor = new THREE.Color();
+    
+    function updateCelestialCycle(dt) {
+      if (alwaysDay) {
+        timeOfDay = 0; // Lock to high noon
+      } else {
+        timeOfDay = (timeOfDay + dt / CYCLE_DURATION) % 1.0;
+      }
+      
+      const angle = timeOfDay * Math.PI * 2;
+      celestialGroup.rotation.z = angle;
+      
+      const sunHeight = Math.cos(angle);
+      
+      if (sunHeight > 0.2) {
+        currentSkyColor.copy(skyColorDay);
+        ambientLight.intensity = 0.5;
+        sunLight.intensity = 1.0;
+        moonLight.intensity = 0.0;
+      } else if (sunHeight > 0.0) {
+        const t = sunHeight / 0.2;
+        currentSkyColor.lerpColors(skyColorSunset, skyColorDay, t);
+        ambientLight.intensity = 0.3 + 0.2 * t;
+        sunLight.intensity = t;
+        moonLight.intensity = 0.0;
+      } else if (sunHeight > -0.2) {
+        const t = (sunHeight + 0.2) / 0.2;
+        currentSkyColor.lerpColors(skyColorNight, skyColorSunset, t);
+        ambientLight.intensity = 0.15 + 0.15 * t;
+        sunLight.intensity = 0.0;
+        moonLight.intensity = 0.3 * (1 - t);
+      } else {
+        currentSkyColor.copy(skyColorNight);
+        ambientLight.intensity = 0.15; // Dim but not pitch black
+        sunLight.intensity = 0.0;
+        moonLight.intensity = 0.3;
+      }
+      scene.background = currentSkyColor;
+    }
+
+    // ── Block registry ───────────────────────────────────────────────
+    // cssColor (optional): overrides the flat swatch in the hotbar with a
+    // CSS background string. Used by Astro Block for its space-gradient look.
+    // The Three.js material still uses the numeric `color` field.
+    const BLOCKS = {
+      1: { name: 'Grass',       color: 0x4CAF50, breakSound: 'crack',      placeSound: 'thud'       },
+      2: { name: 'Dirt',        color: 0x8D6E63, breakSound: 'crack',      placeSound: 'thud'       },
+      3: { name: 'Stone',       color: 0x9E9E9E, breakSound: 'stoneCrack', placeSound: 'stoneThud'  },
+      4: { name: 'Wood',        color: 0x8B5A2B, breakSound: 'woodCrack',  placeSound: 'woodThud'   },
+      5: { name: 'Sand',        color: 0xF4E1A4, breakSound: 'sandCrack',  placeSound: 'sandThud'   },
+      // ── JP-52 — Jaxx's personalised block ───────────────────────────
+      // Astro Block: Jaxx's space block (Astro Bot + space ships theme).
+      // Dodger Blue in-world; deep-space gradient in the hotbar swatch.
+      6: {
+        name:       'Astro Block',
+        color:      0x1E90FF,
+        cssColor:   'linear-gradient(135deg, #42A5F5 0%, #0D47A1 55%, #1565C0 100%)',
+        breakSound: 'astroCrack',
+        placeSound: 'astroThud',
+        special:    true,          // flags the slot for the blue glow effect
+      },
+      7: { name: 'Leaves',      color: 0x2E7D32, breakSound: 'crack',      placeSound: 'thud'       },
+      8: { name: 'Water',       color: 0x3399ff, breakSound: 'sandCrack',  placeSound: 'sandThud', transparent: true, opacity: 0.65, nonSolid: true },
+    };
+    const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8;
+
+    // One MeshStandardMaterial per block type, shared across all instances.
+    const blockMaterials = new Map();
+    function materialFor(blockId) {
+      let mat = blockMaterials.get(blockId);
+      if (!mat) {
+        const def = BLOCKS[blockId];
+        mat = new THREE.MeshStandardMaterial({ 
+          color: def.color,
+          transparent: !!def.transparent,
+          opacity: def.opacity || 1.0,
+          depthWrite: !def.transparent, // prevents weird self-occlusion for water
+        });
+        blockMaterials.set(blockId, mat);
+      }
+      return mat;
+    }
+
+    let selectedBlockId = GRASS;
+
+    // ── Hotbar UI ────────────────────────────────────────────────────
+    const hotbarEl = document.getElementById('hotbar');
+    const slotEls  = new Map(); // blockId → .slot DOM node
+    function hexToCss(hex) { return '#' + hex.toString(16).padStart(6, '0'); }
+
+    for (const id of Object.keys(BLOCKS)) {
+      const blockId    = Number(id);
+      const def        = BLOCKS[blockId];
+      const swatchBg   = def.cssColor || hexToCss(def.color); // gradient OR flat
+      const slot       = document.createElement('div');
+      slot.className   = 'slot' + (def.special ? ' astro-slot' : '');
+      slot.innerHTML   = `
+        <span class="key">${blockId}</span>
+        <div class="swatch" style="background:${swatchBg}"></div>
+        <div class="label">${def.name}</div>
+      `;
+      hotbarEl.appendChild(slot);
+      slotEls.set(blockId, slot);
+    }
+
+    // Block-name toast: fades in above hotbar on block switch, fades out after 1.2 s.
+    const blockNameToastEl = document.getElementById('block-name-toast');
+    let   blockNameTimer   = null;
+    function showBlockName(blockId) {
+      const def = BLOCKS[blockId];
+      blockNameToastEl.textContent = def.name;
+      // Astro Block gets its own blue-glow style
+      blockNameToastEl.classList.toggle('astro', !!def.special);
+      blockNameToastEl.classList.add('show');
+      clearTimeout(blockNameTimer);
+      blockNameTimer = setTimeout(() => blockNameToastEl.classList.remove('show'), 1200);
+    }
+
+    function setSelectedBlock(blockId, announce = true) {
+      if (!BLOCKS[blockId]) return;
+      selectedBlockId = blockId;
+      for (const [id, el] of slotEls) {
+        el.classList.toggle('selected', id === blockId);
+      }
+      if (announce) showBlockName(blockId);
+    }
+    setSelectedBlock(GRASS, false); // initial highlight — no toast on startup
+
+    // ── World — InstancedMesh rendering ─────────────────────────────
+    // One InstancedMesh per block type → 6 draw calls for the whole world.
+    // blockMap: "x,y,z" → { blockId, instanceId }  (source of truth)
+    // instanceCoords: blockId → [{x,y,z},…]         (raycaster reverse-lookup)
+    // Removal uses "swap with last" so active instances stay packed.
+    const blockGeo           = new THREE.BoxGeometry(1, 1, 1);
+    const WORLD_SIZE         = 64;
+    const offset             = Math.floor(WORLD_SIZE / 2); // force integer grid
+    const INSTANCES_PER_TYPE = 32768; // Increased for height variations
+
+    const blockMap          = new Map();
+    const coordKey          = (x, y, z) => `${x},${y},${z}`;
+    const instancedMeshes   = new Map();
+    const instanceCoords    = new Map();
+    const instancedMeshList = [];
+    const _tmpMatrix        = new THREE.Matrix4();
+
+    for (const id of Object.keys(BLOCKS)) {
+      const blockId = Number(id);
+      const mesh    = new THREE.InstancedMesh(blockGeo, materialFor(blockId), INSTANCES_PER_TYPE);
+      mesh.count            = 0;
+      mesh.userData.blockId = blockId;
+      mesh.frustumCulled    = false;
+      if (BLOCKS[blockId].transparent) {
+        mesh.renderOrder = 1; // renders after opaque blocks
+      }
+      scene.add(mesh);
+      instancedMeshes.set(blockId, mesh);
+      instanceCoords.set(blockId, []);
+      instancedMeshList.push(mesh);
+    }
+
+    // Null-out the bounding sphere so the raycaster recomputes it on the
+    // next intersect. Without this, meshes that start empty (count=0) get an
+    // empty sphere and raycasting silently skips them forever.
+    function invalidateBounds(mesh) { mesh.boundingSphere = null; }
+
+    function addBlock(gx, gy, gz, blockId) {
+      const key = coordKey(gx, gy, gz);
+      if (blockMap.has(key)) return;
+      const mesh = instancedMeshes.get(blockId);
+      const slot = mesh.count;
+      if (slot >= INSTANCES_PER_TYPE) return;
+      _tmpMatrix.makeTranslation(gx, gy, gz);
+      mesh.setMatrixAt(slot, _tmpMatrix);
+      mesh.count = slot + 1;
+      mesh.instanceMatrix.needsUpdate = true;
+      invalidateBounds(mesh);
+      instanceCoords.get(blockId)[slot] = { x: gx, y: gy, z: gz };
+      blockMap.set(key, { blockId, instanceId: slot });
+    }
+
+    function removeBlock(x, y, z) {
+      const key   = coordKey(x, y, z);
+      const entry = blockMap.get(key);
+      if (!entry) return;
+      const { blockId, instanceId } = entry;
+      const mesh   = instancedMeshes.get(blockId);
+      const coords = instanceCoords.get(blockId);
+      const lastId = mesh.count - 1;
+      if (instanceId !== lastId) {
+        mesh.getMatrixAt(lastId, _tmpMatrix);
+        mesh.setMatrixAt(instanceId, _tmpMatrix);
+        const moved = coords[lastId];
+        coords[instanceId] = moved;
+        blockMap.set(coordKey(moved.x, moved.y, moved.z), { blockId, instanceId });
+      }
+      coords.length = lastId;
+      mesh.count    = lastId;
+      mesh.instanceMatrix.needsUpdate = true;
+      invalidateBounds(mesh);
+      blockMap.delete(key);
+    }
+
+    function generateFreshWorld() {
+      // Seeded simplex noise ensures the same "Jaxx World" generates every time
+      const simplex = new SimplexNoise("jaxx-world");
+
+      for (let x = 0; x < WORLD_SIZE; x++) {
+        for (let z = 0; z < WORLD_SIZE; z++) {
+          const gx = x - offset;
+          const gz = z - offset;
+          
+          // Generate a smooth noise value and map it to a height (gentle hills)
+          const SEA_LEVEL = 2; // Configurable sea level
+          const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+          const height = Math.floor((noiseVal + 1) * 3.5); // Range ~0 to 7
+          
+          // Build columns downwards to y = -2 to ensure a solid foundation
+          for (let y = height; y >= -2; y--) {
+            let blockType = STONE;
+            if (y === height) {
+              blockType = height <= SEA_LEVEL + 1 ? SAND : GRASS;
+            } else if (y >= height - 2) {
+              blockType = DIRT;
+            }
+            addBlock(gx, y, gz, blockType);
+          }
+
+          // Fill water up to SEA_LEVEL
+          for (let y = height + 1; y <= SEA_LEVEL; y++) {
+            addBlock(gx, y, gz, WATER);
+          }
+          
+          // ── Trees (JP-55) ──────────────────────────────────────────────
+          // Only spawn trees on land. Use high-frequency noise for scattered placement.
+          if (height > SEA_LEVEL) {
+            const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+          
+          // ~1.5% chance per block. Values above 0.94 are rare in simplex noise.
+          if (treeNoise > 0.94) {
+            // Pseudo-random height between 3 and 6
+            const treeHeight = 3 + Math.abs(gx * gz) % 4;
+            
+            // Build Wood trunk
+            for (let ty = 1; ty <= treeHeight; ty++) {
+              addBlock(gx, height + ty, gz, WOOD);
+            }
+            
+            // Build Leaves canopy
+            const topY = height + treeHeight;
+            for (let lx = -1; lx <= 1; lx++) {
+              for (let ly = -1; ly <= 1; ly++) {
+                for (let lz = -1; lz <= 1; lz++) {
+                  // Leave the trunk intact inside the canopy
+                  if (lx === 0 && lz === 0 && ly <= 0) continue;
+                  // Skip corners to make the canopy look rounded instead of cubic
+                  if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
+                  
+                  addBlock(gx + lx, topY + ly, gz + lz, LEAVES);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    }
+
+    // ── Persistence ──────────────────────────────────────────────────
+    // Format: { v: 1, blocks: [[x, y, z, blockId], …] }
+    // Backward-compatible: saves from v4 (blocks 1–5) load fine here.
+    const SAVE_KEY = 'gamehub:jaxx-world:world:default';
+
+    function loadSavedWorld() {
+      let raw;
+      try { raw = localStorage.getItem(SAVE_KEY); } catch (_) { return false; }
+      if (!raw) return false;
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch (_) { return false; }
+      if (!parsed || parsed.v !== 1 || !Array.isArray(parsed.blocks)) return false;
+      for (const b of parsed.blocks) {
+        if (!Array.isArray(b) || b.length !== 4) return false;
+        const [x, y, z, id] = b;
+        if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return false;
+        if (!BLOCKS[id]) return false;
+      }
+      // Snap any old saves from .5 coords to integer coords
+      for (const [x, y, z, id] of parsed.blocks) {
+        addBlock(Math.round(x), Math.round(y), Math.round(z), id);
+      }
+      return true;
+    }
+
+    if (!loadSavedWorld()) generateFreshWorld();
+
+    // ── Spawn helper — place the player above the terrain ────────────
+    function spawnPlayer() {
+      // Scan downward at (0, 0) to find the highest block
+      for (let y = 20; y >= -5; y--) {
+        if (blockMap.has(coordKey(0, y, 0))) {
+          // Place feet on top of this block (block top = y + 0.5)
+          camera.position.set(0, y + 0.5 + EYE_HEIGHT, 0);
+          return;
+        }
+      }
+      // Fallback if no block found at origin
+      camera.position.set(0, 10 + EYE_HEIGHT, 0);
+    }
+    spawnPlayer();
+
+    // Toast helper
+    const toastEl  = document.getElementById('toast');
+    let   toastTimer = null;
+    function showToast(msg, isError = false) {
+      toastEl.textContent = msg;
+      toastEl.style.color = isError ? '#ff8a8a' : 'white';
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    function serializeWorld() {
+      const blocks = [];
+      for (const [key, entry] of blockMap) {
+        const [x, y, z] = key.split(',').map(Number);
+        blocks.push([x, y, z, entry.blockId]);
+      }
+      return { v: 1, blocks };
+    }
+
+    function saveWorld() {
+      try {
+        const data = serializeWorld();
+        const json = JSON.stringify(data);
+        localStorage.setItem(SAVE_KEY, json);
+        showToast(`Saved! ${data.blocks.length} blocks · ${(json.length / 1024).toFixed(0)} KB`);
+      } catch (err) {
+        console.error('save failed', err);
+        showToast(`Save failed: ${err.message}`, true);
+      }
+    }
+
+    function clearWorld() {
+      for (const mesh of instancedMeshList) {
+        mesh.count = 0;
+        mesh.instanceMatrix.needsUpdate = true;
+        invalidateBounds(mesh);
+      }
+      for (const arr of instanceCoords.values()) arr.length = 0;
+      blockMap.clear();
+    }
+
+    function resetWorld() {
+      if (!confirm('Start a new world? This will erase your current build.')) return;
+      clearWorld();
+      generateFreshWorld();
+      spawnPlayer();
+      velocityY = 0;
+      try { localStorage.removeItem(SAVE_KEY); } catch (_) { /* private browsing */ }
+      showToast('Fresh world ready 🌱');
+    }
+
+    document.getElementById('save-btn').addEventListener('click', saveWorld);
+    document.getElementById('new-btn').addEventListener('click', resetWorld);
+
+    // ── Screenshot (JP-50) ───────────────────────────────────────────
+    const HUD_IDS = ['hotbar', 'crosshair', 'actions', 'toast', 'block-name-toast', 'overlay'];
+
+    function takeScreenshot() {
+      HUD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.visibility = 'hidden';
+      });
+      renderer.render(scene, camera); // clean frame with no HUD
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      HUD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.visibility = '';
+      });
+      const a    = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `jaxx-world-${date}.png`;
+      a.href     = dataURL;
+      a.click();
+      showToast('Screenshot saved! 📷');
+    }
+
+    document.getElementById('screenshot-btn').addEventListener('click', takeScreenshot);
+
+    // ── Audio ────────────────────────────────────────────────────────
+    let audioCtx   = null;
+    let masterGain = null;
+
+    function ensureAudio() {
+      if (audioCtx) return audioCtx;
+      const Ctx  = window.AudioContext || window.webkitAudioContext;
+      audioCtx   = new Ctx();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.35;
+      masterGain.connect(audioCtx.destination);
+      return audioCtx;
+    }
+
+    function thudHit({ type = 'sine', from, to, peak = 0.6, length = 0.18, sweep = 0.08 }) {
+      const ctx = ensureAudio();
+      const t0  = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, t0);
+      osc.frequency.exponentialRampToValueAtTime(to, t0 + sweep);
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + length);
+      osc.connect(env).connect(masterGain);
+      osc.start(t0);
+      osc.stop(t0 + length + 0.02);
+    }
+
+    function noiseBurst({ filterType = 'bandpass', freq = 1800, Q = 0.9, peak = 0.5, length = 0.12 }) {
+      const ctx  = ensureAudio();
+      const t0   = ctx.currentTime;
+      const buf  = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * length)), ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src    = ctx.createBufferSource();
+      src.buffer   = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type            = filterType;
+      filter.frequency.value = freq;
+      filter.Q.value         = Q;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + length);
+      src.connect(filter).connect(env).connect(masterGain);
+      src.start(t0);
+      src.stop(t0 + length + 0.01);
+    }
+
+    const SOUND_RECIPES = {
+      // Grass / Dirt
+      thud:       () => thudHit({ from: 140, to: 70 }),
+      crack:      () => noiseBurst({ freq: 1800, Q: 0.9 }),
+      // Stone
+      stoneThud:  () => thudHit({ type: 'square', from: 220, to: 110, peak: 0.45, length: 0.12, sweep: 0.05 }),
+      stoneCrack: () => noiseBurst({ freq: 3200, Q: 1.6, length: 0.09 }),
+      // Wood
+      woodThud:   () => thudHit({ from: 110, to: 55, length: 0.28, sweep: 0.12, peak: 0.55 }),
+      woodCrack:  () => noiseBurst({ freq: 800, Q: 2.0, length: 0.13 }),
+      // Sand
+      sandThud:   () => noiseBurst({ filterType: 'lowpass',  freq: 600,  Q: 0.6, peak: 0.35, length: 0.16 }),
+      sandCrack:  () => noiseBurst({ filterType: 'highpass', freq: 4000, Q: 0.6, peak: 0.30, length: 0.10 }),
+      // ── Astro Block (JP-52) — space-themed sounds ─────────────────
+      // Place: two oscillators an octave apart sweep downward together,
+      //        making a rich sci-fi "bloop" chord.
+      astroThud: () => {
+        thudHit({ type: 'triangle', from: 523, to: 262, peak: 0.38, length: 0.22, sweep: 0.09 });
+        thudHit({ type: 'sine',    from: 784, to: 392, peak: 0.18, length: 0.18, sweep: 0.07 });
+      },
+      // Break: sawtooth oscillator sweeps 1200 → 200 Hz — classic laser zap.
+      astroCrack: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200, t0);
+        osc.frequency.exponentialRampToValueAtTime(200, t0 + 0.11);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.exponentialRampToValueAtTime(0.42, t0 + 0.004);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+        osc.connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.13);
+      },
+    };
+
+    function playSound(name) {
+      const recipe = SOUND_RECIPES[name];
+      if (recipe) recipe();
+    }
+
+    window.addEventListener('mousedown', () => ensureAudio(), { once: true });
+
+    // ── Targeting ────────────────────────────────────────────────────
+    const REACH        = 5;
+    const raycaster    = new THREE.Raycaster();
+    raycaster.far      = REACH;
+    const screenCentre = new THREE.Vector2(0, 0);
+
+    const highlightEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02));
+    const highlightMat   = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+    const highlight      = new THREE.LineSegments(highlightEdges, highlightMat);
+    highlight.visible    = false;
+    scene.add(highlight);
+
+    let targetedBlock    = null;
+    const targetedNormal = new THREE.Vector3();
+
+    function updateTarget() {
+      raycaster.setFromCamera(screenCentre, camera);
+      const hits = raycaster.intersectObjects(instancedMeshList, false);
+      if (hits.length > 0) {
+        const hit     = hits[0];
+        const blockId = hit.object.userData.blockId;
+        const coord   = instanceCoords.get(blockId)[hit.instanceId];
+        if (coord) {
+          targetedBlock = { x: coord.x, y: coord.y, z: coord.z, blockId };
+          targetedNormal.copy(hit.face.normal).round();
+          highlight.position.set(coord.x, coord.y, coord.z);
+          highlight.visible = true;
+          return;
+        }
+      }
+      targetedBlock     = null;
+      highlight.visible = false;
+    }
+
+    const PLAYER_HALF = 0.3;
+    function blockOverlapsPlayer(bx, by, bz) {
+      const p    = camera.position;
+      const feet = p.y - 1.7;
+      const head = p.y;
+      return Math.abs(bx - p.x) < 0.5 + PLAYER_HALF &&
+             Math.abs(bz - p.z) < 0.5 + PLAYER_HALF &&
+             (by + 0.5) > feet && (by - 0.5) < head;
+    }
+
+    function placeBlock() {
+      if (!targetedBlock) return;
+      const nx = targetedBlock.x + targetedNormal.x;
+      const ny = targetedBlock.y + targetedNormal.y;
+      const nz = targetedBlock.z + targetedNormal.z;
+      if (blockMap.has(coordKey(nx, ny, nz))) return;
+      if (blockOverlapsPlayer(nx, ny, nz)) return;
+      addBlock(nx, ny, nz, selectedBlockId);
+    }
+
+    // ── Pointer lock + title-screen / pause logic ────────────────────
+    let gameStarted = false;
+
+    const titleScreen = document.getElementById('title-screen');
+    const overlay     = document.getElementById('overlay');
+    const canvas      = renderer.domElement;
+
+    document.getElementById('play-btn').addEventListener('click', () => {
+      titleScreen.classList.add('hidden');
+      gameStarted = true;
+      try { window.Hub?.startSession?.(HUB_GAME_ID); } catch (_) {}
+      canvas.requestPointerLock();
+    });
+
+    overlay.addEventListener('click', () => {
+      if (gameStarted) canvas.requestPointerLock();
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (document.pointerLockElement !== canvas) {
+        if (e.button === 0 && gameStarted) canvas.requestPointerLock();
+        return;
+      }
+      if (e.button === 0 && targetedBlock) {
+        highlight.visible = false;
+        const { x, y, z, blockId: brokenId } = targetedBlock;
+        removeBlock(x, y, z);
+        targetedBlock = null;
+        playSound(BLOCKS[brokenId].breakSound);
+      } else if (e.button === 2) {
+        const before = blockMap.size;
+        placeBlock();
+        if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    window.addEventListener('beforeunload', () => {
+      if (!gameStarted) return;
+      try { window.Hub?.endSession?.(100); } catch (_) {}
+    });
+
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === canvas;
+      if (gameStarted) overlay.classList.toggle('hidden', locked);
+    });
+
+    // ── Mouse-look ───────────────────────────────────────────────────
+    let yaw   = 0;
+    let pitch = 0;
+    const PITCH_LIMIT      = Math.PI / 2 - 0.01;
+    const LOOK_SENSITIVITY = 0.002;
+
+    document.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement !== canvas) return;
+      yaw   -= e.movementX * LOOK_SENSITIVITY;
+      pitch -= e.movementY * LOOK_SENSITIVITY;
+      if (pitch >  PITCH_LIMIT) pitch =  PITCH_LIMIT;
+      if (pitch < -PITCH_LIMIT) pitch = -PITCH_LIMIT;
+    });
+
+    // ── Keyboard input ───────────────────────────────────────────────
+    const keys       = { w: false, a: false, s: false, d: false, ' ': false };
+    const blockOrder = Object.keys(BLOCKS).map(Number);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && e.repeat) return; // Prevent continuous jumping from holding space
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = true;
+      if (e.key >= '1' && e.key <= '9') {
+        const id = Number(e.key);
+        if (BLOCKS[id]) setSelectedBlock(id);
+      }
+      if (e.key === 'F2') {
+        e.preventDefault();
+        takeScreenshot();
+      }
+      if (e.key.toLowerCase() === 'n') {
+        alwaysDay = !alwaysDay;
+        showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = false;
+    });
+
+    window.addEventListener('wheel', (e) => {
+      if (document.pointerLockElement !== canvas) return;
+      const idx  = blockOrder.indexOf(selectedBlockId);
+      const dir  = e.deltaY > 0 ? 1 : -1;
+      const next = (idx + dir + blockOrder.length) % blockOrder.length;
+      setSelectedBlock(blockOrder[next]);
+    }, { passive: true });
+
+    window.addEventListener('blur', () => {
+      for (const k in keys) keys[k] = false;
+    });
+
+    // ── Resize ───────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ── Physics constants (JP-71) ─────────────────────────────────────
+    // Floaty gravity and a generous jump — fun for a kid, not punishing.
+    const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
+    const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
+    const MOVE_SPEED     = 4;
+    const PLAYER_WIDTH   = 0.6;   // full width of the player hitbox
+    const PLAYER_HEIGHT  = 1.62;  // feet to eyes (matches EYE_HEIGHT)
+    let   velocityY      = 0;
+    let   onGround       = false;
+
+    // Check if a solid block exists at integer grid coords.
+    function isSolid(x, y, z) {
+      const entry = blockMap.get(coordKey(x, y, z));
+      if (!entry) return false;
+      return !BLOCKS[entry.blockId].nonSolid;
+    }
+
+    // Does the player AABB overlap any solid block?
+    // Blocks are CENTERED at integer coords, occupying ±0.5 around center.
+    // A block at grid (bx, by, bz) fills the box:
+    //   (bx-0.5, by-0.5, bz-0.5) to (bx+0.5, by+0.5, bz+0.5)
+    // The player AABB: (cx±hw, feetY to feetY+PLAYER_HEIGHT, cz±hw)
+    function collidesAt(cx, feetY, cz) {
+      const hw = PLAYER_WIDTH / 2;
+      // Convert player AABB edges to block grid range
+      // A point p is inside block b when: b-0.5 < p < b+0.5, i.e. b = round(p)
+      // For a range [pMin, pMax], blocks that overlap are:
+      //   floor(pMin + 0.5)  to  floor(pMax + 0.5 - epsilon)
+      const eps = 0.001;
+      const bx0 = Math.floor(cx - hw + 0.5 + eps);
+      const bx1 = Math.floor(cx + hw + 0.5 - eps);
+      const by0 = Math.floor(feetY + 0.5 + eps);
+      const by1 = Math.floor(feetY + PLAYER_HEIGHT + 0.5 - eps);
+      const bz0 = Math.floor(cz - hw + 0.5 + eps);
+      const bz1 = Math.floor(cz + hw + 0.5 - eps);
+      for (let bx = bx0; bx <= bx1; bx++)
+        for (let bz = bz0; bz <= bz1; bz++)
+          for (let by = by0; by <= by1; by++)
+            if (isSolid(bx, by, bz)) return true;
+      return false;
+    }
+
+    // Helper to find exactly which block we landed on when falling
+    function getGroundHeight(cx, feetY, cz) {
+      const hw = PLAYER_WIDTH / 2;
+      const eps = 0.001;
+      const bx0 = Math.floor(cx - hw + 0.5 + eps);
+      const bx1 = Math.floor(cx + hw + 0.5 - eps);
+      const bz0 = Math.floor(cz - hw + 0.5 + eps);
+      const bz1 = Math.floor(cz + hw + 0.5 - eps);
+      
+      let testY = Math.floor(feetY + 0.5 + eps);
+      while (testY >= -10) {
+        let hit = false;
+        for (let bx = bx0; bx <= bx1; bx++) {
+          for (let bz = bz0; bz <= bz1; bz++) {
+            if (isSolid(bx, testY, bz)) { hit = true; break; }
+          }
+          if (hit) break;
+        }
+        if (hit) return testY + 0.5; // Top of the block
+        testY--;
+      }
+      return -10; // Fall into void
+    }
+
+    // ── Render loop ──────────────────────────────────────────────────
+    const forward    = new THREE.Vector3();
+    const right      = new THREE.Vector3();
+    const move       = new THREE.Vector3();
+    const UP         = new THREE.Vector3(0, 1, 0);
+    const lookEuler  = new THREE.Euler(0, 0, 0, 'YXZ');
+    const clock      = new THREE.Clock();
+
+    renderer.setAnimationLoop(() => {
+      const dt = Math.min(clock.getDelta(), 0.1);
+
+      // ── Look direction ─────────────────────────────────────────────
+      lookEuler.set(pitch, yaw, 0);
+      camera.quaternion.setFromEuler(lookEuler);
+
+      camera.getWorldDirection(forward);
+      forward.y = 0;
+      forward.normalize();
+      right.crossVectors(forward, UP).normalize();
+
+      // ── Horizontal movement with collision ─────────────────────────
+      const pos   = camera.position;
+      let   feetY = pos.y - EYE_HEIGHT;
+
+      move.set(0, 0, 0);
+      if (keys.w) move.add(forward);
+      if (keys.s) move.sub(forward);
+      if (keys.d) move.add(right);
+      if (keys.a) move.sub(right);
+
+      if (move.lengthSq() > 0) {
+        move.normalize().multiplyScalar(MOVE_SPEED * dt);
+
+        // Try X movement independently so sliding along walls works
+        if (!collidesAt(pos.x + move.x, feetY, pos.z)) {
+          pos.x += move.x;
+        }
+        // Try Z movement independently
+        if (!collidesAt(pos.x, feetY, pos.z + move.z)) {
+          pos.z += move.z;
+        }
+      }
+
+      // ── Vertical movement: gravity + jump ──────────────────────────
+      if (keys[' ']) {
+        if (onGround) {
+          velocityY = JUMP_VELOCITY;
+          onGround  = false;
+        }
+        keys[' '] = false; // Consume the jump press immediately
+      }
+
+      velocityY -= GRAVITY * dt;
+      let newFeetY = feetY + velocityY * dt;
+
+      // Falling — check for landing
+      if (velocityY <= 0) {
+        if (collidesAt(pos.x, newFeetY, pos.z)) {
+          // Snap perfectly to the top of the highest block under us
+          newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
+          velocityY = 0;
+          onGround  = true;
+        } else {
+          onGround = false;
+        }
+      }
+
+      // Rising — check for head bump
+      if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+        newFeetY  = feetY;
+        velocityY = 0;
+      }
+
+      pos.y = newFeetY + EYE_HEIGHT;
+
+      // Safety net: if player falls into the void, respawn
+      if (pos.y < -10) {
+        spawnPlayer();
+        velocityY = 0;
+      }
+
+      updateTarget();
+      updateCelestialCycle(dt);
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>

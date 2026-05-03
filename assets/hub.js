@@ -121,6 +121,16 @@
       accent: '#4a90e2',
     },
     {
+      id: 'jaxx-world',
+      title: 'Jaxx World',
+      subject: 'Creative Sandbox',
+      icon: '🌍',
+      tagline: 'Build, explore, save worlds, and shape terrain',
+      ageGroups: ['early-elem', 'adult'],
+      path: 'games/jaxx-world.html',
+      accent: '#22c55e',
+    },
+    {
       id: 'gem-quest',
       title: 'Gem Quest',
       subject: 'Math + Reading',
