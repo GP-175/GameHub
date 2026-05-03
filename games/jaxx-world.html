@@ -8,13 +8,17 @@
     v4 game-v4-persistence.html  — M4: World & Persistence(JP-44→JP-48)
     v5 game-v5-polish.html       — M5: Polish             (JP-49→JP-53)
     v6 game-v6-terrain.html      — M6: Terrain & Weather  (JP-54→JP-58)
+    v7 game-v7-funmagic.html     — M7: Fun & Magic        (JP-59→JP-66)
 
-  Current milestone: M6 — Terrain Generation
-    JP-54 [M6-T1] Heightmap terrain generator         ✓
-    JP-55 [M6-T2] Trees scattered on surface          ✓
-    JP-56 [M6-T3] Water blocks below sea level        ✓
-    JP-57 [M6-T4] Day/night cycle with sun rotation   ✓
-    JP-58 [M6-T5] Tag release: game-v6-terrain.html   ✓
+  Current milestone: M7 — Fun & Magic (complete)
+    JP-59 [M7-T1] Rainbow block                       ✓
+    JP-60 [M7-T2] Bouncy block                        ✓
+    JP-61 [M7-T3] Sound blocks (Giggle, Cow, Toot)    ✓
+    JP-62 [M7-T4] Glow block — emits light at night   ✓
+    JP-63 [M7-T5] Custom textures                     — skipped
+    JP-64 [M7-T6] NPCs (Teddy, Dad)                   ✓
+    JP-65 [M7-T7] Hidden Easter egg room              ✓
+    JP-66 [M7-T8] Photo mode (F3)                     ✓
 
   How to run: open in Chrome, or serve with python3 -m http.server 8765.
   Active file — do not treat as a rollback snapshot.
@@ -434,8 +438,8 @@
     <div id="game-logo">Jaxx World</div>
     <div id="welcome-msg">Welcome, Jaxx! 🚀</div>
     <button id="play-btn" type="button">▶ Play</button>
-    <div id="title-controls" class="desktop-only">
-      WASD to move &nbsp;·&nbsp; Space to jump &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Esc to pause &nbsp;·&nbsp; N for day/night &nbsp;·&nbsp; F2 for screenshot
+    <div id="title-controls">
+      WASD to move &nbsp;·&nbsp; Space to jump &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Esc to pause &nbsp;·&nbsp; Q/E or scroll to swap blocks &nbsp;·&nbsp; N for day/night &nbsp;·&nbsp; F2 for screenshot
     </div>
     <div id="title-controls" class="touch-only">
       Joystick to move &nbsp;·&nbsp; Drag to look &nbsp;·&nbsp; ⛏ break &nbsp;·&nbsp; ⬛ place &nbsp;·&nbsp; ⤴ jump
@@ -587,6 +591,18 @@
       scene.background = currentSkyColor;
     }
 
+    // Pool of point lights for Glow Blocks (JP-62)
+    // We only use 8 real lights to keep performance perfect. They dynamically
+    // attach to the 8 closest Glow Blocks to the player.
+    const MAX_GLOW_LIGHTS = 8;
+    const glowLights = [];
+    for (let i = 0; i < MAX_GLOW_LIGHTS; i++) {
+      const light = new THREE.PointLight(0xffffaa, 0, 12);
+      scene.add(light);
+      glowLights.push(light);
+    }
+    let lastGlowUpdate = 0;
+
     // ── Block registry ───────────────────────────────────────────────
     // cssColor (optional): overrides the flat swatch in the hotbar with a
     // CSS background string. Used by Astro Block for its space-gradient look.
@@ -610,8 +626,47 @@
       },
       7: { name: 'Leaves',      color: 0x2E7D32, breakSound: 'crack',      placeSound: 'thud'       },
       8: { name: 'Water',       color: 0x3399ff, breakSound: 'sandCrack',  placeSound: 'sandThud', transparent: true, opacity: 0.65, nonSolid: true },
+      9: {
+        name:       'Rainbow',
+        color:      0xff0000,
+        cssColor:   'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)',
+        breakSound: 'crack',
+        placeSound: 'thud'
+      },
+      10: {
+        name:       'Bouncy',
+        color:      0xFF1493, // Bright pink
+        breakSound: 'crack',
+        placeSound: 'boing'
+      },
+      11: {
+        name:       'Giggle Block',
+        color:      0xffb6c1, // Light pink
+        breakSound: 'crack',
+        placeSound: 'giggle'
+      },
+      12: {
+        name:       'Cow Block',
+        color:      0x8b4513, // Saddle brown
+        breakSound: 'crack',
+        placeSound: 'moo'
+      },
+      13: {
+        name:       'Toot Block',
+        color:      0x556b2f, // Olive drab
+        breakSound: 'crack',
+        placeSound: 'toot'
+      },
+      14: {
+        name:       'Glow Block',
+        color:      0xffffff,
+        emissive:   0xffffaa,
+        emissiveIntensity: 0.8,
+        breakSound: 'crack',
+        placeSound: 'thud'
+      },
     };
-    const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8;
+    const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
 
     // One MeshStandardMaterial per block type, shared across all instances.
     const blockMaterials = new Map();
@@ -624,6 +679,8 @@
           transparent: !!def.transparent,
           opacity: def.opacity || 1.0,
           depthWrite: !def.transparent, // prevents weird self-occlusion for water
+          emissive: def.emissive || 0x000000,
+          emissiveIntensity: def.emissiveIntensity || 0,
         });
         blockMaterials.set(blockId, mat);
       }
@@ -643,8 +700,14 @@
       const swatchBg   = def.cssColor || hexToCss(def.color); // gradient OR flat
       const slot       = document.createElement('div');
       slot.className   = 'slot' + (def.special ? ' astro-slot' : '');
+      
+      let keyLabel = '';
+      if (blockId < 10) keyLabel = blockId.toString();
+      else if (blockId === 10) keyLabel = '0';
+      // >10 has no direct number key, selected via Q/E or scroll
+      
       slot.innerHTML   = `
-        <span class="key">${blockId}</span>
+        <span class="key">${keyLabel}</span>
         <div class="swatch" style="background:${swatchBg}"></div>
         <div class="label">${def.name}</div>
       `;
@@ -814,6 +877,96 @@
         }
       }
     }
+
+      // ── Easter egg room (JP-65) ────────────────────────────────────
+      generateEasterEggRoom();
+    }
+
+    // Hidden room buried deep under spawn with a special message
+    function generateEasterEggRoom() {
+      // 5×5 pixel font — each letter is a 5-wide × 5-tall grid
+      // 1 = filled pixel, 0 = empty
+      const FONT = {
+        W: [1,0,0,0,1, 1,0,0,0,1, 1,0,1,0,1, 1,1,0,1,1, 1,0,0,0,1],
+        E: [1,1,1,1,1, 1,0,0,0,0, 1,1,1,0,0, 1,0,0,0,0, 1,1,1,1,1],
+        L: [1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,1,1,1,1],
+        C: [0,1,1,1,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 0,1,1,1,0],
+        O: [0,1,1,1,0, 1,0,0,0,1, 1,0,0,0,1, 1,0,0,0,1, 0,1,1,1,0],
+        M: [1,0,0,0,1, 1,1,0,1,1, 1,0,1,0,1, 1,0,0,0,1, 1,0,0,0,1],
+        J: [0,0,1,1,1, 0,0,0,1,0, 0,0,0,1,0, 1,0,0,1,0, 0,1,1,0,0],
+        A: [0,1,1,1,0, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
+        X: [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1],
+        ' ':[0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0],
+      };
+
+      const message = 'WELCOME JAXX';
+      const ROOM_Y    = -10;         // Deep underground
+      const ROOM_H    = 7;           // Room height (floor to ceiling)
+      const LETTER_W  = 5;
+      const LETTER_H  = 5;
+      const GAP       = 1;           // Gap between letters
+      const totalW    = message.length * (LETTER_W + GAP) - GAP;
+      const ROOM_W    = totalW + 4;  // 2-block padding each side
+      const ROOM_D    = 8;           // Room depth (Z)
+
+      // Center the room around X=0, Z=0
+      const startX = -Math.floor(ROOM_W / 2);
+      const startZ = -Math.floor(ROOM_D / 2);
+
+      // Carve out the room (replace with air) and build walls/floor/ceiling
+      for (let x = 0; x < ROOM_W; x++) {
+        for (let z = 0; z < ROOM_D; z++) {
+          for (let y = 0; y < ROOM_H; y++) {
+            const wx = startX + x;
+            const wy = ROOM_Y + y;
+            const wz = startZ + z;
+            const key = coordKey(wx, wy, wz);
+
+            const isFloor   = (y === 0);
+            const isCeiling = (y === ROOM_H - 1);
+            const isWallX   = (x === 0 || x === ROOM_W - 1);
+            const isWallZ   = (z === 0 || z === ROOM_D - 1);
+
+            if (isFloor) {
+              // Glow block floor so the room is always lit
+              blockMap.delete(key);
+              addBlock(wx, wy, wz, GLOW);
+            } else if (isCeiling || isWallX || isWallZ) {
+              // Stone walls and ceiling
+              blockMap.delete(key);
+              addBlock(wx, wy, wz, STONE);
+            } else {
+              // Clear interior air
+              blockMap.delete(key);
+            }
+          }
+        }
+      }
+
+      // Write the message on the back wall (Z = startZ + 1, facing +Z)
+      const wallZ = startZ + 1;
+      const letterStartY = ROOM_Y + 1; // One block above floor
+      const letterStartX = startX + 2;  // 2-block left padding
+
+      for (let i = 0; i < message.length; i++) {
+        const ch = message[i];
+        const pixels = FONT[ch];
+        if (!pixels) continue;
+
+        const offsetX = i * (LETTER_W + GAP);
+
+        for (let row = 0; row < LETTER_H; row++) {
+          for (let col = 0; col < LETTER_W; col++) {
+            if (pixels[row * LETTER_W + col]) {
+              const bx = letterStartX + offsetX + col;
+              const by = letterStartY + (LETTER_H - 1 - row); // top-down → bottom-up
+              const key = coordKey(bx, by, wallZ);
+              blockMap.delete(key);
+              addBlock(bx, by, wallZ, RAINBOW);
+            }
+          }
+        }
+      }
     }
 
     // ── Persistence ──────────────────────────────────────────────────
@@ -857,6 +1010,100 @@
       camera.position.set(0, 10 + EYE_HEIGHT, 0);
     }
     spawnPlayer();
+
+    // ── NPCs (JP-64) ─────────────────────────────────────────────────
+    function createTextSprite(message) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = 'Bold 40px "Fredoka One", Arial';
+      const width = ctx.measureText(message).width;
+      canvas.width = width + 20;
+      canvas.height = 64;
+      ctx.font = 'Bold 40px "Fredoka One", Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'black';
+      ctx.strokeText(message, canvas.width/2, canvas.height/2 + 4);
+      ctx.fillStyle = 'white';
+      ctx.fillText(message, canvas.width/2, canvas.height/2 + 4);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(canvas.width / 40, canvas.height / 40, 1);
+      return sprite;
+    }
+
+    function createNPC(name, color, type) {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color });
+      
+      if (type === 'bear') {
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), mat);
+        head.position.y = 1.4;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.5), mat);
+        body.position.y = 0.5;
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat);
+        armL.position.set(-0.5, 0.7, 0);
+        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat);
+        armR.position.set(0.5, 0.7, 0);
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), mat);
+        legL.position.set(-0.2, 0.25, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), mat);
+        legR.position.set(0.2, 0.25, 0);
+        const earL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
+        earL.position.set(-0.4, 1.8, 0);
+        const earR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
+        earR.position.set(0.4, 1.8, 0);
+        const snoutMat = new THREE.MeshStandardMaterial({ color: 0xdeb887 }); 
+        const snout = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.2), snoutMat);
+        snout.position.set(0, 1.3, 0.4);
+        group.add(head, body, armL, armR, legL, legR, earL, earR, snout);
+      } else if (type === 'human') {
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd }); // skin tone
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), headMat);
+        head.position.y = 1.5;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.4), mat); // clothing
+        body.position.y = 0.75;
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), headMat);
+        armL.position.set(-0.425, 0.75, 0);
+        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), headMat);
+        armR.position.set(0.425, 0.75, 0);
+        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x000080 }); // navy pants
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.7, 0.28), pantsMat);
+        legL.position.set(-0.15, 0.35, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.7, 0.28), pantsMat);
+        legR.position.set(0.15, 0.35, 0);
+        group.add(head, body, armL, armR, legL, legR);
+      }
+      
+      const label = createTextSprite(name);
+      label.position.y = 2.2;
+      group.add(label);
+      
+      return group;
+    }
+
+    function initNPCs() {
+      const teddy = createNPC("Teddy", 0x8b4513, 'bear');
+      const tx = 3; const tz = -3;
+      const ty = getGroundHeight(tx, 20, tz); 
+      if (ty > -10) {
+        teddy.position.set(tx, ty, tz);
+        teddy.lookAt(0, ty, 0); // Face spawn
+        scene.add(teddy);
+      }
+      
+      const dad = createNPC("Dad", 0x228b22, 'human'); // Green shirt
+      const dx = -3; const dz = -2;
+      const dy = getGroundHeight(dx, 20, dz);
+      if (dy > -10) {
+        dad.position.set(dx, dy, dz);
+        dad.lookAt(0, dy, 0); // Face spawn
+        scene.add(dad);
+      }
+    }
 
     // Toast helper
     const toastEl  = document.getElementById('toast');
@@ -1027,6 +1274,90 @@
         osc.start(t0);
         osc.stop(t0 + 0.13);
       },
+      // Bouncy Block (JP-60)
+      boing: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, t0);
+        osc.frequency.exponentialRampToValueAtTime(600, t0 + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(400, t0 + 0.3);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        osc.connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.35);
+      },
+      giggle: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        for (let i = 0; i < 4; i++) {
+          const osc = ctx.createOscillator();
+          const env = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800 + i * 50, t0 + i * 0.1);
+          osc.frequency.exponentialRampToValueAtTime(1200 + i * 50, t0 + i * 0.1 + 0.08);
+          env.gain.setValueAtTime(0.0001, t0 + i * 0.1);
+          env.gain.exponentialRampToValueAtTime(0.3, t0 + i * 0.1 + 0.02);
+          env.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.1 + 0.08);
+          osc.connect(env).connect(masterGain);
+          osc.start(t0 + i * 0.1);
+          osc.stop(t0 + i * 0.1 + 0.1);
+        }
+      },
+      moo: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, t0);
+        osc.frequency.linearRampToValueAtTime(100, t0 + 0.8);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, t0);
+        filter.frequency.linearRampToValueAtTime(200, t0 + 0.8);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.linearRampToValueAtTime(0.4, t0 + 0.2);
+        env.gain.linearRampToValueAtTime(0.0001, t0 + 0.8);
+        osc.connect(filter).connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.8);
+      },
+      toot: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(60, t0);
+        osc.frequency.linearRampToValueAtTime(30, t0 + 0.3);
+        
+        // Add a bit of LFO for "flapping"
+        const lfo = ctx.createOscillator();
+        lfo.type = 'square';
+        lfo.frequency.value = 40;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 20;
+        lfo.connect(lfoGain).connect(osc.frequency);
+        lfo.start(t0);
+        lfo.stop(t0 + 0.3);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(300, t0);
+        filter.frequency.linearRampToValueAtTime(100, t0 + 0.3);
+        
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.linearRampToValueAtTime(0.4, t0 + 0.05);
+        env.gain.linearRampToValueAtTime(0.0001, t0 + 0.3);
+        osc.connect(filter).connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.3);
+      },
     };
 
     function playSound(name) {
@@ -1176,10 +1507,26 @@
       if (e.key >= '1' && e.key <= '9') {
         const id = Number(e.key);
         if (BLOCKS[id]) setSelectedBlock(id);
+      } else if (e.key === '0') {
+        if (BLOCKS[10]) setSelectedBlock(10);
+      } else if (k === 'q') {
+        const idx  = blockOrder.indexOf(selectedBlockId);
+        const next = (idx - 1 + blockOrder.length) % blockOrder.length;
+        setSelectedBlock(blockOrder[next]);
+      } else if (k === 'e') {
+        const idx  = blockOrder.indexOf(selectedBlockId);
+        const next = (idx + 1) % blockOrder.length;
+        setSelectedBlock(blockOrder[next]);
       }
+      
       if (e.key === 'F2') {
         e.preventDefault();
         takeScreenshot();
+      }
+      if (e.key === 'F3') {
+        e.preventDefault();
+        togglePhotoMode();
+        return;
       }
       if (e.key.toLowerCase() === 'n') {
         alwaysDay = !alwaysDay;
@@ -1477,6 +1824,9 @@
       return -10; // Fall into void
     }
 
+    // Initialize NPCs after all physics constants (PLAYER_WIDTH) are defined
+    initNPCs();
+
     // ── Render loop ──────────────────────────────────────────────────
     const forward    = new THREE.Vector3();
     const right      = new THREE.Vector3();
@@ -1484,15 +1834,104 @@
     const UP         = new THREE.Vector3(0, 1, 0);
     const lookEuler  = new THREE.Euler(0, 0, 0, 'YXZ');
     const clock      = new THREE.Clock();
+    let   lastBoingTime = 0;
+
+    // Photo mode (JP-66)
+    let photoMode = false;
+    const savedPlayerPos = new THREE.Vector3();
+    let   savedVelocityY = 0;
+    const PHOTO_SPEED = 12;
+
+    function togglePhotoMode() {
+      photoMode = !photoMode;
+      const hud = [document.getElementById('crosshair'),
+                   document.getElementById('hotbar'),
+                   document.getElementById('actions'),
+                   document.getElementById('block-name-toast'),
+                   document.getElementById('touch-controls'),
+                   document.getElementById('touch-topleft')];
+      if (photoMode) {
+        savedPlayerPos.copy(camera.position);
+        savedVelocityY = velocityY;
+        hud.forEach(el => { if (el) el.style.display = 'none'; });
+        showToast('📸 Photo Mode — F3 to exit');
+      } else {
+        camera.position.copy(savedPlayerPos);
+        velocityY = savedVelocityY;
+        hud.forEach(el => { if (el) el.style.display = ''; });
+        showToast('📸 Photo Mode OFF');
+      }
+    }
 
     renderer.setAnimationLoop(() => {
       const dt = Math.min(clock.getDelta(), 0.1);
+
+      // Update Rainbow block material color (JP-59)
+      const rainbowMat = blockMaterials.get(RAINBOW);
+      if (rainbowMat) {
+        const hue = (performance.now() / 3000) % 1.0; // full cycle every 3 seconds
+        rainbowMat.color.setHSL(hue, 0.8, 0.5);
+      }
+
+      // Update Glow lights (JP-62)
+      const now = performance.now();
+      if (now - lastGlowUpdate > 250) {
+        lastGlowUpdate = now;
+        const glowCoords = instanceCoords.get(GLOW);
+        if (glowCoords) {
+          const p = camera.position;
+          const sorted = glowCoords.map(c => {
+            const dx = c.x - p.x; const dy = c.y - p.y; const dz = c.z - p.z;
+            return { c, distSq: dx*dx + dy*dy + dz*dz };
+          }).sort((a, b) => a.distSq - b.distSq);
+          
+          const sunHeight = Math.cos(timeOfDay * Math.PI * 2);
+          const nightFactor = Math.max(0, -sunHeight);
+          const intensity = 0.5 + nightFactor * 2.5; // Glows much brighter at night
+          
+          for (let i = 0; i < MAX_GLOW_LIGHTS; i++) {
+            if (i < sorted.length && sorted[i].distSq < 1000) { // Only cast light if within ~31 blocks
+              glowLights[i].position.set(sorted[i].c.x, sorted[i].c.y, sorted[i].c.z);
+              glowLights[i].intensity = intensity;
+            } else {
+              glowLights[i].intensity = 0;
+            }
+          }
+        }
+      }
 
       // ── Look direction ─────────────────────────────────────────────
       lookEuler.set(pitch, yaw, 0);
       camera.quaternion.setFromEuler(lookEuler);
 
       camera.getWorldDirection(forward);
+
+      if (photoMode) {
+        // ── Photo mode: noclip free-fly ──────────────────────────────
+        const flyForward = forward.clone(); // Keep Y component for flying
+        right.crossVectors(flyForward, UP).normalize();
+
+        move.set(0, 0, 0);
+        if (keys.w) move.add(flyForward);
+        if (keys.s) move.sub(flyForward);
+        if (keys.d) move.add(right);
+        if (keys.a) move.sub(right);
+        if (keys[' ']) move.add(UP);    // Space goes up
+        // Q/E remapped: in photo mode Q = down, E = up
+        // (block switching disabled in photo mode)
+
+        if (move.lengthSq() > 0.001) {
+          if (move.lengthSq() > 1) move.normalize();
+          move.multiplyScalar(PHOTO_SPEED * dt);
+          camera.position.add(move);
+        }
+
+        updateCelestialCycle(dt);
+        renderer.render(scene, camera);
+        return; // Skip all physics & block interaction
+      }
+
+      // ── Normal gameplay below ────────────────────────────────────────
       forward.y = 0;
       forward.normalize();
       right.crossVectors(forward, UP).normalize();
@@ -1556,10 +1995,30 @@
         velocityY = 0;
       }
 
+      // Bouncy block logic (JP-60)
+      if (onGround) {
+        const bx = Math.floor(pos.x + 0.5);
+        const by = Math.floor(newFeetY - 0.5 + 0.001);
+        const bz = Math.floor(pos.z + 0.5);
+        const entry = blockMap.get(coordKey(bx, by, bz));
+        
+        if (entry && entry.blockId === BOUNCY) {
+          const now = performance.now();
+          if (now - lastBoingTime > 500) {
+            playSound('boing');
+            lastBoingTime = now;
+            
+            // Stretch goal: Small physical bounce effect on contact
+            velocityY = JUMP_VELOCITY * 0.45;
+            onGround = false;
+          }
+        }
+      }
+
       pos.y = newFeetY + EYE_HEIGHT;
 
       // Safety net: if player falls into the void, respawn
-      if (pos.y < -10) {
+      if (pos.y < -20) {
         spawnPlayer();
         velocityY = 0;
       }

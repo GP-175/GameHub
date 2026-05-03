@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v20';
+const CACHE_VERSION = 'gamehub-v21';
 const CORE_ASSETS = [
   './',
   './index.html',
