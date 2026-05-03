@@ -353,6 +353,12 @@
       transition: transform 80ms, background 80ms;
     }
     .touch-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
+    .touch-btn:disabled {
+      opacity: 0.35;
+      filter: grayscale(0.45);
+      cursor: not-allowed;
+      transform: none;
+    }
     #touch-break-btn { background: rgba(180, 60, 60, 0.55); }
     #touch-place-btn { background: rgba(60, 130, 200, 0.55); }
     #touch-jump-btn  { background: rgba(80, 160, 80, 0.55); width: 84px; height: 84px; font-size: 22px; }
@@ -456,6 +462,7 @@
 
   <!-- Top-right action buttons -->
   <div id="actions">
+    <button id="hub-btn"        type="button" title="Back to GameHub">🏠 GameHub</button>
     <button id="save-btn"       type="button">💾 Save</button>
     <button id="screenshot-btn" type="button" title="Screenshot (F2)">📷</button>
     <button id="new-btn"        type="button">🌱 New World</button>
@@ -903,6 +910,9 @@
       showToast('Fresh world ready 🌱');
     }
 
+    document.getElementById('hub-btn').addEventListener('click', () => {
+      window.location.href = '../';
+    });
     document.getElementById('save-btn').addEventListener('click', saveWorld);
     document.getElementById('new-btn').addEventListener('click', resetWorld);
 
@@ -1054,11 +1064,13 @@
           targetedNormal.copy(hit.face.normal).round();
           highlight.position.set(coord.x, coord.y, coord.z);
           highlight.visible = true;
+          syncTouchActionButtons();
           return;
         }
       }
       targetedBlock     = null;
       highlight.visible = false;
+      syncTouchActionButtons();
     }
 
     const PLAYER_HALF = 0.3;
@@ -1213,6 +1225,15 @@
     const touchDayBtn    = document.getElementById('touch-day-btn');
     const actionsEl      = document.getElementById('actions');
 
+    function syncTouchActionButtons() {
+      const canEditTarget = gameStarted && !!targetedBlock;
+      touchBreakBtn.disabled = !canEditTarget;
+      touchPlaceBtn.disabled = !canEditTarget;
+      touchBreakBtn.setAttribute('aria-disabled', String(!canEditTarget));
+      touchPlaceBtn.setAttribute('aria-disabled', String(!canEditTarget));
+    }
+    syncTouchActionButtons();
+
     // Track active touches by identifier so multiple fingers don't collide.
     let joystickTouchId = null;
     let lookTouchId     = null;
@@ -1322,26 +1343,44 @@
     document.addEventListener('touchcancel', handleTouchEnd);
 
     // ── Touch action button handlers ─────────────────────────────────
+    function bindTouchButton(button, handler) {
+      let lastRunAt = 0;
+      const run = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const now = performance.now();
+        if (now - lastRunAt < 160) return; // avoid pointer/touch/click double-fires
+        lastRunAt = now;
+        if (!button.disabled) handler();
+      };
+      // pointerdown fires immediately during multi-touch, unlike click on iPad
+      // which can be delayed/suppressed while the joystick finger is moving.
+      button.addEventListener('pointerdown', run, { passive: false });
+      button.addEventListener('touchstart', run, { passive: false });
+      button.addEventListener('click', run);
+    }
+
     // BREAK — same logic as left-click in the canvas mousedown handler
-    touchBreakBtn.addEventListener('click', () => {
+    bindTouchButton(touchBreakBtn, () => {
       if (!gameStarted || !targetedBlock) return;
       highlight.visible = false;
       const { x, y, z, blockId: brokenId } = targetedBlock;
       removeBlock(x, y, z);
       targetedBlock = null;
+      syncTouchActionButtons();
       playSound(BLOCKS[brokenId].breakSound);
     });
 
     // PLACE — same logic as right-click
-    touchPlaceBtn.addEventListener('click', () => {
-      if (!gameStarted) return;
+    bindTouchButton(touchPlaceBtn, () => {
+      if (!gameStarted || !targetedBlock) return;
       const before = blockMap.size;
       placeBlock();
       if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
     });
 
     // JUMP — flag the spacebar press; the render loop consumes it
-    touchJumpBtn.addEventListener('click', () => {
+    bindTouchButton(touchJumpBtn, () => {
       if (!gameStarted) return;
       keys[' '] = true;
     });
