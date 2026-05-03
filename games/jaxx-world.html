@@ -480,6 +480,7 @@
   <div id="touch-topleft">
     <button id="touch-pause-btn"  type="button" title="Pause">⏸</button>
     <button id="touch-day-btn"    type="button" title="Toggle day/night">☀️</button>
+    <button id="touch-photo-btn"  type="button" title="Photo mode">📸</button>
   </div>
 
   <!-- Bottom-left: virtual joystick -->
@@ -1743,6 +1744,11 @@
       alwaysDay = !alwaysDay;
       touchDayBtn.textContent = alwaysDay ? '🌙' : '☀️';
       showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
+    });
+
+    // PHOTO MODE toggle for touch (JP-66)
+    document.getElementById('touch-photo-btn').addEventListener('click', () => {
+      togglePhotoMode();
     });
 
     // Suppress iOS long-press context menu globally so it can't pop up
