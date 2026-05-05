@@ -1853,18 +1853,25 @@
       const hud = [document.getElementById('crosshair'),
                    document.getElementById('hotbar'),
                    document.getElementById('actions'),
-                   document.getElementById('block-name-toast'),
-                   document.getElementById('touch-controls'),
-                   document.getElementById('touch-topleft')];
+                   document.getElementById('block-name-toast')];
+      const photoBtn = document.getElementById('touch-photo-btn');
       if (photoMode) {
         savedPlayerPos.copy(camera.position);
         savedVelocityY = velocityY;
         hud.forEach(el => { if (el) el.style.display = 'none'; });
-        showToast('📸 Photo Mode — F3 to exit');
+        if (photoBtn) {
+          photoBtn.textContent = '↩️';
+          photoBtn.title = 'Exit photo mode';
+        }
+        showToast(hasTouch ? '📸 Photo Mode — drag to look, joystick to move, 📸/↩️ to exit' : '📸 Photo Mode — F3 to exit');
       } else {
         camera.position.copy(savedPlayerPos);
         velocityY = savedVelocityY;
         hud.forEach(el => { if (el) el.style.display = ''; });
+        if (photoBtn) {
+          photoBtn.textContent = '📸';
+          photoBtn.title = 'Photo mode';
+        }
         showToast('📸 Photo Mode OFF');
       }
     }
@@ -1923,10 +1930,12 @@
         if (keys.d) move.add(right);
         if (keys.a) move.sub(right);
         if (keys[' ']) move.add(UP);    // Space goes up
+        if (joystick.y !== 0) move.addScaledVector(flyForward, joystick.y);
+        if (joystick.x !== 0) move.addScaledVector(right, joystick.x);
         // Q/E remapped: in photo mode Q = down, E = up
         // (block switching disabled in photo mode)
 
-        if (move.lengthSq() > 0.001) {
+        if (move.lengthSq() > 0.0025) {
           if (move.lengthSq() > 1) move.normalize();
           move.multiplyScalar(PHOTO_SPEED * dt);
           camera.position.add(move);
