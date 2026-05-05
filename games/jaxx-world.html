@@ -462,6 +462,117 @@
       z-index: 62;
     }
 
+    /* ── Creative inventory / backpack block picker ───────────────── */
+    #backpack-btn {
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      z-index: 63;
+      display: none;
+      min-width: 74px;
+      min-height: 58px;
+      border-radius: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.38);
+      background: rgba(0, 0, 0, 0.58);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 28px;
+      box-shadow: 0 5px 18px rgba(0, 0, 0, 0.36);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body.touch #backpack-btn { display: block; }
+    #backpack-panel {
+      position: fixed; inset: 0; z-index: 91;
+      display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.50);
+      backdrop-filter: blur(4px);
+      color: white;
+      font-family: var(--font-game);
+      box-sizing: border-box;
+    }
+    #backpack-panel.hidden { display: none; }
+    #backpack-card {
+      width: min(760px, 94vw);
+      max-height: 84vh;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(36, 58, 89, 0.96), rgba(20, 36, 56, 0.98));
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-radius: 24px;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.48);
+      padding: 22px;
+      box-sizing: border-box;
+    }
+    #backpack-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    #backpack-header h2 {
+      margin: 0;
+      font-size: clamp(26px, 5vw, 38px);
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+    }
+    #backpack-close-btn {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      background: rgba(0, 0, 0, 0.40);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    #backpack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+      gap: 12px;
+    }
+    .backpack-item {
+      min-height: 112px;
+      border-radius: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.10);
+      color: white;
+      font-family: var(--font-game);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 80ms, border-color 120ms, background 120ms;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .backpack-item:active { transform: scale(0.96); }
+    .backpack-item.selected {
+      border-color: white;
+      background: rgba(84, 180, 255, 0.22);
+      box-shadow: 0 0 18px rgba(255, 255, 255, 0.28);
+    }
+    .backpack-swatch {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      box-shadow: inset 0 -7px 0 rgba(0,0,0,0.20), inset 0 5px 0 rgba(255,255,255,0.16), 0 4px 12px rgba(0,0,0,0.28);
+    }
+    .backpack-name {
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.1;
+    }
+    .backpack-tip {
+      margin: 12px 0 0;
+      opacity: 0.72;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      text-align: center;
+    }
+
     /* ── On touch: bigger top-right buttons, tappable hotbar ───────── */
     body.touch #actions button {
       padding: 12px 18px;
@@ -530,6 +641,19 @@
 
   <!-- Hotbar — populated by JS from the BLOCKS registry -->
   <div id="hotbar"></div>
+
+  <!-- Creative inventory / backpack picker -->
+  <button id="backpack-btn" type="button" title="Open block backpack">🎒</button>
+  <div id="backpack-panel" class="hidden" role="dialog" aria-modal="true" aria-labelledby="backpack-title">
+    <div id="backpack-card">
+      <div id="backpack-header">
+        <h2 id="backpack-title">Block Backpack 🎒</h2>
+        <button id="backpack-close-btn" type="button" title="Close backpack">✕</button>
+      </div>
+      <div id="backpack-grid"></div>
+      <div class="backpack-tip">Pick a block, then aim and tap ⬛ to place it.</div>
+    </div>
+  </div>
 
   <!-- Block-name indicator that fades in above the hotbar -->
   <div id="block-name-toast"></div>
@@ -779,7 +903,12 @@
 
     // ── Hotbar UI ────────────────────────────────────────────────────
     const hotbarEl = document.getElementById('hotbar');
+    const backpackBtn = document.getElementById('backpack-btn');
+    const backpackPanel = document.getElementById('backpack-panel');
+    const backpackGrid = document.getElementById('backpack-grid');
+    const backpackCloseBtn = document.getElementById('backpack-close-btn');
     const slotEls  = new Map(); // blockId → .slot DOM node
+    const backpackItemEls = new Map(); // blockId → backpack item DOM node
     function hexToCss(hex) { return '#' + hex.toString(16).padStart(6, '0'); }
 
     for (const id of Object.keys(BLOCKS)) {
@@ -803,6 +932,20 @@
       slotEls.set(blockId, slot);
       // Tap-to-select for touch devices (pointer-events enabled via .touch CSS)
       slot.addEventListener('click', () => setSelectedBlock(blockId));
+
+      const backpackItem = document.createElement('button');
+      backpackItem.type = 'button';
+      backpackItem.className = 'backpack-item' + (def.special ? ' astro-slot' : '');
+      backpackItem.innerHTML = `
+        <div class="backpack-swatch" style="background:${swatchBg}"></div>
+        <div class="backpack-name">${def.name}</div>
+      `;
+      backpackGrid.appendChild(backpackItem);
+      backpackItemEls.set(blockId, backpackItem);
+      backpackItem.addEventListener('click', () => {
+        setSelectedBlock(blockId);
+        closeBackpack();
+      });
     }
 
     // Block-name toast: fades in above hotbar on block switch, fades out after 1.2 s.
@@ -824,8 +967,36 @@
       for (const [id, el] of slotEls) {
         el.classList.toggle('selected', id === blockId);
       }
+      for (const [id, el] of backpackItemEls) {
+        el.classList.toggle('selected', id === blockId);
+      }
       if (announce) showBlockName(blockId);
     }
+
+    function openBackpack() {
+      backpackPanel.classList.remove('hidden');
+      endJoystick?.();
+      endLook?.();
+      keys[' '] = false;
+      jumpRequested = false;
+    }
+    function closeBackpack() {
+      backpackPanel.classList.add('hidden');
+    }
+    backpackBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openBackpack();
+    });
+    backpackCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeBackpack();
+    });
+    backpackPanel.addEventListener('click', (e) => {
+      if (e.target === backpackPanel) closeBackpack();
+    });
+
     setSelectedBlock(GRASS, false); // initial highlight — no toast on startup
 
     // ── World — InstancedMesh rendering ─────────────────────────────
@@ -1618,6 +1789,10 @@
         togglePhotoMode();
         return;
       }
+      if (e.key === 'Escape' && !backpackPanel.classList.contains('hidden')) {
+        closeBackpack();
+        return;
+      }
       if (e.key === 'Escape' && !controlsHelpEl.classList.contains('hidden')) {
         hideControlsHelp();
         return;
@@ -1742,6 +1917,8 @@
              isInsideEl(touchTopLeftEl, x, y) ||
              isInsideEl(actionsEl,      x, y) ||
              isInsideEl(hotbarEl,       x, y) ||
+             isInsideEl(backpackBtn,    x, y) ||
+             isInsideEl(backpackPanel,  x, y) ||
              isInsideEl(overlay,        x, y) ||
              isInsideEl(controlsHelpEl, x, y) ||
              isInsideEl(titleScreen,    x, y);
@@ -1996,12 +2173,14 @@
       photoMode = !photoMode;
       const hud = [document.getElementById('crosshair'),
                    document.getElementById('hotbar'),
+                   document.getElementById('backpack-btn'),
                    document.getElementById('actions'),
                    document.getElementById('block-name-toast')];
       const photoBtn = document.getElementById('touch-photo-btn');
       if (photoMode) {
         savedPlayerPos.copy(camera.position);
         savedVelocityY = velocityY;
+        closeBackpack();
         document.body.classList.add('photo-mode');
         hud.forEach(el => { if (el) el.style.display = 'none'; });
         if (photoBtn) {
