@@ -1569,14 +1569,79 @@
       return group;
     }
 
+    const friendlyCreatures = [];
+    const npcGroup = new THREE.Group();
+    scene.add(npcGroup);
+
+    function createAnimal(name, type) {
+      const group = new THREE.Group();
+      let bodyMat, headMat, accentMat;
+      if (type === 'sheep') {
+        bodyMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f0 });
+        headMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        accentMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.55), bodyMat);
+        body.position.y = 0.75;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.42, 0.38), headMat);
+        head.position.set(0, 0.88, 0.48);
+        const wool = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.22, 0.64), accentMat);
+        wool.position.y = 1.18;
+        group.add(body, head, wool);
+      } else {
+        bodyMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8 });
+        headMat = new THREE.MeshStandardMaterial({ color: 0xfff7c7 });
+        accentMat = new THREE.MeshStandardMaterial({ color: 0xff8c22 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.48), bodyMat);
+        body.position.y = 0.48;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), headMat);
+        head.position.set(0, 0.78, 0.34);
+        const beak = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.18), accentMat);
+        beak.position.set(0, 0.78, 0.62);
+        const comb = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.08), new THREE.MeshStandardMaterial({ color: 0xe53935 }));
+        comb.position.set(0, 1.03, 0.30);
+        group.add(body, head, beak, comb);
+      }
+
+      const legMat = new THREE.MeshStandardMaterial({ color: type === 'sheep' ? 0x222222 : 0xffa333 });
+      for (const [lx, lz] of [[-0.25, -0.18], [0.25, -0.18], [-0.25, 0.18], [0.25, 0.18]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 0.12), legMat);
+        leg.position.set(lx, 0.18, lz);
+        group.add(leg);
+      }
+
+      const label = createTextSprite(name);
+      label.position.y = type === 'sheep' ? 1.8 : 1.45;
+      label.scale.multiplyScalar(0.62);
+      group.add(label);
+      group.userData = { name, type, wanderAngle: Math.random() * Math.PI * 2, nextTurnAt: 0, speed: type === 'sheep' ? 0.55 : 0.85, home: new THREE.Vector3() };
+      return group;
+    }
+
+    function placeCreature(creature, x, z) {
+      const y = getGroundHeight(x, 20, z);
+      if (y <= -10) return false;
+      creature.position.set(x, y, z);
+      creature.userData.home.set(x, y, z);
+      npcGroup.add(creature);
+      friendlyCreatures.push(creature);
+      return true;
+    }
+
+    function clearFriendlyCreatures() {
+      while (npcGroup.children.length) npcGroup.remove(npcGroup.children[0]);
+      friendlyCreatures.length = 0;
+    }
+
     function initNPCs() {
+      clearFriendlyCreatures();
+
       const teddy = createNPC("Teddy", 0x8b4513, 'bear');
       const tx = 3; const tz = -3;
       const ty = getGroundHeight(tx, 20, tz); 
       if (ty > -10) {
         teddy.position.set(tx, ty, tz);
         teddy.lookAt(0, ty, 0); // Face spawn
-        scene.add(teddy);
+        npcGroup.add(teddy);
       }
       
       const dad = createNPC("Dad", 0x228b22, 'human'); // Green shirt
@@ -1585,7 +1650,40 @@
       if (dy > -10) {
         dad.position.set(dx, dy, dz);
         dad.lookAt(0, dy, 0); // Face spawn
-        scene.add(dad);
+        npcGroup.add(dad);
+      }
+
+      placeCreature(createAnimal('Baa', 'sheep'), 5, 3);
+      placeCreature(createAnimal('Fluffy', 'sheep'), -6, 4);
+      placeCreature(createAnimal('Peep', 'chicken'), 4, -6);
+      placeCreature(createAnimal('Nugget', 'chicken'), -5, -5);
+    }
+
+    function updateFriendlyCreatures(dt) {
+      const now = performance.now();
+      for (const creature of friendlyCreatures) {
+        const data = creature.userData;
+        if (now > data.nextTurnAt) {
+          data.nextTurnAt = now + 1200 + Math.random() * 2600;
+          data.wanderAngle += (Math.random() - 0.5) * 1.8;
+        }
+
+        const homeDx = data.home.x - creature.position.x;
+        const homeDz = data.home.z - creature.position.z;
+        if (Math.hypot(homeDx, homeDz) > 7) data.wanderAngle = Math.atan2(homeDx, homeDz);
+
+        const nx = creature.position.x + Math.sin(data.wanderAngle) * data.speed * dt;
+        const nz = creature.position.z + Math.cos(data.wanderAngle) * data.speed * dt;
+        const ny = getGroundHeight(nx, 20, nz);
+        if (ny > -10 && Math.abs(ny - creature.position.y) < 1.4 && !collidesAt(nx, ny, nz)) {
+          creature.position.set(nx, ny, nz);
+          creature.rotation.y = data.wanderAngle;
+        } else {
+          data.wanderAngle += Math.PI * (0.45 + Math.random() * 0.4);
+          data.nextTurnAt = now + 500;
+        }
+
+        creature.position.y += Math.sin(now * 0.005 + creature.id) * 0.006;
       }
     }
 
@@ -1644,6 +1742,7 @@
       generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
+      initNPCs();
       resetMissionsForCurrentWorld();
       saveWorld(false);
       showToast(`Created ${meta.name} 🌱`);
@@ -1658,6 +1757,7 @@
       if (!loadWorldData(id)) generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
+      initNPCs();
       switchMissionWorld();
       showToast(`Loaded ${meta.name} 🌍`);
     }
@@ -1679,6 +1779,7 @@
         if (!loadWorldData(currentWorldId)) generateFreshWorld();
         spawnPlayer();
         velocityY = 0;
+        initNPCs();
         switchMissionWorld();
       }
       writeWorldIndex(index);
@@ -2559,6 +2660,7 @@
           camera.position.add(move);
         }
 
+        updateFriendlyCreatures(dt);
         updateCelestialCycle(dt);
         renderer.render(scene, camera);
         return; // Skip all physics & block interaction
@@ -2658,6 +2760,7 @@
       }
 
       updateTarget();
+      updateFriendlyCreatures(dt);
       updateCelestialCycle(dt);
       renderer.render(scene, camera);
     });
