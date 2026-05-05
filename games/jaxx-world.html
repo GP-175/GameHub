@@ -462,6 +462,62 @@
       z-index: 62;
     }
 
+    /* ── Missions HUD ─────────────────────────────────────────────── */
+    #missions-panel {
+      position: fixed;
+      left: 14px;
+      top: 82px;
+      z-index: 58;
+      width: min(300px, calc(100vw - 28px));
+      padding: 12px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.24);
+      background: rgba(0, 0, 0, 0.46);
+      color: white;
+      font-family: var(--font-game);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.32);
+      user-select: none;
+      pointer-events: none;
+    }
+    #missions-panel h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    }
+    .mission-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      margin-top: 6px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.10);
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .mission-row.done {
+      background: rgba(69, 190, 91, 0.24);
+      text-decoration: line-through;
+      opacity: 0.86;
+    }
+    .mission-progress {
+      font-family: var(--font-game);
+      white-space: nowrap;
+      color: #bdf7c9;
+    }
+    body.touch #missions-panel {
+      top: calc(84px + env(safe-area-inset-top, 0px));
+      left: calc(14px + env(safe-area-inset-left, 0px));
+      font-size: 12px;
+    }
+    body.touch #missions-panel.collapsed {
+      width: auto;
+      padding: 10px 12px;
+    }
+    body.touch #missions-panel.collapsed .mission-row { display: none; }
+
     /* ── Creative inventory / backpack block picker ───────────────── */
     #backpack-btn {
       position: fixed;
@@ -667,6 +723,11 @@
     <button id="new-btn"        type="button">🌱 New World</button>
   </div>
   <div id="toast"></div>
+
+  <div id="missions-panel" title="Missions">
+    <h3>⭐ Missions</h3>
+    <div id="missions-list"></div>
+  </div>
 
   <!-- ══════════════════════════════════════════════════════════════════
        TABLET / TOUCH HUD — hidden by default, shown when body.touch
@@ -1236,6 +1297,7 @@
     const LEGACY_SAVE_KEY = 'blockventure:world:default';
     const WORLD_INDEX_KEY = 'blockventure:worlds:index';
     const WORLD_KEY_PREFIX = 'blockventure:world:';
+    const MISSIONS_KEY_PREFIX = 'blockventure:missions:';
     const DEFAULT_WORLD_NAME = 'Jaxx World 1';
     let currentWorldId = null;
 
@@ -1243,6 +1305,7 @@
       return `world-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
     }
     function worldStorageKey(id) { return WORLD_KEY_PREFIX + id; }
+    function missionStorageKey(id) { return MISSIONS_KEY_PREFIX + id; }
     function cleanWorldName(name) {
       return String(name || '').trim().slice(0, 40) || `Jaxx World ${listWorlds().length + 1}`;
     }
@@ -1337,6 +1400,85 @@
 
     ensureWorldIndex();
     if (!loadWorldData(currentWorldId)) generateFreshWorld();
+
+    // ── Simple Missions (JP-84) ─────────────────────────────────────
+    const MISSIONS = [
+      { id: 'place-10', title: 'Place 10 blocks', target: 10, type: 'place-any' },
+      { id: 'break-5', title: 'Break 5 blocks', target: 5, type: 'break-any' },
+      { id: 'rainbow-3', title: 'Place 3 Rainbow blocks', target: 3, type: 'place-block', blockId: RAINBOW },
+      { id: 'bouncy-1', title: 'Try a Bouncy block', target: 1, type: 'place-block', blockId: BOUNCY },
+      { id: 'glow-3', title: 'Light it up with 3 Glow blocks', target: 3, type: 'place-block', blockId: GLOW },
+    ];
+    const missionProgress = {};
+    const missionsListEl = document.getElementById('missions-list');
+    const missionsPanelEl = document.getElementById('missions-panel');
+
+    function defaultMissionProgress() {
+      const state = {};
+      for (const mission of MISSIONS) state[mission.id] = 0;
+      return state;
+    }
+    function loadMissionProgress() {
+      Object.assign(missionProgress, defaultMissionProgress());
+      try {
+        const raw = localStorage.getItem(missionStorageKey(currentWorldId));
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.v !== 1 || !parsed.progress) return;
+        for (const mission of MISSIONS) {
+          const value = Number(parsed.progress[mission.id] || 0);
+          missionProgress[mission.id] = Math.max(0, Math.min(mission.target, value));
+        }
+      } catch (_) { /* private browsing */ }
+    }
+    function saveMissionProgress() {
+      try {
+        localStorage.setItem(missionStorageKey(currentWorldId), JSON.stringify({ v: 1, progress: missionProgress }));
+      } catch (_) { /* private browsing */ }
+    }
+    function renderMissions() {
+      missionsListEl.innerHTML = '';
+      let remaining = 0;
+      for (const mission of MISSIONS) {
+        const value = Math.min(mission.target, missionProgress[mission.id] || 0);
+        const done = value >= mission.target;
+        if (!done) remaining++;
+        const row = document.createElement('div');
+        row.className = 'mission-row' + (done ? ' done' : '');
+        row.innerHTML = `<span>${done ? '✅ ' : ''}${mission.title}</span><span class="mission-progress">${value}/${mission.target}</span>`;
+        missionsListEl.appendChild(row);
+      }
+      missionsPanelEl.classList.toggle('collapsed', remaining === 0);
+    }
+    function resetMissionsForCurrentWorld() {
+      Object.assign(missionProgress, defaultMissionProgress());
+      saveMissionProgress();
+      renderMissions();
+    }
+    function switchMissionWorld() {
+      loadMissionProgress();
+      renderMissions();
+    }
+    function completeMissionToast(mission) {
+      showToast(`⭐ Mission complete: ${mission.title}!`);
+      playSound('giggle');
+    }
+    function trackMission(eventType, blockId = null) {
+      let changed = false;
+      for (const mission of MISSIONS) {
+        if ((missionProgress[mission.id] || 0) >= mission.target) continue;
+        if (mission.type === eventType || (mission.type === 'place-block' && eventType === 'place-block' && mission.blockId === blockId)) {
+          missionProgress[mission.id] = Math.min(mission.target, (missionProgress[mission.id] || 0) + 1);
+          changed = true;
+          if (missionProgress[mission.id] >= mission.target) completeMissionToast(mission);
+        }
+      }
+      if (changed) {
+        saveMissionProgress();
+        renderMissions();
+      }
+    }
+    switchMissionWorld();
 
     // ── Spawn helper — place the player above the terrain ────────────
     function spawnPlayer() {
@@ -1502,6 +1644,7 @@
       generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
+      resetMissionsForCurrentWorld();
       saveWorld(false);
       showToast(`Created ${meta.name} 🌱`);
     }
@@ -1515,6 +1658,7 @@
       if (!loadWorldData(id)) generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
+      switchMissionWorld();
       showToast(`Loaded ${meta.name} 🌍`);
     }
 
@@ -1535,6 +1679,7 @@
         if (!loadWorldData(currentWorldId)) generateFreshWorld();
         spawnPlayer();
         velocityY = 0;
+        switchMissionWorld();
       }
       writeWorldIndex(index);
       showToast(`Deleted ${meta.name}`);
@@ -1822,6 +1967,8 @@
       if (blockMap.has(coordKey(nx, ny, nz))) return;
       if (blockOverlapsPlayer(nx, ny, nz)) return;
       addBlock(nx, ny, nz, selectedBlockId);
+      trackMission('place-any');
+      trackMission('place-block', selectedBlockId);
     }
 
     // ── Pointer lock + title-screen / pause logic ────────────────────
@@ -1867,6 +2014,7 @@
         const { x, y, z, blockId: brokenId } = targetedBlock;
         removeBlock(x, y, z);
         targetedBlock = null;
+        trackMission('break-any');
         playSound(BLOCKS[brokenId].breakSound);
       } else if (e.button === 2) {
         const before = blockMap.size;
@@ -2130,6 +2278,7 @@
       const { x, y, z, blockId: brokenId } = targetedBlock;
       removeBlock(x, y, z);
       targetedBlock = null;
+      trackMission('break-any');
       syncTouchActionButtons();
       playSound(BLOCKS[brokenId].breakSound);
     });
