@@ -62,6 +62,7 @@
     <div class="toolbar">
       <button class="btn btn-soft" id="back-btn">⌫ Undo</button>
       <button class="btn btn-soft" id="hear-btn">🔊 Hear it</button>
+      <button class="btn hidden" id="next-btn">Next word →</button>
     </div>
     <div class="feedback" id="feedback">&nbsp;</div>
     <div class="progress-bar"><div class="fill" id="bar"></div></div>
@@ -119,12 +120,15 @@ window.addEventListener('DOMContentLoaded', () => {
   };
   document.getElementById('back-btn').onclick = undoLetter;
   document.getElementById('hear-btn').onclick = () => target && Hub.speak(target.w);
+  document.getElementById('next-btn').onclick = nextRound;
 });
 
 function nextRound() {
   if (round >= TOTAL_ROUNDS) return endGame();
   round++;
   document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('next-btn').classList.add('hidden');
+  document.getElementById('back-btn').disabled = false;
   document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
   filled = [];
 
@@ -173,7 +177,7 @@ function highlightNext() {
 }
 
 function pickLetter(btn, L) {
-  if (filled.length >= target.w.length) return;
+  if (filled.length >= target.w.length || !document.getElementById('next-btn').classList.contains('hidden')) return;
   filled.push({ L, btn });
   btn.disabled = true;
   const slots = document.querySelectorAll('.slot');
@@ -184,7 +188,7 @@ function pickLetter(btn, L) {
 }
 
 function undoLetter() {
-  if (filled.length === 0) return;
+  if (filled.length === 0 || !document.getElementById('next-btn').classList.contains('hidden')) return;
   const last = filled.pop();
   last.btn.disabled = false;
   const slots = document.querySelectorAll('.slot');
@@ -202,15 +206,18 @@ function checkWord() {
     Hub.speak('Yes! ' + target.w);
     setTimeout(nextRound, 900);
   } else {
-    document.getElementById('feedback').textContent = `Not quite — it was "${target.w}"`;
+    document.getElementById('feedback').textContent = `Not quite — the correct spelling is "${target.w.toUpperCase()}"`;
     document.getElementById('feedback').className = 'feedback bad';
-    // reveal correct word in slots
+    // reveal correct word in slots and wait for the player to continue
     const slots = document.querySelectorAll('.slot');
     target.w.split('').forEach((L, i) => {
       slots[i].textContent = L.toUpperCase();
       slots[i].classList.add('filled');
     });
-    setTimeout(nextRound, 1600);
+    filled.forEach(({ btn }) => { btn.disabled = true; });
+    document.getElementById('back-btn').disabled = true;
+    document.getElementById('next-btn').classList.remove('hidden');
+    Hub.speak('Not quite. The word is ' + target.w);
   }
   updateScore();
 }
