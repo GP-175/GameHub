@@ -391,6 +391,11 @@
       -webkit-tap-highlight-color: transparent;
       display: flex; align-items: center; justify-content: center;
     }
+    #touch-topleft button:disabled {
+      opacity: 0.35;
+      filter: grayscale(0.45);
+      cursor: not-allowed;
+    }
 
     /* ── In-game controls help overlay ────────────────────────────── */
     #controls-help {
@@ -779,6 +784,7 @@
   <div id="touch-topleft">
     <button id="touch-pause-btn"  type="button" title="Pause">⏸</button>
     <button id="touch-help-btn"   type="button" title="Controls help">❔</button>
+    <button id="touch-undo-btn"   type="button" title="Undo last build action">↶</button>
     <button id="touch-day-btn"    type="button" title="Toggle day/night">☀️</button>
     <button id="touch-photo-btn"  type="button" title="Photo mode">📸</button>
   </div>
@@ -793,6 +799,7 @@
         <div class="control-tip"><strong>⤴ Jump</strong>Tap the green jump button.</div>
         <div class="control-tip"><strong>⬛ Place</strong>Aim at a block, then tap place.</div>
         <div class="control-tip"><strong>⛏ Break</strong>Aim at a block, then tap break.</div>
+        <div class="control-tip"><strong>↶ Undo</strong>Tap undo to reverse your last place/break.</div>
         <div class="control-tip"><strong>📸 Photo</strong>Tap 📸, fly with joystick, tap ↩️ to exit.</div>
       </div>
       <button id="controls-close-btn" type="button">Got it!</button>
@@ -1782,6 +1789,8 @@
       saveWorld(false); // preserve the current world before switching away
       const meta = createWorldMeta(name);
       clearWorld();
+      undoStack.length = 0;
+      syncUndoButton();
       generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
@@ -1796,6 +1805,8 @@
       if (!meta || id === currentWorldId) return;
       saveWorld(false);
       clearWorld();
+      undoStack.length = 0;
+      syncUndoButton();
       setCurrentWorld(id);
       if (!loadWorldData(id)) generateFreshWorld();
       spawnPlayer();
@@ -1819,6 +1830,8 @@
         index.currentId = index.worlds[0].id;
         currentWorldId = index.currentId;
         clearWorld();
+        undoStack.length = 0;
+        syncUndoButton();
         if (!loadWorldData(currentWorldId)) generateFreshWorld();
         spawnPlayer();
         velocityY = 0;
@@ -2104,16 +2117,55 @@
              (by + 0.5) > feet && (by - 0.5) < head;
     }
 
+    // ── Build assists (JP-87): undo last place/break ────────────────
+    const undoStack = [];
+    const MAX_UNDO = 30;
+
+    function syncUndoButton() {
+      const btn = document.getElementById('touch-undo-btn');
+      if (!btn) return;
+      btn.disabled = undoStack.length === 0;
+      btn.setAttribute('aria-disabled', String(btn.disabled));
+    }
+
+    function recordBuildAction(action) {
+      undoStack.push(action);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      syncUndoButton();
+    }
+
+    function undoLastBuildAction() {
+      const action = undoStack.pop();
+      if (!action) {
+        showToast('Nothing to undo yet', true);
+        syncUndoButton();
+        return;
+      }
+      if (action.type === 'place') {
+        removeBlock(action.x, action.y, action.z);
+        showToast(`Undid ${BLOCKS[action.blockId].name} placement ↶`);
+      } else if (action.type === 'break') {
+        addBlock(action.x, action.y, action.z, action.blockId);
+        showToast(`Restored ${BLOCKS[action.blockId].name} ↶`);
+      }
+      updateTarget();
+      syncTouchActionButtons();
+      syncUndoButton();
+    }
+    syncUndoButton();
+
     function placeBlock() {
-      if (!targetedBlock) return;
+      if (!targetedBlock) return false;
       const nx = targetedBlock.x + targetedNormal.x;
       const ny = targetedBlock.y + targetedNormal.y;
       const nz = targetedBlock.z + targetedNormal.z;
-      if (blockMap.has(coordKey(nx, ny, nz))) return;
-      if (blockOverlapsPlayer(nx, ny, nz)) return;
+      if (blockMap.has(coordKey(nx, ny, nz))) return false;
+      if (blockOverlapsPlayer(nx, ny, nz)) return false;
       addBlock(nx, ny, nz, selectedBlockId);
+      recordBuildAction({ type: 'place', x: nx, y: ny, z: nz, blockId: selectedBlockId });
       trackMission('place-any');
       trackMission('place-block', selectedBlockId);
+      return true;
     }
 
     // ── Pointer lock + title-screen / pause logic ────────────────────
@@ -2158,6 +2210,7 @@
         highlight.visible = false;
         const { x, y, z, blockId: brokenId } = targetedBlock;
         removeBlock(x, y, z);
+        recordBuildAction({ type: 'break', x, y, z, blockId: brokenId });
         targetedBlock = null;
         trackMission('break-any');
         playSound(BLOCKS[brokenId].breakSound);
@@ -2218,6 +2271,11 @@
         e.preventDefault();
         takeScreenshot();
       }
+      if ((e.ctrlKey || e.metaKey) && k === 'z') {
+        e.preventDefault();
+        undoLastBuildAction();
+        return;
+      }
       if (e.key === 'F3') {
         e.preventDefault();
         togglePhotoMode();
@@ -2273,6 +2331,7 @@
     const touchJumpBtn   = document.getElementById('touch-jump-btn');
     const touchPauseBtn  = document.getElementById('touch-pause-btn');
     const touchHelpBtn   = document.getElementById('touch-help-btn');
+    const touchUndoBtn   = document.getElementById('touch-undo-btn');
     const touchDayBtn    = document.getElementById('touch-day-btn');
     const controlsHelpEl = document.getElementById('controls-help');
     const controlsCloseBtn = document.getElementById('controls-close-btn');
@@ -2288,6 +2347,7 @@
       touchPlaceBtn.disabled = !canEditTarget;
       touchBreakBtn.setAttribute('aria-disabled', String(!canEditTarget));
       touchPlaceBtn.setAttribute('aria-disabled', String(!canEditTarget));
+      syncUndoButton();
     }
     syncTouchActionButtons();
 
@@ -2427,6 +2487,7 @@
       highlight.visible = false;
       const { x, y, z, blockId: brokenId } = targetedBlock;
       removeBlock(x, y, z);
+      recordBuildAction({ type: 'break', x, y, z, blockId: brokenId });
       targetedBlock = null;
       trackMission('break-any');
       syncTouchActionButtons();
@@ -2467,6 +2528,14 @@
     touchJumpBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
+    });
+
+    // UNDO — reverse the last block place/break action
+    touchUndoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchUndoBtn.disabled) return;
+      undoLastBuildAction();
     });
 
     // PAUSE — show the pause overlay (no pointer to release on touch)
