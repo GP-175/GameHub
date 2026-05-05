@@ -671,20 +671,15 @@
       text-align: center;
     }
 
-    /* ── On touch: bigger top-right buttons, tappable hotbar ───────── */
+    /* ── On touch: bigger top-right buttons; backpack replaces hotbar ─ */
     body.touch #actions button {
       padding: 12px 18px;
       font-size: 16px;
       min-height: 50px;
     }
     body.touch #screenshot-btn { padding: 12px 16px; font-size: 22px; }
-    body.touch #hotbar { pointer-events: auto; }
-    body.touch .slot {
-      width: 64px; height: 78px;
-      cursor: pointer;
-      -webkit-tap-highlight-color: transparent;
-    }
-    body.touch .slot .swatch { width: 40px; height: 40px; }
+    body.touch #hotbar { display: none; }
+    body.touch #block-name-toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 
     /* Pause overlay copy: read "Tap" instead of "Click" on touch */
     body.touch #overlay .desktop-text { display: none; }
