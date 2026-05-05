@@ -661,6 +661,7 @@
   <!-- Top-right action buttons -->
   <div id="actions">
     <button id="hub-btn"        type="button" title="Back to GameHub">🏠 GameHub</button>
+    <button id="worlds-btn"     type="button" title="Load or manage worlds">🌍 Worlds</button>
     <button id="save-btn"       type="button">💾 Save</button>
     <button id="screenshot-btn" type="button" title="Screenshot (F2)">📷</button>
     <button id="new-btn"        type="button">🌱 New World</button>
@@ -1229,16 +1230,89 @@
     }
 
     // ── Persistence ──────────────────────────────────────────────────
-    // Format: { v: 1, blocks: [[x, y, z, blockId], …] }
-    // Backward-compatible: saves from v4 (blocks 1–5) load fine here.
-    const SAVE_KEY = 'blockventure:world:default';
+    // World save format: { v: 1, blocks: [[x, y, z, blockId], …] }
+    // World index format: { v: 2, currentId, worlds: [{ id, name, createdAt, updatedAt }] }
+    // Backward-compatible: the old single SAVE_KEY is migrated into the first named world.
+    const LEGACY_SAVE_KEY = 'blockventure:world:default';
+    const WORLD_INDEX_KEY = 'blockventure:worlds:index';
+    const WORLD_KEY_PREFIX = 'blockventure:world:';
+    const DEFAULT_WORLD_NAME = 'Jaxx World 1';
+    let currentWorldId = null;
 
-    function loadSavedWorld() {
-      let raw;
-      try { raw = localStorage.getItem(SAVE_KEY); } catch (_) { return false; }
-      if (!raw) return false;
-      let parsed;
-      try { parsed = JSON.parse(raw); } catch (_) { return false; }
+    function makeWorldId() {
+      return `world-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    }
+    function worldStorageKey(id) { return WORLD_KEY_PREFIX + id; }
+    function cleanWorldName(name) {
+      return String(name || '').trim().slice(0, 40) || `Jaxx World ${listWorlds().length + 1}`;
+    }
+    function readWorldIndex() {
+      try {
+        const raw = localStorage.getItem(WORLD_INDEX_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.v !== 2 || !Array.isArray(parsed.worlds)) return null;
+        return parsed;
+      } catch (_) {
+        return null;
+      }
+    }
+    function writeWorldIndex(index) {
+      localStorage.setItem(WORLD_INDEX_KEY, JSON.stringify(index));
+    }
+    function ensureWorldIndex() {
+      let index = readWorldIndex();
+      if (index && index.worlds.length) {
+        currentWorldId = index.currentId || index.worlds[0].id;
+        return index;
+      }
+
+      const now = new Date().toISOString();
+      const id = makeWorldId();
+      index = { v: 2, currentId: id, worlds: [{ id, name: DEFAULT_WORLD_NAME, createdAt: now, updatedAt: now }] };
+      currentWorldId = id;
+
+      // Migrate old single-world save if it exists; otherwise startup will generate fresh terrain.
+      try {
+        const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
+        if (legacy) localStorage.setItem(worldStorageKey(id), legacy);
+      } catch (_) { /* private browsing */ }
+      try { writeWorldIndex(index); } catch (_) { /* private browsing */ }
+      return index;
+    }
+    function listWorlds() {
+      return ensureWorldIndex().worlds;
+    }
+    function getCurrentWorldMeta() {
+      const index = ensureWorldIndex();
+      return index.worlds.find(w => w.id === currentWorldId) || index.worlds[0];
+    }
+    function setCurrentWorld(id) {
+      const index = ensureWorldIndex();
+      if (!index.worlds.some(w => w.id === id)) return false;
+      index.currentId = id;
+      currentWorldId = id;
+      writeWorldIndex(index);
+      return true;
+    }
+    function touchCurrentWorldMeta() {
+      const index = ensureWorldIndex();
+      const meta = index.worlds.find(w => w.id === currentWorldId);
+      if (meta) meta.updatedAt = new Date().toISOString();
+      writeWorldIndex(index);
+      return meta;
+    }
+    function createWorldMeta(name) {
+      const index = ensureWorldIndex();
+      const now = new Date().toISOString();
+      const meta = { id: makeWorldId(), name: cleanWorldName(name), createdAt: now, updatedAt: now };
+      index.worlds.push(meta);
+      index.currentId = meta.id;
+      currentWorldId = meta.id;
+      writeWorldIndex(index);
+      return meta;
+    }
+    function validateWorldData(parsed) {
       if (!parsed || parsed.v !== 1 || !Array.isArray(parsed.blocks)) return false;
       for (const b of parsed.blocks) {
         if (!Array.isArray(b) || b.length !== 4) return false;
@@ -1246,14 +1320,23 @@
         if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return false;
         if (!BLOCKS[id]) return false;
       }
-      // Snap any old saves from .5 coords to integer coords
+      return true;
+    }
+    function loadWorldData(id) {
+      let raw;
+      try { raw = localStorage.getItem(worldStorageKey(id)); } catch (_) { return false; }
+      if (!raw) return false;
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch (_) { return false; }
+      if (!validateWorldData(parsed)) return false;
       for (const [x, y, z, id] of parsed.blocks) {
         addBlock(Math.round(x), Math.round(y), Math.round(z), id);
       }
       return true;
     }
 
-    if (!loadSavedWorld()) generateFreshWorld();
+    ensureWorldIndex();
+    if (!loadWorldData(currentWorldId)) generateFreshWorld();
 
     // ── Spawn helper — place the player above the terrain ────────────
     function spawnPlayer() {
@@ -1384,15 +1467,18 @@
       return { v: 1, blocks };
     }
 
-    function saveWorld() {
+    function saveWorld(showSavedToast = true) {
       try {
         const data = serializeWorld();
         const json = JSON.stringify(data);
-        localStorage.setItem(SAVE_KEY, json);
-        showToast(`Saved! ${data.blocks.length} blocks · ${(json.length / 1024).toFixed(0)} KB`);
+        localStorage.setItem(worldStorageKey(currentWorldId), json);
+        const meta = touchCurrentWorldMeta();
+        if (showSavedToast) showToast(`Saved ${meta?.name || 'world'}! ${data.blocks.length} blocks · ${(json.length / 1024).toFixed(0)} KB`);
+        return true;
       } catch (err) {
         console.error('save failed', err);
-        showToast(`Save failed: ${err.message}`, true);
+        if (showSavedToast) showToast(`Save failed: ${err.message}`, true);
+        return false;
       }
     }
 
@@ -1406,21 +1492,76 @@
       blockMap.clear();
     }
 
-    function resetWorld() {
-      if (!confirm('Start a new world? This will erase your current build.')) return;
+    function startNewWorld() {
+      const suggested = `Jaxx World ${listWorlds().length + 1}`;
+      const name = prompt('Name this new world:', suggested);
+      if (name === null) return;
+      saveWorld(false); // preserve the current world before switching away
+      const meta = createWorldMeta(name);
       clearWorld();
       generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
-      try { localStorage.removeItem(SAVE_KEY); } catch (_) { /* private browsing */ }
-      showToast('Fresh world ready 🌱');
+      saveWorld(false);
+      showToast(`Created ${meta.name} 🌱`);
+    }
+
+    function loadWorld(id) {
+      const meta = listWorlds().find(w => w.id === id);
+      if (!meta || id === currentWorldId) return;
+      saveWorld(false);
+      clearWorld();
+      setCurrentWorld(id);
+      if (!loadWorldData(id)) generateFreshWorld();
+      spawnPlayer();
+      velocityY = 0;
+      showToast(`Loaded ${meta.name} 🌍`);
+    }
+
+    function deleteWorld(id) {
+      const index = ensureWorldIndex();
+      const meta = index.worlds.find(w => w.id === id);
+      if (!meta || index.worlds.length <= 1) {
+        showToast('Keep at least one world', true);
+        return;
+      }
+      if (!confirm(`Delete "${meta.name}"? This cannot be undone.`)) return;
+      try { localStorage.removeItem(worldStorageKey(id)); } catch (_) { /* private browsing */ }
+      index.worlds = index.worlds.filter(w => w.id !== id);
+      if (index.currentId === id) {
+        index.currentId = index.worlds[0].id;
+        currentWorldId = index.currentId;
+        clearWorld();
+        if (!loadWorldData(currentWorldId)) generateFreshWorld();
+        spawnPlayer();
+        velocityY = 0;
+      }
+      writeWorldIndex(index);
+      showToast(`Deleted ${meta.name}`);
+    }
+
+    function manageWorlds() {
+      const worlds = listWorlds();
+      const lines = worlds.map((w, i) => `${i + 1}. ${w.id === currentWorldId ? '✓ ' : ''}${w.name}`);
+      const choice = prompt(`Worlds\n\n${lines.join('\n')}\n\nType a number to load, N for new, or D + number to delete (example D2).`);
+      if (!choice) return;
+      const value = choice.trim().toLowerCase();
+      if (value === 'n' || value === 'new') return startNewWorld();
+      if (value.startsWith('d')) {
+        const idx = Number(value.slice(1)) - 1;
+        if (worlds[idx]) deleteWorld(worlds[idx].id);
+        return;
+      }
+      const idx = Number(value) - 1;
+      if (worlds[idx]) loadWorld(worlds[idx].id);
     }
 
     document.getElementById('hub-btn').addEventListener('click', () => {
       window.location.href = '../';
     });
-    document.getElementById('save-btn').addEventListener('click', saveWorld);
-    document.getElementById('new-btn').addEventListener('click', resetWorld);
+    document.getElementById('worlds-btn').addEventListener('click', manageWorlds);
+    document.getElementById('save-btn').addEventListener('click', () => saveWorld(true));
+    document.getElementById('new-btn').addEventListener('click', startNewWorld);
 
     // ── Screenshot (JP-50) ───────────────────────────────────────────
     const HUD_IDS = ['hotbar', 'crosshair', 'actions', 'toast', 'block-name-toast', 'overlay'];
