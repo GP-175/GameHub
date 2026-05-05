@@ -401,6 +401,29 @@
     margin-bottom: 16px;
   }
 
+  .import-panel {
+    display: grid;
+    gap: 12px;
+    margin: 12px 0 18px;
+    border: 1px solid rgba(34,211,238,.24);
+    border-radius: 12px;
+    background: rgba(34,211,238,.07);
+    padding: 14px;
+  }
+
+  .import-panel textarea {
+    min-height: 210px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    font-size: .92rem;
+  }
+
+  .import-help {
+    display: grid;
+    gap: 4px;
+    color: var(--muted);
+    font-size: .9rem;
+  }
+
   .question-list {
     display: grid;
     gap: 14px;
@@ -1546,6 +1569,7 @@
     editor.innerHTML = `
       <div class="editor-toolbar">
         <label class="check-row"><input id="auto-advance-launch" type="checkbox" ${state.autoAdvanceResults ? 'checked' : ''} /> Auto-advance</label>
+        <button class="btn secondary" type="button" id="import-toggle"><svg class="icon"><use href="#i-plus"/></svg>Import</button>
         <button class="btn secondary" type="button" id="duplicate-quiz" ${quiz.id ? '' : 'disabled'}><svg class="icon"><use href="#i-copy"/></svg>Duplicate</button>
         <button class="btn bad" type="button" id="delete-quiz" ${quiz.id ? '' : 'disabled'}><svg class="icon"><use href="#i-trash"/></svg>Delete</button>
         <button class="btn soft" type="button" id="save-quiz"><svg class="icon"><use href="#i-save"/></svg>Save</button>
@@ -1558,6 +1582,21 @@
       <div class="field">
         <label for="quiz-description">Description</label>
         <textarea id="quiz-description" maxlength="500">${esc(quiz.description || '')}</textarea>
+      </div>
+      <div class="import-panel hidden" id="import-panel">
+        <div>
+          <h3>Import questions</h3>
+          <div class="import-help">
+            <span>Paste blocks separated by blank lines.</span>
+            <span>Mark the correct answer with <b>*</b>, <b>✓</b>, or use <b>Answer: B</b>.</span>
+            <span>Example: <code>Question?\n* Correct answer\nWrong answer\nAnother answer</code></span>
+          </div>
+        </div>
+        <textarea id="import-text" placeholder="Which planet is known as the Red Planet?\nA) Earth\n* B) Mars\nC) Venus\nD) Jupiter\n\nGP-hoot gives speed bonus points.\n* True\nFalse"></textarea>
+        <div class="row">
+          <button class="btn good" type="button" id="import-append"><svg class="icon"><use href="#i-plus"/></svg>Add imported questions</button>
+          <button class="btn secondary" type="button" id="import-sample">Use example</button>
+        </div>
       </div>
       <div class="section-title">
         <div>
@@ -1626,12 +1665,85 @@
     `;
   }
 
+  function importSampleText() {
+    return `Which planet is known as the Red Planet?\nA) Earth\n* B) Mars\nC) Venus\nD) Jupiter\n\nGP-hoot gives speed bonus points.\n* True\nFalse\n\nWhat color do you get when you mix red and blue?\nRed\n* Purple\nGreen\nYellow`;
+  }
+
+  function cleanImportedOption(line) {
+    return String(line || '')
+      .replace(/^\s*(?:[-•]\s*)?(?:[A-Da-d][).:-]\s*)?/, '')
+      .replace(/^\s*(?:answer|correct)\s*[:=-]\s*/i, '')
+      .trim();
+  }
+
+  function parseImportedQuestions(raw) {
+    const blocks = String(raw || '').trim().split(/\n\s*\n+/).map((block) => block.trim()).filter(Boolean);
+    if (!blocks.length) throw new Error('Paste at least one question block.');
+
+    return blocks.map((block, blockIndex) => {
+      const lines = block.split('\n').map((line) => line.trim()).filter(Boolean);
+      if (lines.length < 3) throw new Error(`Import block ${blockIndex + 1} needs a question and at least two answers.`);
+      const text = lines.shift().replace(/^\d+[).:-]\s*/, '').trim();
+      if (!text) throw new Error(`Import block ${blockIndex + 1} needs question text.`);
+
+      let answerHint = '';
+      const optionRows = [];
+      lines.forEach((line) => {
+        const answerMatch = line.match(/^answer\s*[:=-]\s*([A-Da-d]|.+)$/i);
+        if (answerMatch) {
+          answerHint = answerMatch[1].trim();
+          return;
+        }
+        const marked = /^([*✓✅])\s*/.test(line) || /\s+([*✓✅])\s*$/.test(line);
+        const cleaned = cleanImportedOption(line.replace(/^([*✓✅])\s*/, '').replace(/\s+([*✓✅])\s*$/, ''));
+        if (cleaned) optionRows.push({ text: cleaned, marked });
+      });
+
+      if (optionRows.length < 2) throw new Error(`Import block ${blockIndex + 1} needs at least two answers.`);
+      if (optionRows.length > 4) throw new Error(`Import block ${blockIndex + 1} has too many answers. Use up to four.`);
+
+      let correctIndex = optionRows.findIndex((row) => row.marked);
+      if (correctIndex === -1 && answerHint) {
+        if (/^[A-Da-d]$/.test(answerHint)) correctIndex = answerHint.toUpperCase().charCodeAt(0) - 65;
+        else correctIndex = optionRows.findIndex((row) => row.text.toLowerCase() === cleanImportedOption(answerHint).toLowerCase());
+      }
+      if (correctIndex < 0 || correctIndex >= optionRows.length) {
+        throw new Error(`Import block ${blockIndex + 1} needs one correct answer. Mark it with * or add Answer: B.`);
+      }
+
+      const options = optionRows.map((row) => row.text.slice(0, 90));
+      const isTrueFalse = options.length === 2 && options.map((option) => option.toLowerCase()).sort().join('|') === 'false|true';
+      return {
+        type: isTrueFalse ? 'true_false' : 'multiple_choice',
+        text: text.slice(0, 280),
+        imageUrl: '',
+        options: isTrueFalse ? ['True', 'False'] : options,
+        correctIndex: isTrueFalse ? (options[correctIndex].toLowerCase() === 'true' ? 0 : 1) : correctIndex,
+        timeLimitSeconds: 20,
+      };
+    });
+  }
+
+  function importQuestionsIntoQuiz(quiz) {
+    try {
+      const imported = parseImportedQuestions($('import-text').value);
+      quiz.questions.push(...imported);
+      toast(`Imported ${imported.length} question${imported.length === 1 ? '' : 's'}.`);
+      renderEditor();
+    } catch (err) {
+      toast(err.message);
+    }
+  }
+
   function bindEditor() {
     const quiz = state.selectedQuiz;
     $('quiz-title').oninput = (event) => { quiz.title = event.target.value; };
     $('quiz-description').oninput = (event) => { quiz.description = event.target.value; };
     $('add-mc').onclick = () => { quiz.questions.push(defaultQuestion('multiple_choice')); renderEditor(); };
     $('add-tf').onclick = () => { quiz.questions.push(defaultQuestion('true_false')); renderEditor(); };
+    $('import-toggle').onclick = () => $('import-panel').classList.toggle('hidden');
+    $('import-sample').onclick = () => { $('import-text').value = importSampleText(); };
+    $('import-append').onclick = () => importQuestionsIntoQuiz(quiz);
     $('auto-advance-launch').onchange = (event) => { state.autoAdvanceResults = event.target.checked; };
     $('save-quiz').onclick = () => saveQuiz().catch((err) => toast(err.message));
     $('host-quiz').onclick = () => launchRoom().catch((err) => toast(err.message));
