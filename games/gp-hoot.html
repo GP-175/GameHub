@@ -746,6 +746,50 @@
     transition: width .5s cubic-bezier(.4,0,.2,1);
   }
 
+  /* ── Final report ── */
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+  }
+
+  .report-card {
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--panel2);
+    padding: 14px;
+  }
+
+  .report-card b {
+    display: block;
+    font-size: clamp(1.4rem, 4vw, 2.2rem);
+    color: var(--teal);
+    margin-top: 4px;
+  }
+
+  .question-report-list { display: grid; gap: 10px; margin-top: 12px; }
+
+  .question-report {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--bg2);
+    padding: 12px;
+  }
+
+  .accuracy-pill {
+    border-radius: 999px;
+    padding: 6px 10px;
+    background: rgba(34,211,238,.12);
+    color: var(--teal);
+    font-weight: 900;
+    white-space: nowrap;
+  }
+
   /* ── Podium ── */
   .podium {
     display: grid;
@@ -1109,7 +1153,7 @@
 
   /* ── Responsive ── */
   @media (max-width: 860px) {
-    .auth-wrap, .grid-two, .room-layout { grid-template-columns: 1fr; }
+    .auth-wrap, .grid-two, .room-layout, .report-grid { grid-template-columns: 1fr; }
     .question-head { grid-template-columns: auto 1fr; }
     .question-head .btn { grid-column: 1 / -1; }
   }
@@ -1121,6 +1165,7 @@
     .topbar nav { width: 100%; justify-content: flex-start; }
     .topbar nav .btn { flex: 1 1 auto; min-width: 74px; padding-inline: 10px; }
     .option-grid, .answer-grid, .podium { grid-template-columns: 1fr; }
+    .question-report { grid-template-columns: 1fr; align-items: start; }
     .room-code { font-size: clamp(2.6rem, 16vw, 4.8rem); }
     .question-image { max-height: 40vh; }
     .answer-btn { min-height: 80px; grid-template-columns: 36px 1fr; }
@@ -2147,6 +2192,50 @@
     `;
   }
 
+  function finalReportTemplate(room, isHost) {
+    const report = room.finalReport;
+    if (!report) return '';
+    const tough = report.toughestQuestions || [];
+    return `
+      <div class="report-grid">
+        <div class="report-card"><span class="muted small">Questions</span><b>${report.totalQuestions}</b></div>
+        <div class="report-card"><span class="muted small">Players</span><b>${report.totalPlayers}</b></div>
+        <div class="report-card"><span class="muted small">Avg accuracy</span><b>${report.averageAccuracyPercent}%</b></div>
+      </div>
+      ${isHost && tough.length ? `
+        <div style="margin-top:18px">
+          <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-spark"/></svg>Toughest questions</h3>
+          <div class="question-report-list">
+            ${tough.map((question) => `
+              <div class="question-report">
+                <strong>#${question.index + 1}</strong>
+                <span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(question.text)}</span>
+                <span class="accuracy-pill">${question.accuracyPercent}% correct</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      ${isHost ? `
+        <div style="margin-top:18px">
+          <h3>Question breakdown</h3>
+          <div class="question-report-list">
+            ${report.questions.map((question) => `
+              <div class="question-report">
+                <strong>#${question.index + 1}</strong>
+                <span style="min-width:0">
+                  <span style="display:block;overflow:hidden;text-overflow:ellipsis">${esc(question.text)}</span>
+                  <span class="muted small">Answer: ${esc(question.correctOption)} • ${question.correctCount}/${question.totalPlayers} correct • ${question.unansweredCount} unanswered</span>
+                </span>
+                <span class="accuracy-pill">${question.accuracyPercent}%</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+    `;
+  }
+
   function renderFinal(container, room, isHost) {
     const leaders = room.leaderboard.slice(0, 3);
     const order = [leaders[1], leaders[0], leaders[2]].filter(Boolean); // 2nd, 1st, 3rd visual order
@@ -2179,6 +2268,7 @@
           `).join('')}
         </div>
         <div class="leaderboard">${leaderboardTemplate(room)}</div>
+        ${finalReportTemplate(room, isHost)}
       </section>
     `;
     const again = $('play-again');

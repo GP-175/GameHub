@@ -452,6 +452,51 @@ function buildQuestionResults(room, reason) {
   };
 }
 
+function buildFinalReport(room) {
+  const players = playablePlayers(room);
+  const totalPlayers = players.length;
+  const questionReports = room.quizSnapshot.questions.map((question, index) => {
+    const answers = room.answersByQuestion[String(index)] || {};
+    const answerRows = Object.values(answers);
+    const answeredCount = answerRows.length;
+    const correctCount = answerRows.filter((answer) => answer.correct).length;
+    const avgResponseMs = answerRows.length
+      ? Math.round(answerRows.reduce((sum, answer) => sum + (answer.responseMs || 0), 0) / answerRows.length)
+      : null;
+    return {
+      index,
+      text: question.text,
+      correctIndex: question.correctIndex,
+      correctOption: question.options[question.correctIndex],
+      answeredCount,
+      totalPlayers,
+      correctCount,
+      missedCount: Math.max(0, totalPlayers - correctCount),
+      accuracyPercent: totalPlayers ? Math.round((correctCount / totalPlayers) * 100) : 0,
+      unansweredCount: Math.max(0, totalPlayers - answeredCount),
+      avgResponseMs,
+      distribution: question.options.map((option, optionIndex) => ({
+        index: optionIndex,
+        option,
+        count: answerRows.filter((answer) => answer.optionIndex === optionIndex).length,
+      })),
+    };
+  });
+  const toughestQuestions = [...questionReports]
+    .sort((a, b) => a.accuracyPercent - b.accuracyPercent || b.missedCount - a.missedCount || a.index - b.index)
+    .slice(0, 3);
+  return {
+    totalQuestions: room.quizSnapshot.questions.length,
+    totalPlayers,
+    averageAccuracyPercent: questionReports.length
+      ? Math.round(questionReports.reduce((sum, question) => sum + question.accuracyPercent, 0) / questionReports.length)
+      : 0,
+    totalAnswers: questionReports.reduce((sum, question) => sum + question.answeredCount, 0),
+    toughestQuestions,
+    questions: questionReports,
+  };
+}
+
 function makeClientState(room, socketData = {}) {
   const question = currentQuestion(room);
   const answers = room.currentQuestionIndex >= 0 ? currentAnswers(room) : {};
@@ -501,6 +546,7 @@ function makeClientState(room, socketData = {}) {
       correctIndex: canRevealAnswer ? question.correctIndex : undefined,
     } : null,
     results: room.phase === 'results' || room.phase === 'final' ? room.lastResults : null,
+    finalReport: room.phase === 'final' ? buildFinalReport(room) : null,
     you: player ? {
       id: player.id,
       nickname: player.nickname,

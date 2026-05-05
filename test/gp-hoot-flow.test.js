@@ -213,6 +213,11 @@ test('host and players can complete a GP-hoot room flow', async (t) => {
   const final = await finalStatePromise;
   assert.equal(final.room.status, 'ended');
   assert.equal(final.leaderboard.length, 3);
+  assert.equal(final.finalReport.totalQuestions, 1);
+  assert.equal(final.finalReport.totalPlayers, 3);
+  assert.equal(final.finalReport.averageAccuracyPercent, 67);
+  assert.equal(final.finalReport.questions[0].correctCount, 2);
+  assert.equal(final.finalReport.questions[0].distribution[1].count, 1);
 });
 
 test('removed local upload images are cleaned up when no quiz references them', async (t) => {
