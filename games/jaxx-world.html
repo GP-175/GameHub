@@ -462,6 +462,43 @@
       z-index: 62;
     }
 
+    /* ── Photo mode tools ─────────────────────────────────────────── */
+    #photo-tools {
+      position: fixed;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 64;
+      display: none;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.26);
+      background: rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.30);
+    }
+    body.photo-mode #photo-tools { display: flex; }
+    #photo-tools button {
+      min-width: 56px;
+      min-height: 50px;
+      border-radius: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 20px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #photo-tools button:active { transform: scale(0.95); }
+    body.photo-mode.photo-clean #photo-tools,
+    body.photo-mode.photo-clean #touch-topleft,
+    body.photo-mode.photo-clean #joystick,
+    body.photo-mode.photo-clean #touch-actions {
+      opacity: 0.12;
+    }
+
     /* ── Missions HUD ─────────────────────────────────────────────── */
     #missions-panel {
       position: fixed;
@@ -723,6 +760,12 @@
     <button id="new-btn"        type="button">🌱 New World</button>
   </div>
   <div id="toast"></div>
+
+  <div id="photo-tools" aria-label="Photo mode tools">
+    <button id="photo-shot-btn" type="button" title="Take photo">📷</button>
+    <button id="photo-clean-btn" type="button" title="Hide/show photo controls">🙈</button>
+    <button id="photo-exit-btn" type="button" title="Exit photo mode">↩️</button>
+  </div>
 
   <div id="missions-panel" title="Missions">
     <h3>⭐ Missions</h3>
@@ -1810,19 +1853,20 @@
     document.getElementById('new-btn').addEventListener('click', startNewWorld);
 
     // ── Screenshot (JP-50) ───────────────────────────────────────────
-    const HUD_IDS = ['hotbar', 'crosshair', 'actions', 'toast', 'block-name-toast', 'overlay'];
+    const HUD_IDS = ['hotbar', 'crosshair', 'actions', 'toast', 'block-name-toast', 'overlay', 'missions-panel', 'backpack-btn', 'photo-tools', 'touch-topleft', 'joystick', 'touch-actions'];
 
     function takeScreenshot() {
+      const hiddenEls = [];
       HUD_IDS.forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.style.visibility = 'hidden';
+        if (el && el.style.visibility !== 'hidden') {
+          hiddenEls.push(el);
+          el.style.visibility = 'hidden';
+        }
       });
       renderer.render(scene, camera); // clean frame with no HUD
       const dataURL = renderer.domElement.toDataURL('image/png');
-      HUD_IDS.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.visibility = '';
-      });
+      hiddenEls.forEach(el => { el.style.visibility = ''; });
       const a    = document.createElement('a');
       const date = new Date().toISOString().slice(0, 10);
       a.download = `jaxx-world-${date}.png`;
@@ -2232,6 +2276,10 @@
     const touchDayBtn    = document.getElementById('touch-day-btn');
     const controlsHelpEl = document.getElementById('controls-help');
     const controlsCloseBtn = document.getElementById('controls-close-btn');
+    const photoToolsEl   = document.getElementById('photo-tools');
+    const photoShotBtn   = document.getElementById('photo-shot-btn');
+    const photoCleanBtn  = document.getElementById('photo-clean-btn');
+    const photoExitBtn   = document.getElementById('photo-exit-btn');
     const actionsEl      = document.getElementById('actions');
 
     function syncTouchActionButtons() {
@@ -2309,6 +2357,7 @@
              isInsideEl(hotbarEl,       x, y) ||
              isInsideEl(backpackBtn,    x, y) ||
              isInsideEl(backpackPanel,  x, y) ||
+             isInsideEl(photoToolsEl,   x, y) ||
              isInsideEl(overlay,        x, y) ||
              isInsideEl(controlsHelpEl, x, y) ||
              isInsideEl(titleScreen,    x, y);
@@ -2458,6 +2507,25 @@
       showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
     });
 
+    // PHOTO MODE tools (JP-86)
+    photoShotBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      takeScreenshot();
+    });
+    photoCleanBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.body.classList.toggle('photo-clean');
+      photoCleanBtn.textContent = document.body.classList.contains('photo-clean') ? '👁️' : '🙈';
+      showToast(document.body.classList.contains('photo-clean') ? 'Photo controls faded' : 'Photo controls visible');
+    });
+    photoExitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (photoMode) togglePhotoMode();
+    });
+
     // PHOTO MODE toggle for touch (JP-66)
     document.getElementById('touch-photo-btn').addEventListener('click', () => {
       togglePhotoMode();
@@ -2573,16 +2641,20 @@
         savedVelocityY = velocityY;
         closeBackpack();
         document.body.classList.add('photo-mode');
+        document.body.classList.remove('photo-clean');
+        photoCleanBtn.textContent = '🙈';
         hud.forEach(el => { if (el) el.style.display = 'none'; });
         if (photoBtn) {
           photoBtn.textContent = '↩️';
           photoBtn.title = 'Exit photo mode';
         }
-        showToast(hasTouch ? '📸 Photo Mode — drag to look, joystick to move, 📸/↩️ to exit' : '📸 Photo Mode — F3 to exit');
+        showToast(hasTouch ? '📸 Photo Mode — 📷 photo, 🙈 fade controls, ↩️ exit' : '📸 Photo Mode — F3 to exit, 📷 for photo');
       } else {
         camera.position.copy(savedPlayerPos);
         velocityY = savedVelocityY;
         document.body.classList.remove('photo-mode');
+        document.body.classList.remove('photo-clean');
+        photoCleanBtn.textContent = '🙈';
         endJoystick();
         endLook();
         keys[' '] = false;
