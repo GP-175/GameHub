@@ -157,7 +157,7 @@
       icon: 'GP',
       tagline: 'Host a live team quiz',
       ageGroups: ['adult'],
-      path: 'https://gp-hoot.gplange.tech/gp-hoot',
+      path: '/gp-hoot',
       accent: '#16213e',
     },
     {

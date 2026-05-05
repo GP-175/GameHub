@@ -733,9 +733,19 @@ app.get('/sw.js', (_req, res) => {
   res.set('Expires', '0');
   res.sendFile(path.join(ROOT, 'sw.js'));
 });
+function isLocalGpHootHost(hostHeader) {
+  const host = String(hostHeader || '').toLowerCase().split(':')[0];
+  return host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1' ||
+    host.startsWith('192.168.') ||
+    host.startsWith('10.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+}
+
 app.get('/gp-hoot', (req, res) => {
   const host = String(req.headers.host || '').toLowerCase();
-  if (host && !host.startsWith('gp-hoot.gplange.tech')) {
+  if (host && !host.startsWith('gp-hoot.gplange.tech') && !isLocalGpHootHost(host)) {
     const target = new URL('https://gp-hoot.gplange.tech/gp-hoot');
     const room = req.query?.room;
     if (room) target.searchParams.set('room', String(room));
