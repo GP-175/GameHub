@@ -1499,12 +1499,14 @@
 
     // ── Keyboard input ───────────────────────────────────────────────
     const keys       = { w: false, a: false, s: false, d: false, ' ': false };
+    let jumpRequested = false;
     const blockOrder = Object.keys(BLOCKS).map(Number);
 
     window.addEventListener('keydown', (e) => {
       if (e.key === ' ' && e.repeat) return; // Prevent continuous jumping from holding space
       const k = e.key.toLowerCase();
       if (k in keys) keys[k] = true;
+      if (e.key === ' ' && !photoMode) jumpRequested = true;
       if (e.key >= '1' && e.key <= '9') {
         const id = Number(e.key);
         if (BLOCKS[id]) setSelectedBlock(id);
@@ -1727,10 +1729,32 @@
       if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
     });
 
-    // JUMP — flag the spacebar press; the render loop consumes it
-    bindTouchButton(touchJumpBtn, () => {
-      if (!gameStarted) return;
-      keys[' '] = true;
+    // JUMP — one-shot in gameplay; hold-to-rise in photo mode.
+    // Use a separate jump request instead of leaving the virtual spacebar
+    // pressed, otherwise iPad can keep jumping/flying after one tap.
+    function beginTouchJump(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchJumpBtn.disabled) return;
+      if (photoMode) keys[' '] = true;
+      else jumpRequested = true;
+    }
+    function endTouchJump(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      keys[' '] = false;
+    }
+    touchJumpBtn.addEventListener('pointerdown', beginTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('pointerup',   endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('pointercancel', endTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('touchstart',  beginTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('touchend',    endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('touchcancel', endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
     });
 
     // PAUSE — show the pause overlay (no pointer to release on touch)
@@ -1981,11 +2005,12 @@
       }
 
       // ── Vertical movement: gravity + jump ──────────────────────────
-      if (keys[' ']) {
+      if (jumpRequested || keys[' ']) {
         if (onGround) {
           velocityY = JUMP_VELOCITY;
           onGround  = false;
         }
+        jumpRequested = false;
         keys[' '] = false; // Consume the jump press immediately
       }
 
