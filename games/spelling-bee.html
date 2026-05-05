@@ -19,8 +19,27 @@
     background: white; border-radius: 22px; padding: 18px 36px;
     box-shadow: var(--shadow);
     display: flex; flex-direction: column; align-items: center; gap: 8px;
+    position: relative; overflow: hidden;
   }
   .pic-stage .em { font-size: 5rem; line-height: 1; }
+  .pic-stage.celebrate .em { animation: bee-bounce .55s ease both; }
+  .pic-stage.celebrate::after {
+    content: '✨ ⭐ ✨'; position: absolute; inset: 6px 0 auto 0;
+    text-align: center; font-size: 1.8rem; animation: sparkle-pop .7s ease both;
+  }
+  .setup-card {
+    display: grid; gap: 10px; width: min(680px, 100%);
+    background: rgba(255,255,255,.82); border-radius: 18px; padding: 14px;
+    box-shadow: var(--shadow);
+  }
+  .setup-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: center; }
+  .setup-card label { font-weight: 900; color: var(--ink); }
+  .setup-card select, .setup-card textarea {
+    border: 0; border-radius: 12px; padding: 10px 12px; font: inherit;
+    box-shadow: inset 0 0 0 2px rgba(108,92,231,.16); background: white; color: var(--ink);
+  }
+  .setup-card textarea { width: 100%; min-height: 68px; resize: vertical; }
+  .setup-card .hint { font-size: .88rem; color: var(--muted); text-align: center; }
   .slots { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
   .slot {
     width: 58px; height: 70px; border-radius: 14px;
@@ -31,6 +50,9 @@
   }
   .slot.active { border-color: var(--accent); }
   .slot.filled { background: var(--accent-soft); color: var(--accent); }
+  .slot.correct { background: #e8fff1; border-color: #27ae60; color: #18864a; }
+  .slot.wrong { background: #fff0ef; border-color: #e74c3c; color: #c0392b; }
+  .slot.reveal { background: #fff8d8; border-color: #f2c94c; color: #8f6b00; }
   .letter-bank { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 560px; }
   .letter-btn {
     width: 52px; height: 52px; border-radius: 12px;
@@ -40,8 +62,20 @@
     box-shadow: var(--shadow);
   }
   .letter-btn:hover { transform: translateY(-2px); }
-  .letter-btn[disabled] { opacity: .25; cursor: default; }
-  .toolbar { display: flex; gap: 10px; }
+  .letter-btn[disabled] { opacity: .25; cursor: default; transform: none; }
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .review-list { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; }
+  .review-list li { background: var(--accent-soft); border-radius: 12px; padding: 8px 12px; font-weight: 800; }
+  @keyframes bee-bounce {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    35% { transform: scale(1.22) rotate(-8deg); }
+    70% { transform: scale(1.1) rotate(8deg); }
+  }
+  @keyframes sparkle-pop {
+    0% { opacity: 0; transform: translateY(16px) scale(.6); }
+    55% { opacity: 1; transform: translateY(0) scale(1.08); }
+    100% { opacity: 0; transform: translateY(-22px) scale(1); }
+  }
 </style>
 </head>
 <body>
@@ -53,8 +87,23 @@
   </header>
 
   <main class="game-area">
+    <div class="setup-card" id="setup-card">
+      <div class="setup-row">
+        <label for="difficulty">Level</label>
+        <select id="difficulty">
+          <option value="easy">Easy: 3 letters</option>
+          <option value="medium">Medium: 4–5 letters</option>
+          <option value="hard">Hard: longer words</option>
+          <option value="mixed">Mixed practice</option>
+          <option value="custom">Custom list</option>
+        </select>
+        <button class="btn btn-soft" id="apply-settings">Start level</button>
+      </div>
+      <textarea id="custom-words" class="hidden" placeholder="Custom words: rainbow, school, flower 🌸, rocket 🚀"></textarea>
+      <div class="hint" id="setup-hint">Pick a level or add custom words for parent/teacher practice.</div>
+    </div>
     <div class="prompt" id="prompt">Spell the word!</div>
-    <div class="pic-stage">
+    <div class="pic-stage" id="pic-stage">
       <span class="em" id="pic-em">?</span>
     </div>
     <div class="slots" id="slots"></div>
@@ -75,6 +124,7 @@
     <div class="muted">All done!</div>
     <div class="score-line"><span id="final-score">0</span>%</div>
     <p id="final-msg" class="muted"></p>
+    <div id="missed-review"></div>
     <div class="row" style="justify-content:center;margin-top:10px;">
       <button class="btn" id="play-again">Play again</button>
       <a class="btn btn-soft" href="../index.html">Hub</a>
@@ -84,59 +134,104 @@
 
 <script>
 const WORDS = [
-  { w: 'cat', em: '🐱' },
-  { w: 'dog', em: '🐶' },
-  { w: 'sun', em: '☀️' },
-  { w: 'bed', em: '🛏️' },
-  { w: 'cup', em: '🥤' },
-  { w: 'hat', em: '🎩' },
-  { w: 'pig', em: '🐷' },
-  { w: 'bee', em: '🐝' },
-  { w: 'fish', em: '🐟' },
-  { w: 'cake', em: '🍰' },
-  { w: 'duck', em: '🦆' },
-  { w: 'frog', em: '🐸' },
-  { w: 'star', em: '⭐' },
-  { w: 'tree', em: '🌳' },
-  { w: 'moon', em: '🌙' },
-  { w: 'bird', em: '🐦' },
-  { w: 'apple', em: '🍎' },
-  { w: 'grape', em: '🍇' },
-  { w: 'horse', em: '🐴' },
-  { w: 'snake', em: '🐍' },
+  { w: 'cat', em: '🐱', level: 'easy' },
+  { w: 'dog', em: '🐶', level: 'easy' },
+  { w: 'sun', em: '☀️', level: 'easy' },
+  { w: 'bed', em: '🛏️', level: 'easy' },
+  { w: 'cup', em: '🥤', level: 'easy' },
+  { w: 'hat', em: '🎩', level: 'easy' },
+  { w: 'pig', em: '🐷', level: 'easy' },
+  { w: 'bee', em: '🐝', level: 'easy' },
+  { w: 'fish', em: '🐟', level: 'medium' },
+  { w: 'cake', em: '🍰', level: 'medium' },
+  { w: 'duck', em: '🦆', level: 'medium' },
+  { w: 'frog', em: '🐸', level: 'medium' },
+  { w: 'star', em: '⭐', level: 'medium' },
+  { w: 'tree', em: '🌳', level: 'medium' },
+  { w: 'moon', em: '🌙', level: 'medium' },
+  { w: 'bird', em: '🐦', level: 'medium' },
+  { w: 'apple', em: '🍎', level: 'medium' },
+  { w: 'grape', em: '🍇', level: 'medium' },
+  { w: 'horse', em: '🐴', level: 'medium' },
+  { w: 'snake', em: '🐍', level: 'medium' },
+  { w: 'planet', em: '🪐', level: 'hard' },
+  { w: 'rocket', em: '🚀', level: 'hard' },
+  { w: 'flower', em: '🌸', level: 'hard' },
+  { w: 'school', em: '🏫', level: 'hard' },
+  { w: 'yellow', em: '💛', level: 'hard' },
+  { w: 'rainbow', em: '🌈', level: 'hard' },
 ];
 
 const TOTAL_ROUNDS = 8;
 let round = 0, correct = 0, target = null, filled = [];
+let selectedDifficulty = 'easy', currentWords = [], usedWords = [], missedWords = [];
+let attemptCount = 0, reviewing = false;
 
 window.addEventListener('DOMContentLoaded', () => {
-  Hub.startSession('spelling-bee');
-  nextRound();
   document.getElementById('play-again').onclick = () => {
     document.getElementById('overlay').classList.add('hidden');
-    round = 0; correct = 0;
-    Hub.startSession('spelling-bee');
-    nextRound();
+    startGame();
   };
   document.getElementById('back-btn').onclick = undoLetter;
-  document.getElementById('hear-btn').onclick = () => target && Hub.speak(target.w);
+  document.getElementById('hear-btn').onclick = speakPrompt;
   document.getElementById('next-btn').onclick = nextRound;
+  document.getElementById('apply-settings').onclick = startGame;
+  document.getElementById('difficulty').onchange = () => {
+    selectedDifficulty = document.getElementById('difficulty').value;
+    document.getElementById('custom-words').classList.toggle('hidden', selectedDifficulty !== 'custom');
+  };
+  startGame();
 });
+
+function startGame() {
+  selectedDifficulty = document.getElementById('difficulty').value;
+  currentWords = getWordsForLevel(selectedDifficulty);
+  if (currentWords.length === 0) {
+    currentWords = getWordsForLevel('easy');
+    document.getElementById('feedback').textContent = 'Add at least one custom word — starting Easy for now.';
+    document.getElementById('feedback').className = 'feedback bad';
+  }
+  round = 0; correct = 0; usedWords = []; missedWords = [];
+  Hub.startSession('spelling-bee');
+  nextRound();
+}
+
+function getWordsForLevel(level) {
+  if (level === 'custom') return parseCustomWords();
+  if (level === 'mixed') return [...WORDS];
+  return WORDS.filter(word => word.level === level);
+}
+
+function parseCustomWords() {
+  const raw = document.getElementById('custom-words').value.trim();
+  if (!raw) return [];
+  const seen = new Set();
+  return raw.split(/[\n,]+/).map(part => {
+    const cleaned = part.trim().toLowerCase();
+    const match = cleaned.match(/^([a-z]+)(?:\s+(.+))?$/);
+    if (!match || seen.has(match[1])) return null;
+    seen.add(match[1]);
+    return { w: match[1], em: match[2] || '🔤', level: 'custom' };
+  }).filter(Boolean);
+}
 
 function nextRound() {
   if (round >= TOTAL_ROUNDS) return endGame();
   round++;
+  filled = [];
+  attemptCount = 0;
+  reviewing = false;
   document.getElementById('feedback').textContent = '\u00A0';
+  document.getElementById('feedback').className = 'feedback';
   document.getElementById('next-btn').classList.add('hidden');
   document.getElementById('back-btn').disabled = false;
   document.getElementById('bar').style.width = (round / TOTAL_ROUNDS * 100) + '%';
-  filled = [];
 
-  target = WORDS[Math.floor(Math.random() * WORDS.length)];
+  target = pickUnusedWord();
+  document.getElementById('prompt').textContent = `Round ${round}: spell the word`;
   document.getElementById('pic-em').textContent = target.em;
-  Hub.speak(target.w);
+  speakPrompt();
 
-  // render slots
   const slots = document.getElementById('slots');
   slots.innerHTML = '';
   for (let i = 0; i < target.w.length; i++) {
@@ -145,12 +240,26 @@ function nextRound() {
     slots.appendChild(s);
   }
 
-  // letter bank: correct letters + distractors, shuffled, up to 8 letters
+  renderLetterBank();
+  updateScore();
+  highlightNext();
+}
+
+function pickUnusedWord() {
+  const available = currentWords.filter(word => !usedWords.includes(word.w));
+  const pool = available.length ? available : currentWords;
+  if (!available.length) usedWords = [];
+  const word = pool[Math.floor(Math.random() * pool.length)];
+  usedWords.push(word.w);
+  return word;
+}
+
+function renderLetterBank() {
   const letters = target.w.split('');
   const extras = new Set();
-  while (extras.size + letters.length < 8) {
+  while (extras.size + letters.length < Math.max(8, target.w.length + 3)) {
     const L = String.fromCharCode(97 + Math.floor(Math.random() * 26));
-    extras.add(L);
+    if (!letters.includes(L)) extras.add(L);
   }
   const bankArr = [...letters, ...extras].sort(() => Math.random() - 0.5);
 
@@ -165,19 +274,23 @@ function nextRound() {
     b.onclick = () => pickLetter(b, L);
     bank.appendChild(b);
   });
-  updateScore();
-  highlightNext();
+}
+
+function speakPrompt() {
+  if (!target) return;
+  Hub.speak('Spell ' + target.w);
 }
 
 function highlightNext() {
   const slots = document.querySelectorAll('.slot');
   slots.forEach((s, i) => {
-    s.classList.toggle('active', i === filled.length);
+    s.classList.toggle('active', !reviewing && i === filled.length);
   });
 }
 
 function pickLetter(btn, L) {
-  if (filled.length >= target.w.length || !document.getElementById('next-btn').classList.contains('hidden')) return;
+  if (reviewing || filled.length >= target.w.length) return;
+  clearSlotJudgement();
   filled.push({ L, btn });
   btn.disabled = true;
   const slots = document.querySelectorAll('.slot');
@@ -188,38 +301,89 @@ function pickLetter(btn, L) {
 }
 
 function undoLetter() {
-  if (filled.length === 0 || !document.getElementById('next-btn').classList.contains('hidden')) return;
+  if (reviewing || filled.length === 0) return;
+  clearSlotJudgement();
   const last = filled.pop();
   last.btn.disabled = false;
   const slots = document.querySelectorAll('.slot');
   slots[filled.length].textContent = '';
-  slots[filled.length].classList.remove('filled');
+  slots[filled.length].className = 'slot';
   highlightNext();
+}
+
+function clearSlotJudgement() {
+  document.querySelectorAll('.slot').forEach(slot => slot.classList.remove('correct', 'wrong', 'reveal'));
 }
 
 function checkWord() {
   const attempt = filled.map(f => f.L).join('');
-  if (attempt === target.w) {
-    correct++;
-    document.getElementById('feedback').textContent = 'Perfect spelling!';
-    document.getElementById('feedback').className = 'feedback good';
-    Hub.speak('Yes! ' + target.w);
-    setTimeout(nextRound, 900);
-  } else {
-    document.getElementById('feedback').textContent = `Not quite — the correct spelling is "${target.w.toUpperCase()}"`;
+  attemptCount++;
+  if (attempt === target.w) return markCorrect();
+  showAttemptHints();
+  if (attemptCount === 1) {
+    document.getElementById('feedback').textContent = 'Good try — check the colors, fix it, and try again!';
     document.getElementById('feedback').className = 'feedback bad';
-    // reveal correct word in slots and wait for the player to continue
-    const slots = document.querySelectorAll('.slot');
-    target.w.split('').forEach((L, i) => {
-      slots[i].textContent = L.toUpperCase();
-      slots[i].classList.add('filled');
-    });
-    filled.forEach(({ btn }) => { btn.disabled = true; });
-    document.getElementById('back-btn').disabled = true;
-    document.getElementById('next-btn').classList.remove('hidden');
-    Hub.speak('Not quite. The word is ' + target.w);
+    Hub.speak('Good try. Check the letters and try again.');
+    return;
   }
+  revealAnswer();
+}
+
+function showAttemptHints() {
+  const slots = document.querySelectorAll('.slot');
+  const targetLetters = target.w.split('');
+  filled.forEach(({ L }, i) => {
+    slots[i].classList.toggle('correct', L === targetLetters[i]);
+    slots[i].classList.toggle('wrong', L !== targetLetters[i]);
+  });
+}
+
+function markCorrect() {
+  correct++;
+  reviewing = true;
+  document.querySelectorAll('.slot').forEach(slot => slot.classList.add('correct'));
+  document.querySelectorAll('.letter-btn').forEach(btn => { btn.disabled = true; });
+  document.getElementById('back-btn').disabled = true;
+  document.getElementById('feedback').textContent = attemptCount === 1 ? 'Perfect spelling!' : 'You fixed it — great spelling!';
+  document.getElementById('feedback').className = 'feedback good';
+  document.getElementById('next-btn').classList.remove('hidden');
+  celebrate();
+  Hub.speak('Great job! ' + spellOut(target.w));
   updateScore();
+}
+
+function revealAnswer() {
+  reviewing = true;
+  rememberMissedWord();
+  document.getElementById('feedback').textContent = `Not quite — the correct spelling is "${target.w.toUpperCase()}"`;
+  document.getElementById('feedback').className = 'feedback bad';
+  const slots = document.querySelectorAll('.slot');
+  target.w.split('').forEach((L, i) => {
+    slots[i].textContent = L.toUpperCase();
+    slots[i].className = 'slot filled reveal';
+  });
+  filled.forEach(({ btn }) => { btn.disabled = true; });
+  document.querySelectorAll('.letter-btn').forEach(btn => { btn.disabled = true; });
+  document.getElementById('back-btn').disabled = true;
+  document.getElementById('next-btn').classList.remove('hidden');
+  Hub.speak('Not quite. The correct spelling is ' + spellOut(target.w));
+  updateScore();
+}
+
+function rememberMissedWord() {
+  if (!missedWords.some(word => word.w === target.w)) missedWords.push(target);
+}
+
+function spellOut(word) {
+  return word.toUpperCase().split('').join('. ');
+}
+
+function celebrate() {
+  const stage = document.getElementById('pic-stage');
+  stage.classList.remove('celebrate');
+  void stage.offsetWidth;
+  stage.classList.add('celebrate');
+  setTimeout(() => stage.classList.remove('celebrate'), 750);
 }
 
 function updateScore() {
@@ -232,7 +396,29 @@ function endGame() {
   document.getElementById('final-score').textContent = pct;
   const msg = pct === 100 ? 'Perfect speller!' : pct >= 75 ? 'Great job!' : pct >= 50 ? 'Nice try!' : 'Keep practicing!';
   document.getElementById('final-msg').textContent = msg;
+  renderMissedReview();
   document.getElementById('overlay').classList.remove('hidden');
+}
+
+function renderMissedReview() {
+  const review = document.getElementById('missed-review');
+  review.innerHTML = '';
+  const note = document.createElement('p');
+  note.className = 'muted';
+  if (!missedWords.length) {
+    note.textContent = 'No missed words — amazing work! 🎉';
+    review.appendChild(note);
+    return;
+  }
+  note.textContent = 'Practice these words next:';
+  const list = document.createElement('ul');
+  list.className = 'review-list';
+  missedWords.forEach(word => {
+    const item = document.createElement('li');
+    item.textContent = `${word.em} ${word.w.toUpperCase()}`;
+    list.appendChild(item);
+  });
+  review.append(note, list);
 }
 </script>
 </body>
