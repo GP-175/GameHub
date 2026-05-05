@@ -2015,6 +2015,8 @@
     const localWarning = localOrigin && state.lanOrigin
       ? `<div class="result-banner neutral small">Phone testing uses ${esc(state.lanOrigin)}. Open the host there too if QR scans fail.</div>`
       : '';
+    const readyCount = room.players.filter((player) => player.ready).length;
+    const previewQuestions = room.quiz.questions || [];
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad">
@@ -2022,7 +2024,7 @@
           <div class="room-code">${esc(room.room.code)}</div>
           <h2>${esc(room.quiz.title)}</h2>
           <p class="muted">${esc(room.quiz.description || 'Waiting for players.')}</p>
-          <p class="small muted" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-shuffle"/></svg>Auto-advance ${room.room.autoAdvanceResults ? 'on' : 'off'}</p>
+          <p class="small muted" style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-shuffle"/></svg>Auto-advance ${room.room.autoAdvanceResults ? 'on' : 'off'} • ${readyCount}/${room.players.length} ready</p>
           ${localWarning}
           <div class="row" style="margin-top:14px">
             <button class="btn good btn-cta" id="start-game" type="button" ${room.players.length ? '' : 'disabled'}><svg class="icon-lg"><use href="#i-play"/></svg>Start game</button>
@@ -2039,6 +2041,8 @@
           <p class="small muted join-url">${esc(joinUrl)}</p>
           <h3 style="display:flex;align-items:center;gap:6px;margin-top:14px"><svg class="icon"><use href="#i-users"/></svg>Players (${room.players.length})</h3>
           <div class="player-list">${playersTemplate(room, true)}</div>
+          <h3 style="display:flex;align-items:center;gap:6px;margin-top:14px"><svg class="icon"><use href="#i-spark"/></svg>Question preview</h3>
+          <div class="question-report-list">${previewQuestions.slice(0, 5).map((question, index) => `<div class="question-report"><strong>#${index + 1}</strong><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(question.text)}</span><span class="accuracy-pill">${question.timeLimitSeconds || 20}s</span></div>`).join('')}</div>
         </aside>
       </div>
     `;
@@ -2052,6 +2056,8 @@
     const pauseIcon = room.room.paused ? 'i-play' : 'i-pause';
     const pauseLabel = room.room.paused ? 'Resume' : 'Pause';
     const lockedCount = room.players.filter((p) => p.locked).length;
+    const readyCount = room.players.filter((player) => player.ready).length;
+    const previewQuestions = room.quiz.questions || [];
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad game-stage">
@@ -2070,6 +2076,8 @@
           <h3 style="display:flex;align-items:center;gap:6px"><svg class="icon"><use href="#i-check"/></svg>Answers</h3>
           <p class="muted"><b>${lockedCount}</b> of <b>${room.players.length}</b> locked in</p>
           <div class="player-list">${playersTemplate(room, true)}</div>
+          <h3 style="display:flex;align-items:center;gap:6px;margin-top:14px"><svg class="icon"><use href="#i-spark"/></svg>Question preview</h3>
+          <div class="question-report-list">${previewQuestions.slice(0, 5).map((question, index) => `<div class="question-report"><strong>#${index + 1}</strong><span style="min-width:0;overflow:hidden;text-overflow:ellipsis">${esc(question.text)}</span><span class="accuracy-pill">${question.timeLimitSeconds || 20}s</span></div>`).join('')}</div>
         </aside>
       </div>
     `;
@@ -2083,6 +2091,8 @@
     const isFinishing = room.room.currentQuestionIndex + 1 >= room.room.totalQuestions;
     const nextIcon = isFinishing ? 'i-trophy' : 'i-skip';
     const nextLabel = isFinishing ? 'Finish' : 'Next';
+    const readyCount = room.players.filter((player) => player.ready).length;
+    const previewQuestions = room.quiz.questions || [];
     container.innerHTML = `
       <div class="room-layout">
         <section class="band pad game-stage">
@@ -2130,10 +2140,12 @@
           <span class="intro-tag"><svg class="icon"><use href="#i-clock"/></svg>Waiting room</span>
           <h2 style="margin-top:10px">${esc(room.quiz.title)}</h2>
           <p class="muted">The host will start the game shortly.</p>
+          <button class="btn ${room.you?.ready ? 'good' : 'secondary'}" id="ready-toggle" type="button"><svg class="icon"><use href="#i-check"/></svg>${room.you?.ready ? 'Ready!' : 'Mark ready'}</button>
           <h3 style="display:flex;align-items:center;gap:6px;margin-top:18px"><svg class="icon"><use href="#i-users"/></svg>Players (${room.players.length})</h3>
           <div class="player-list">${playersTemplate(room, false)}</div>
         </div>
       `;
+      $('ready-toggle').onclick = () => playerEmit('player:set_ready', { ready: !room.you?.ready });
     } else if (room.room.phase === 'question') {
       renderPlayerQuestion(container, room);
     } else if (room.room.phase === 'results') {
@@ -2243,6 +2255,8 @@
     const hostActions = `
       <div class="row">
         <button class="btn good btn-cta" id="play-again" type="button"><svg class="icon-lg"><use href="#i-play"/></svg>Play again</button>
+        <button class="btn secondary" id="copy-report" type="button"><svg class="icon"><use href="#i-copy"/></svg>Copy report</button>
+        <button class="btn secondary" id="download-report" type="button"><svg class="icon"><use href="#i-save"/></svg>CSV</button>
         <button class="btn secondary" id="back-dashboard" type="button"><svg class="icon"><use href="#i-hub"/></svg>Dashboard</button>
       </div>
     `;
@@ -2273,6 +2287,10 @@
     `;
     const again = $('play-again');
     if (again) again.onclick = () => launchRoom().catch((err) => toast(err.message));
+    const copyReport = $('copy-report');
+    if (copyReport) copyReport.onclick = () => copyText(reportText(room), 'Report');
+    const downloadReport = $('download-report');
+    if (downloadReport) downloadReport.onclick = () => downloadText(`gp-hoot-${room.room.code}-report.csv`, reportCsv(room), 'text/csv');
     const back = $('back-dashboard');
     if (back) back.onclick = () => {
       state.hostRoomCode = null;
@@ -2351,7 +2369,9 @@
     return room.players.map((player) => {
       const lockedTag = player.locked
         ? '<svg class="icon" style="color:#22c55e"><use href="#i-check"/></svg>'
-        : `<span class="status-dot ${player.connected ? 'on' : ''}"></span>`;
+        : player.ready
+          ? '<span class="accuracy-pill">Ready</span>'
+          : `<span class="status-dot ${player.connected ? 'on' : ''}"></span>`;
       const trailing = hostControls && player.id
         ? `<button class="btn secondary" data-kick-player="${esc(player.id)}" type="button" aria-label="Kick player"><svg class="icon"><use href="#i-x"/></svg></button>`
         : `<b>${player.score}</b>`;
@@ -2406,9 +2426,49 @@
     `;
   }
 
+  function reportText(room) {
+    const report = room.finalReport;
+    if (!report) return 'No final report available.';
+    const lines = [
+      `${room.quiz.title} — GP-hoot report`,
+      `${report.totalPlayers} players • ${report.totalQuestions} questions • ${report.averageAccuracyPercent}% average accuracy`,
+      '',
+      'Toughest questions:',
+      ...(report.toughestQuestions || []).map((question) => `#${question.index + 1}: ${question.text} (${question.accuracyPercent}% correct)`),
+    ];
+    return lines.join('\n');
+  }
+
+  function reportCsv(room) {
+    const rows = [['Question #', 'Question', 'Correct answer', 'Correct', 'Players', 'Accuracy %', 'Unanswered', 'Avg response ms']];
+    (room.finalReport?.questions || []).forEach((question) => {
+      rows.push([question.index + 1, question.text, question.correctOption, question.correctCount, question.totalPlayers, question.accuracyPercent, question.unansweredCount, question.avgResponseMs ?? '']);
+    });
+    return rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+  }
+
+  function downloadText(filename, content, type = 'text/plain') {
+    const blob = new Blob([content], { type });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   function bindKickButtons() {
     document.querySelectorAll('[data-kick-player]').forEach((button) => {
       button.onclick = () => hostEmit('host:kick_player', { playerId: button.dataset.kickPlayer });
+    });
+  }
+
+  function playerEmit(event, payload = {}) {
+    if (!state.playerSocket) return;
+    state.playerSocket.emit(event, payload, (reply) => {
+      if (!reply?.ok) toast(reply?.error || 'Action failed.');
     });
   }
 

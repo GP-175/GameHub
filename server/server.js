@@ -523,12 +523,18 @@ function makeClientState(room, socketData = {}) {
     quiz: {
       title: room.quizSnapshot.title,
       description: room.quizSnapshot.description,
+      questions: isHost ? room.quizSnapshot.questions.map((q) => ({
+        text: q.text,
+        type: q.type,
+        timeLimitSeconds: q.timeLimitSeconds,
+      })) : undefined,
     },
     players: playablePlayers(room).map((p) => ({
       id: isHost ? p.id : undefined,
       nickname: p.nickname,
       score: p.score,
       connected: p.connected,
+      ready: !!p.ready,
       locked: !!answers[p.id],
       totalResponseMs: isHost ? p.totalResponseMs : undefined,
     })),
@@ -552,6 +558,7 @@ function makeClientState(room, socketData = {}) {
       nickname: player.nickname,
       score: player.score,
       connected: player.connected,
+      ready: !!player.ready,
       locked: !!answer,
       answerIndex: answer ? answer.optionIndex : null,
       roundPoints: player.lastRoundPoints || 0,
@@ -1155,6 +1162,7 @@ io.on('connection', (socket) => {
         joinedAt: nowIso(),
         leftAt: null,
         connected: true,
+        ready: false,
         kicked: false,
         lastRoundPoints: 0,
         lastAnswerCorrect: null,
@@ -1163,12 +1171,31 @@ io.on('connection', (socket) => {
       room.players.push(player);
     }
 
+    if (room.phase !== 'lobby') player.ready = true;
+
     socket.data.role = 'player';
     socket.data.roomCode = room.code;
     socket.data.playerId = player.id;
     socket.join(room.code);
     saveRoom(room);
     ackOrError(socket, ack, { ok: true, state: makeClientState(room, socket.data) });
+    await emitRoomState(room);
+  });
+
+  socket.on('player:set_ready', async (payload, ack) => {
+    if (socketRateLimited(socket, 'player_ready', 60, 60_000)) {
+      ackOrError(socket, ack, { ok: false, error: 'Too many ready toggles. Try again shortly.' });
+      return;
+    }
+    const room = playerRoom(socket);
+    const player = room?.players.find((p) => p.id === socket.data.playerId && !p.kicked);
+    if (!room || !player || room.phase !== 'lobby') {
+      ackOrError(socket, ack, { ok: false, error: 'Ready status can only be changed in the lobby.' });
+      return;
+    }
+    player.ready = payload?.ready !== false;
+    saveRoom(room);
+    ackOrError(socket, ack, { ok: true });
     await emitRoomState(room);
   });
 
@@ -1227,6 +1254,7 @@ io.on('connection', (socket) => {
       return;
     }
     room.startedAt = nowIso();
+    room.players.forEach((player) => { player.ready = true; });
     ackOrError(socket, ack, { ok: true });
     startQuestion(room, 0);
   });

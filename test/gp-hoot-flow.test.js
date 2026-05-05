@@ -184,6 +184,10 @@ test('host and players can complete a GP-hoot room flow', async (t) => {
   assert.equal((await ack(p1, 'player:join', { code, nickname: 'Ada' })).ok, true);
   assert.equal((await ack(p2, 'player:join', { code, nickname: 'Ben' })).ok, true);
   assert.equal((await ack(p3, 'player:join', { code, nickname: 'Cleo' })).ok, true);
+  assert.equal((await ack(p1, 'player:set_ready', { ready: true })).ok, true);
+  const readyState = await waitForState(host, (state) => state.players.some((player) => player.nickname === 'Ada' && player.ready));
+  assert.equal(readyState.players.find((player) => player.nickname === 'Ada').ready, true);
+  assert.equal(readyState.quiz.questions.length, 1);
 
   const questionStatePromise = waitForState(host, (state) => state.room.phase === 'question');
   assert.equal((await ack(host, 'host:start')).ok, true);
