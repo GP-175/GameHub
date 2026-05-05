@@ -342,7 +342,7 @@
     }
     body.touch #touch-actions { display: flex; }
     .touch-btn {
-      width: 76px; height: 76px;
+      width: clamp(76px, 8.5vw, 92px); height: clamp(76px, 8.5vw, 92px);
       border-radius: 50%;
       border: 3px solid rgba(255, 255, 255, 0.45);
       background: rgba(0, 0, 0, 0.50);
@@ -365,7 +365,7 @@
     }
     #touch-break-btn { background: rgba(180, 60, 60, 0.55); }
     #touch-place-btn { background: rgba(60, 130, 200, 0.55); }
-    #touch-jump-btn  { background: rgba(80, 160, 80, 0.55); width: 84px; height: 84px; font-size: 22px; }
+    #touch-jump-btn  { background: rgba(80, 160, 80, 0.55); width: clamp(86px, 9.5vw, 104px); height: clamp(86px, 9.5vw, 104px); font-size: 22px; }
 
     /* ── Pause / day-night buttons (top-left, touch only) ─────────── */
     #touch-topleft {
@@ -380,7 +380,7 @@
     body.touch #touch-topleft { display: flex; }
     #touch-topleft button {
       padding: 0;
-      width: 50px; height: 50px;
+      width: clamp(52px, 6vw, 64px); height: clamp(52px, 6vw, 64px);
       border-radius: 10px;
       background: rgba(0, 0, 0, 0.55);
       border: 2px solid rgba(255, 255, 255, 0.32);
@@ -390,6 +390,76 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
       display: flex; align-items: center; justify-content: center;
+    }
+
+    /* ── In-game controls help overlay ────────────────────────────── */
+    #controls-help {
+      position: fixed; inset: 0; z-index: 90;
+      display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(4px);
+      font-family: var(--font-game);
+      color: white;
+      box-sizing: border-box;
+    }
+    #controls-help.hidden { display: none; }
+    #controls-card {
+      width: min(560px, 92vw);
+      max-height: 84vh;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(28, 48, 88, 0.94), rgba(16, 34, 58, 0.96));
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-radius: 24px;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    #controls-card h2 {
+      margin: 0 0 14px;
+      font-size: clamp(26px, 5vw, 38px);
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+    .control-tip {
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      padding: 12px;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .control-tip strong {
+      display: block;
+      font-family: var(--font-game);
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    #controls-close-btn {
+      width: 100%;
+      min-height: 54px;
+      border: 0;
+      border-radius: 16px;
+      background: linear-gradient(160deg, #59cf65, #249f38);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 22px;
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.24);
+    }
+    @media (max-width: 560px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+
+    body.touch.photo-mode #joystick,
+    body.touch.photo-mode #touch-actions {
+      z-index: 62;
     }
 
     /* ── On touch: bigger top-right buttons, tappable hotbar ───────── */
@@ -479,8 +549,25 @@
   <!-- Top-left: pause + day/night buttons (touch only) -->
   <div id="touch-topleft">
     <button id="touch-pause-btn"  type="button" title="Pause">⏸</button>
+    <button id="touch-help-btn"   type="button" title="Controls help">❔</button>
     <button id="touch-day-btn"    type="button" title="Toggle day/night">☀️</button>
     <button id="touch-photo-btn"  type="button" title="Photo mode">📸</button>
+  </div>
+
+  <!-- Touch-friendly controls help -->
+  <div id="controls-help" class="hidden" role="dialog" aria-modal="true" aria-labelledby="controls-help-title">
+    <div id="controls-card">
+      <h2 id="controls-help-title">How to play 🎮</h2>
+      <div class="controls-grid">
+        <div class="control-tip"><strong>🕹 Move</strong>Push the left joystick.</div>
+        <div class="control-tip"><strong>👀 Look</strong>Drag anywhere empty on the screen.</div>
+        <div class="control-tip"><strong>⤴ Jump</strong>Tap the green jump button.</div>
+        <div class="control-tip"><strong>⬛ Place</strong>Aim at a block, then tap place.</div>
+        <div class="control-tip"><strong>⛏ Break</strong>Aim at a block, then tap break.</div>
+        <div class="control-tip"><strong>📸 Photo</strong>Tap 📸, fly with joystick, tap ↩️ to exit.</div>
+      </div>
+      <button id="controls-close-btn" type="button">Got it!</button>
+    </div>
   </div>
 
   <!-- Bottom-left: virtual joystick -->
@@ -1531,6 +1618,10 @@
         togglePhotoMode();
         return;
       }
+      if (e.key === 'Escape' && !controlsHelpEl.classList.contains('hidden')) {
+        hideControlsHelp();
+        return;
+      }
       if (e.key.toLowerCase() === 'n') {
         alwaysDay = !alwaysDay;
         showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
@@ -1572,7 +1663,10 @@
     const touchPlaceBtn  = document.getElementById('touch-place-btn');
     const touchJumpBtn   = document.getElementById('touch-jump-btn');
     const touchPauseBtn  = document.getElementById('touch-pause-btn');
+    const touchHelpBtn   = document.getElementById('touch-help-btn');
     const touchDayBtn    = document.getElementById('touch-day-btn');
+    const controlsHelpEl = document.getElementById('controls-help');
+    const controlsCloseBtn = document.getElementById('controls-close-btn');
     const actionsEl      = document.getElementById('actions');
 
     function syncTouchActionButtons() {
@@ -1649,6 +1743,7 @@
              isInsideEl(actionsEl,      x, y) ||
              isInsideEl(hotbarEl,       x, y) ||
              isInsideEl(overlay,        x, y) ||
+             isInsideEl(controlsHelpEl, x, y) ||
              isInsideEl(titleScreen,    x, y);
     }
 
@@ -1761,6 +1856,31 @@
     touchPauseBtn.addEventListener('click', () => {
       if (!gameStarted) return;
       overlay.classList.remove('hidden');
+    });
+
+    // HELP — touch-friendly controls cheat sheet
+    function showControlsHelp() {
+      controlsHelpEl.classList.remove('hidden');
+      endJoystick();
+      endLook();
+      keys[' '] = false;
+      jumpRequested = false;
+    }
+    function hideControlsHelp() {
+      controlsHelpEl.classList.add('hidden');
+    }
+    touchHelpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showControlsHelp();
+    });
+    controlsCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideControlsHelp();
+    });
+    controlsHelpEl.addEventListener('click', (e) => {
+      if (e.target === controlsHelpEl) hideControlsHelp();
     });
 
     // DAY/NIGHT toggle — same as the keyboard "N" shortcut
@@ -1882,6 +2002,7 @@
       if (photoMode) {
         savedPlayerPos.copy(camera.position);
         savedVelocityY = velocityY;
+        document.body.classList.add('photo-mode');
         hud.forEach(el => { if (el) el.style.display = 'none'; });
         if (photoBtn) {
           photoBtn.textContent = '↩️';
@@ -1891,6 +2012,10 @@
       } else {
         camera.position.copy(savedPlayerPos);
         velocityY = savedVelocityY;
+        document.body.classList.remove('photo-mode');
+        endJoystick();
+        endLook();
+        keys[' '] = false;
         hud.forEach(el => { if (el) el.style.display = ''; });
         if (photoBtn) {
           photoBtn.textContent = '📸';
