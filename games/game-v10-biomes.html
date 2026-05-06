@@ -1,0 +1,3504 @@
+<!--
+  Jaxx World — Active development build
+
+  Release history:
+    v1 game-v1-foundation.html   — M1: Foundation         (JP-28→JP-33)
+    v2 game-v2-interaction.html  — M2: Block Interaction  (JP-34→JP-38)
+    v3 game-v3-hotbar.html       — M3: Building Tools     (JP-39→JP-43)
+    v4 game-v4-persistence.html  — M4: World & Persistence(JP-44→JP-48)
+    v5 game-v5-polish.html       — M5: Polish             (JP-49→JP-53)
+    v6 game-v6-terrain.html      — M6: Terrain & Weather  (JP-54→JP-58)
+    v7 game-v7-funmagic.html     — M7: Fun & Magic        (JP-59→JP-66)
+
+  Current milestone: M7 — Fun & Magic (complete)
+    JP-59 [M7-T1] Rainbow block                       ✓
+    JP-60 [M7-T2] Bouncy block                        ✓
+    JP-61 [M7-T3] Sound blocks (Giggle, Cow, Toot)    ✓
+    JP-62 [M7-T4] Glow block — emits light at night   ✓
+    JP-63 [M7-T5] Custom textures                     — skipped
+    JP-64 [M7-T6] NPCs (Teddy, Dad)                   ✓
+    JP-65 [M7-T7] Hidden Easter egg room              ✓
+    JP-66 [M7-T8] Photo mode (F3)                     ✓
+
+  How to run: open in Chrome, or serve with python3 -m http.server 8765.
+  Active file — do not treat as a rollback snapshot.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- iPad / tablet support: fill the viewport, no zoom, no pull-to-refresh -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Jaxx World</title>
+
+  <!-- Fredoka One — rounded, fun display font for the whole game UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #87CEEB; }
+    canvas { display: block; }
+
+    /* ── Design token ──────────────────────────────────────────────── */
+    :root { --font-game: 'Fredoka One', 'Segoe UI', system-ui, sans-serif; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       TITLE SCREEN  (JP-49)
+       Full-screen launch card. The 3D world renders behind it so the
+       scene peeks through the gradient overlay.
+    ══════════════════════════════════════════════════════════════════ */
+    #title-screen {
+      position: fixed; inset: 0; z-index: 100;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: linear-gradient(
+        160deg,
+        rgba(15, 40, 100, 0.84) 0%,
+        rgba(10, 60, 20,  0.82) 100%
+      );
+      font-family: var(--font-game);
+      user-select: none;
+    }
+    #title-screen.hidden { display: none; }
+
+    #game-logo {
+      font-size: clamp(52px, 9vw, 100px);
+      line-height: 1.06;
+      text-align: center;
+      letter-spacing: 2px;
+      background: linear-gradient(135deg, #ffffff 25%, #a8ffc4 80%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 4px 14px rgba(0, 0, 0, 0.55));
+      margin-bottom: 14px;
+    }
+    #welcome-msg {
+      font-size: clamp(22px, 4vw, 40px);
+      color: #fff;
+      text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      margin-bottom: 42px;
+      opacity: 0.95;
+    }
+    #play-btn {
+      font-family: var(--font-game);
+      font-size: clamp(20px, 3vw, 30px);
+      padding: 15px 68px;
+      background: linear-gradient(160deg, #5CCE5A 0%, #2E9E2C 100%);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #1a6e19, 0 10px 26px rgba(0, 0, 0, 0.38);
+      transition: transform 100ms, box-shadow 100ms;
+      letter-spacing: 1px;
+      text-shadow: 0 2px 5px rgba(0, 0, 0, 0.28);
+    }
+    #play-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 9px 0 #1a6e19, 0 14px 32px rgba(0, 0, 0, 0.42);
+    }
+    #play-btn:active {
+      transform: translateY(2px);
+      box-shadow: 0 4px 0 #1a6e19, 0 6px 16px rgba(0, 0, 0, 0.30);
+    }
+    #title-controls {
+      margin-top: 28px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.62);
+      font-family: system-ui, sans-serif;
+      letter-spacing: 0.3px;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       BIOME PICKER  (JP-100 — horizontal card row on title screen)
+    ══════════════════════════════════════════════════════════════════ */
+    #biome-picker {
+      display: flex;
+      gap: 16px;
+      overflow-x: auto;
+      padding: 4px 8px 8px;
+      max-width: min(92vw, 820px);
+      scrollbar-width: none;
+    }
+    #biome-picker::-webkit-scrollbar { display: none; }
+    .biome-card {
+      flex: 0 0 auto;
+      width: 160px;
+      background: rgba(0, 0, 0, 0.38);
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      border-radius: 18px;
+      padding: 18px 14px 14px;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 6px;
+      cursor: pointer;
+      transition: border-color 140ms, transform 120ms, background 140ms;
+      user-select: none;
+    }
+    .biome-card:hover { border-color: rgba(255,255,255,0.55); background: rgba(0,0,0,0.52); }
+    .biome-card.active {
+      border-color: #fff;
+      background: rgba(255, 255, 255, 0.13);
+      box-shadow: 0 0 22px rgba(255,255,255,0.18);
+    }
+    .biome-icon { font-size: 38px; line-height: 1; }
+    .biome-name {
+      font-family: var(--font-game);
+      font-size: 17px;
+      color: white;
+      text-align: center;
+    }
+    .biome-desc {
+      font-family: system-ui, sans-serif;
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      text-align: center;
+      line-height: 1.3;
+      flex: 1;
+    }
+    .biome-play-btn {
+      margin-top: 8px;
+      font-family: var(--font-game);
+      font-size: 15px;
+      padding: 9px 22px;
+      background: linear-gradient(160deg, #5CCE5A 0%, #2E9E2C 100%);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #1a6e19, 0 6px 18px rgba(0,0,0,0.32);
+      transition: transform 100ms, box-shadow 100ms;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+    .biome-play-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 0 #1a6e19, 0 10px 24px rgba(0,0,0,0.36); }
+    .biome-play-btn:active { transform: translateY(1px);  box-shadow: 0 2px 0 #1a6e19, 0 4px 10px rgba(0,0,0,0.28); }
+
+    /* ══════════════════════════════════════════════════════════════════
+       PAUSE OVERLAY
+       Shown when Esc releases the pointer mid-game. Starts hidden.
+    ══════════════════════════════════════════════════════════════════ */
+    #overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(3px);
+      color: white;
+      font-family: var(--font-game);
+      font-size: clamp(24px, 4vw, 38px);
+      cursor: pointer;
+      user-select: none;
+    }
+    #overlay.hidden { display: none; }
+    #overlay small {
+      display: block;
+      font-size: 15px;
+      font-family: system-ui, sans-serif;
+      font-weight: 400;
+      opacity: 0.78;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       HOTBAR  (JP-51 consistent font; JP-52 supports gradient swatches)
+    ══════════════════════════════════════════════════════════════════ */
+    #hotbar {
+      position: fixed;
+      left: 50%; bottom: 18px;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      pointer-events: none;
+      user-select: none;
+      font-family: var(--font-game);
+    }
+    .slot {
+      width: 58px; height: 72px;
+      background: rgba(0, 0, 0, 0.44);
+      border: 2px solid rgba(255, 255, 255, 0.22);
+      border-radius: 8px;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: flex-start;
+      padding-top: 6px;
+      box-sizing: border-box;
+      transition: border-color 120ms, transform 120ms, box-shadow 120ms;
+    }
+    .slot.selected {
+      border-color: #fff;
+      box-shadow: 0 0 14px rgba(255, 255, 255, 0.55);
+      transform: translateY(-4px);
+    }
+    /* Astro Block gets an extra starry glow when selected */
+    .slot.selected.astro-slot {
+      border-color: #60BAFF;
+      box-shadow: 0 0 18px rgba(96, 186, 255, 0.70);
+    }
+    .slot .swatch {
+      width: 36px; height: 36px;
+      border-radius: 5px;
+      box-shadow: inset 0 -5px 0 rgba(0,0,0,0.20), inset 0 4px 0 rgba(255,255,255,0.15);
+    }
+    .slot .label {
+      margin-top: 4px;
+      font-size: 11px;
+      color: white;
+      letter-spacing: 0.2px;
+    }
+    /* Astro Block label shimmers in blue */
+    .astro-slot .label { color: #90CAFF; }
+    .slot .key {
+      position: absolute;
+      transform: translate(21px, -4px);
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.72);
+      background: rgba(0, 0, 0, 0.55);
+      border-radius: 3px;
+      padding: 1px 4px;
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       ACTION BUTTONS  (JP-50 screenshot, JP-51 consistent style)
+    ══════════════════════════════════════════════════════════════════ */
+    #actions {
+      position: fixed;
+      top: 14px; right: 14px;
+      display: flex; gap: 8px;
+      z-index: 60;
+    }
+    #actions button {
+      padding: 9px 18px;
+      background: rgba(0, 0, 0, 0.52);
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      border-radius: 8px;
+      color: white;
+      font-family: var(--font-game);
+      font-size: 15px;
+      letter-spacing: 0.4px;
+      cursor: pointer;
+      transition: border-color 120ms, background 120ms;
+    }
+    #actions button:hover { border-color: white; background: rgba(0, 0, 0, 0.68); }
+    #new-btn { color: #ffd1d1; }
+    #screenshot-btn { padding: 9px 13px; font-size: 18px; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       BLOCK-NAME INDICATOR  (fades in above hotbar on block switch)
+    ══════════════════════════════════════════════════════════════════ */
+    #block-name-toast {
+      position: fixed;
+      left: 50%; bottom: 100px;
+      transform: translateX(-50%);
+      font-family: var(--font-game);
+      font-size: 20px;
+      color: white;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.65);
+      opacity: 0;
+      transition: opacity 0.22s;
+      pointer-events: none;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #block-name-toast.show { opacity: 1; }
+    /* Astro Block name toasts in blue */
+    #block-name-toast.astro { color: #90CAFF; text-shadow: 0 0 12px rgba(96,186,255,0.6), 0 2px 8px rgba(0,0,0,0.7); }
+
+    /* ══════════════════════════════════════════════════════════════════
+       FLY INDICATOR  (JP-94 — shown above hotbar while flying)
+    ══════════════════════════════════════════════════════════════════ */
+    #fly-indicator {
+      position: fixed;
+      left: 50%; bottom: 100px;
+      transform: translateX(-50%);
+      font-family: var(--font-game);
+      font-size: 16px;
+      color: #90f0ff;
+      text-shadow: 0 0 10px rgba(100, 220, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.7);
+      background: rgba(0, 40, 80, 0.55);
+      border: 1px solid rgba(100, 220, 255, 0.45);
+      border-radius: 20px;
+      padding: 4px 14px;
+      opacity: 0;
+      transition: opacity 0.22s;
+      pointer-events: none;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #fly-indicator.show { opacity: 1; }
+    /* Hotbar gets a subtle cyan tint while flying */
+    #hotbar.flying .slot {
+      border-color: rgba(100, 220, 255, 0.45);
+      background: rgba(0, 40, 80, 0.50);
+    }
+    #hotbar.flying .slot.selected {
+      border-color: #90f0ff;
+      box-shadow: 0 0 14px rgba(100, 220, 255, 0.65);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
+       SAVE / ERROR TOAST
+    ══════════════════════════════════════════════════════════════════ */
+    #toast {
+      position: fixed;
+      top: 60px; right: 14px;
+      padding: 8px 14px;
+      background: rgba(0, 0, 0, 0.68);
+      border-radius: 8px;
+      color: white;
+      font-family: var(--font-game);
+      font-size: 14px;
+      opacity: 0;
+      transition: opacity 0.4s;
+      pointer-events: none;
+      z-index: 61;
+    }
+    #toast.show { opacity: 1; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       CROSSHAIR  (JP-51 — black outline, visible on any background)
+    ══════════════════════════════════════════════════════════════════ */
+    #crosshair {
+      position: fixed;
+      left: 50%; top: 50%;
+      width: 16px; height: 16px;
+      margin-left: -8px; margin-top: -8px;
+      pointer-events: none;
+    }
+    #crosshair::before, #crosshair::after {
+      content: ""; position: absolute;
+      background: white;
+      box-shadow: 0 0 0 1.5px rgba(0,0,0,0.72), 0 0 4px 1px rgba(0,0,0,0.32);
+    }
+    #crosshair::before { left: 7px; top: 0;  width: 2px; height: 16px; }
+    #crosshair::after  { left: 0;  top: 7px; width: 16px; height: 2px; }
+
+    /* ══════════════════════════════════════════════════════════════════
+       TABLET / TOUCH OPTIMISATION
+       Everything below activates only when body has the .touch class
+       (set at startup if the device reports any touch capability). On
+       desktop the touch UI stays hidden so nothing changes for mouse users.
+    ══════════════════════════════════════════════════════════════════ */
+    /* Stop iOS rubber-band scroll, double-tap zoom, long-press callouts */
+    html, body {
+      -webkit-user-select: none;
+      -webkit-touch-callout: none;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior: none;
+    }
+    body { touch-action: none; }
+
+    /* Helpers to swap copy between desktop and touch */
+    .touch-only   { display: none; }
+    body.touch .desktop-only { display: none; }
+    body.touch .touch-only   { display: block; }
+
+    /* ── Virtual joystick (bottom-left) ─────────────────────────────── */
+    #joystick {
+      position: fixed;
+      left: env(safe-area-inset-left, 24px);
+      bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+      margin-left: 24px;
+      width: 140px; height: 140px;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.30);
+      border: 3px solid rgba(255, 255, 255, 0.32);
+      display: none;
+      z-index: 20;
+      touch-action: none;
+    }
+    body.touch #joystick { display: block; }
+    #joystick-knob {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 64px; height: 64px;
+      margin-left: -32px; margin-top: -32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.85);
+      border: 3px solid rgba(0, 0, 0, 0.35);
+      pointer-events: none;
+      transition: transform 50ms;
+    }
+
+    /* ── Touch action buttons (bottom-right) — break / place / jump ── */
+    #touch-actions {
+      position: fixed;
+      right: env(safe-area-inset-right, 24px);
+      bottom: calc(110px + env(safe-area-inset-bottom, 0px));
+      margin-right: 24px;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      z-index: 20;
+      touch-action: none;
+    }
+    body.touch #touch-actions { display: flex; }
+    .touch-btn {
+      width: clamp(76px, 8.5vw, 92px); height: clamp(76px, 8.5vw, 92px);
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.45);
+      background: rgba(0, 0, 0, 0.50);
+      color: white;
+      font-size: 30px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-game);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+      transition: transform 80ms, background 80ms;
+    }
+    .touch-btn:active { transform: scale(0.92); background: rgba(255,255,255,0.18); }
+    .touch-btn:disabled {
+      opacity: 0.35;
+      filter: grayscale(0.45);
+      cursor: not-allowed;
+      transform: none;
+    }
+    #touch-break-btn { background: rgba(180, 60, 60, 0.55); }
+    #touch-place-btn { background: rgba(60, 130, 200, 0.55); }
+    #touch-jump-btn  { background: rgba(80, 160, 80, 0.55); width: clamp(86px, 9.5vw, 104px); height: clamp(86px, 9.5vw, 104px); font-size: 22px; }
+
+    /* ── Pause / day-night buttons (top-left, touch only) ─────────── */
+    #touch-topleft {
+      position: fixed;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      left: calc(14px + env(safe-area-inset-left, 0px));
+      display: none;
+      flex-direction: row;
+      gap: 8px;
+      z-index: 60;
+    }
+    body.touch #touch-topleft { display: flex; }
+    #touch-topleft button {
+      padding: 0;
+      width: clamp(52px, 6vw, 64px); height: clamp(52px, 6vw, 64px);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 2px solid rgba(255, 255, 255, 0.32);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 22px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #touch-topleft button:disabled {
+      opacity: 0.35;
+      filter: grayscale(0.45);
+      cursor: not-allowed;
+    }
+
+    /* ── In-game controls help overlay ────────────────────────────── */
+    #controls-help {
+      position: fixed; inset: 0; z-index: 90;
+      display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(4px);
+      font-family: var(--font-game);
+      color: white;
+      box-sizing: border-box;
+    }
+    #controls-help.hidden { display: none; }
+    #controls-card {
+      width: min(560px, 92vw);
+      max-height: 84vh;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(28, 48, 88, 0.94), rgba(16, 34, 58, 0.96));
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-radius: 24px;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+      padding: 24px;
+      box-sizing: border-box;
+    }
+    #controls-card h2 {
+      margin: 0 0 14px;
+      font-size: clamp(26px, 5vw, 38px);
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+    }
+    .controls-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0 20px;
+    }
+    .control-tip {
+      background: rgba(255, 255, 255, 0.12);
+      border: 2px solid rgba(255, 255, 255, 0.16);
+      border-radius: 14px;
+      padding: 12px;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .control-tip strong {
+      display: block;
+      font-family: var(--font-game);
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    #controls-close-btn {
+      width: 100%;
+      min-height: 54px;
+      border: 0;
+      border-radius: 16px;
+      background: linear-gradient(160deg, #59cf65, #249f38);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 22px;
+      box-shadow: 0 5px 0 rgba(0, 0, 0, 0.24);
+    }
+    @media (max-width: 560px) {
+      .controls-grid { grid-template-columns: 1fr; }
+    }
+
+    body.touch.photo-mode #joystick,
+    body.touch.photo-mode #touch-actions {
+      z-index: 62;
+    }
+
+    /* ── Photo mode tools ─────────────────────────────────────────── */
+    #photo-tools {
+      position: fixed;
+      top: calc(14px + env(safe-area-inset-top, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 64;
+      display: none;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.26);
+      background: rgba(0, 0, 0, 0.48);
+      backdrop-filter: blur(3px);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.30);
+    }
+    body.photo-mode #photo-tools { display: flex; }
+    #photo-tools button {
+      min-width: 56px;
+      min-height: 50px;
+      border-radius: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 20px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #photo-tools button:active { transform: scale(0.95); }
+    body.photo-mode.photo-clean #photo-tools,
+    body.photo-mode.photo-clean #touch-topleft,
+    body.photo-mode.photo-clean #joystick,
+    body.photo-mode.photo-clean #touch-actions {
+      opacity: 0.12;
+    }
+
+    /* ── Missions HUD ─────────────────────────────────────────────── */
+    #missions-panel {
+      position: fixed;
+      left: 14px;
+      top: 82px;
+      z-index: 58;
+      width: min(300px, calc(100vw - 28px));
+      padding: 12px;
+      border-radius: 18px;
+      border: 2px solid rgba(255, 255, 255, 0.24);
+      background: rgba(0, 0, 0, 0.46);
+      color: white;
+      font-family: var(--font-game);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.32);
+      user-select: none;
+      pointer-events: none;
+    }
+    #missions-panel h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      text-shadow: 0 2px 8px rgba(0,0,0,0.45);
+    }
+    .mission-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 7px 8px;
+      margin-top: 6px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.10);
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .mission-row.done {
+      background: rgba(69, 190, 91, 0.24);
+      text-decoration: line-through;
+      opacity: 0.86;
+    }
+    .mission-progress {
+      font-family: var(--font-game);
+      white-space: nowrap;
+      color: #bdf7c9;
+    }
+    body.touch #missions-panel {
+      top: calc(84px + env(safe-area-inset-top, 0px));
+      left: calc(14px + env(safe-area-inset-left, 0px));
+      font-size: 12px;
+    }
+    body.touch #missions-panel.collapsed {
+      width: auto;
+      padding: 10px 12px;
+    }
+    body.touch #missions-panel.collapsed .mission-row { display: none; }
+
+    /* ── Creative inventory / backpack block picker ───────────────── */
+    #backpack-btn {
+      position: fixed;
+      left: 50%;
+      bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      z-index: 63;
+      display: none;
+      min-width: 74px;
+      min-height: 58px;
+      border-radius: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.38);
+      background: rgba(0, 0, 0, 0.58);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 28px;
+      box-shadow: 0 5px 18px rgba(0, 0, 0, 0.36);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body.touch #backpack-btn { display: block; }
+    #backpack-panel {
+      position: fixed; inset: 0; z-index: 91;
+      display: flex;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.50);
+      backdrop-filter: blur(4px);
+      color: white;
+      font-family: var(--font-game);
+      box-sizing: border-box;
+    }
+    #backpack-panel.hidden { display: none; }
+    #backpack-card {
+      width: min(760px, 94vw);
+      max-height: 84vh;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(36, 58, 89, 0.96), rgba(20, 36, 56, 0.98));
+      border: 3px solid rgba(255, 255, 255, 0.35);
+      border-radius: 24px;
+      box-shadow: 0 16px 50px rgba(0, 0, 0, 0.48);
+      padding: 22px;
+      box-sizing: border-box;
+    }
+    #backpack-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    #backpack-header h2 {
+      margin: 0;
+      font-size: clamp(26px, 5vw, 38px);
+      text-shadow: 0 3px 12px rgba(0, 0, 0, 0.42);
+    }
+    #backpack-close-btn {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.30);
+      background: rgba(0, 0, 0, 0.40);
+      color: white;
+      font-family: var(--font-game);
+      font-size: 24px;
+      cursor: pointer;
+    }
+    #backpack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+      gap: 12px;
+    }
+    .backpack-item {
+      min-height: 112px;
+      border-radius: 18px;
+      border: 3px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.10);
+      color: white;
+      font-family: var(--font-game);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: transform 80ms, border-color 120ms, background 120ms;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .backpack-item:active { transform: scale(0.96); }
+    .backpack-item.selected {
+      border-color: white;
+      background: rgba(84, 180, 255, 0.22);
+      box-shadow: 0 0 18px rgba(255, 255, 255, 0.28);
+    }
+    .backpack-swatch {
+      width: 52px; height: 52px;
+      border-radius: 12px;
+      box-shadow: inset 0 -7px 0 rgba(0,0,0,0.20), inset 0 5px 0 rgba(255,255,255,0.16), 0 4px 12px rgba(0,0,0,0.28);
+    }
+    .backpack-name {
+      text-align: center;
+      font-size: 15px;
+      line-height: 1.1;
+    }
+    .backpack-tip {
+      margin: 12px 0 0;
+      opacity: 0.72;
+      font-family: system-ui, sans-serif;
+      font-weight: 700;
+      text-align: center;
+    }
+
+    /* ── On touch: bigger top-right buttons; backpack replaces hotbar ─ */
+    body.touch #actions button {
+      padding: 12px 18px;
+      font-size: 16px;
+      min-height: 50px;
+    }
+    body.touch #screenshot-btn { padding: 12px 16px; font-size: 22px; }
+    body.touch #hotbar { display: none; }
+    body.touch #block-name-toast { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+
+    /* Pause overlay copy: read "Tap" instead of "Click" on touch */
+    body.touch #overlay .desktop-text { display: none; }
+    body.touch #overlay .touch-text   { display: inline; }
+    .touch-text { display: none; }
+
+    /* The crosshair is less useful when you tap action buttons rather
+       than aim with a mouse — keep it but make it slightly larger. */
+    body.touch #crosshair { width: 22px; height: 22px; margin-left: -11px; margin-top: -11px; }
+    body.touch #crosshair::before { left: 10px; height: 22px; }
+    body.touch #crosshair::after  { top: 10px; width: 22px; }
+  </style>
+
+  <!-- SimplexNoise for terrain generation (pinned version) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/simplex-noise/2.4.0/simplex-noise.min.js"></script>
+
+  <!-- Importmap: pins Three.js to 0.160.0 — never @latest -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ── TITLE SCREEN ── shown on first launch ──────────────────── -->
+  <div id="title-screen">
+    <div id="game-logo">Jaxx World</div>
+    <div id="welcome-msg">Welcome, Jaxx! 🚀</div>
+    <div id="biome-picker"></div>
+    <div id="title-controls">
+      WASD to move &nbsp;·&nbsp; Space to jump &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Esc to pause &nbsp;·&nbsp; Q/E or scroll to swap blocks &nbsp;·&nbsp; N for day/night &nbsp;·&nbsp; F2 for screenshot
+    </div>
+    <div id="title-controls" class="touch-only">
+      Joystick to move &nbsp;·&nbsp; Drag to look &nbsp;·&nbsp; ⛏ break &nbsp;·&nbsp; ⬛ place &nbsp;·&nbsp; ⤴ jump
+    </div>
+  </div>
+
+  <!-- ── PAUSE OVERLAY ── shown when Esc releases the pointer ───── -->
+  <div id="overlay" class="hidden">
+    ⏸ Paused — <span class="desktop-text">Click</span><span class="touch-text">Tap</span> to Resume
+    <small>
+      <span class="desktop-text">Mouse released · click anywhere to keep building</span>
+      <span class="touch-text">Tap anywhere to keep building</span>
+    </small>
+  </div>
+
+  <!-- Crosshair at screen centre -->
+  <div id="crosshair"></div>
+
+  <!-- Hotbar — populated by JS from the BLOCKS registry -->
+  <div id="hotbar"></div>
+
+  <!-- Fly indicator — shown while flying mode is active (JP-94) -->
+  <div id="fly-indicator">✈ Flying</div>
+
+  <!-- Creative inventory / backpack picker -->
+  <button id="backpack-btn" type="button" title="Open block backpack">🎒</button>
+  <div id="backpack-panel" class="hidden" role="dialog" aria-modal="true" aria-labelledby="backpack-title">
+    <div id="backpack-card">
+      <div id="backpack-header">
+        <h2 id="backpack-title">Block Backpack 🎒</h2>
+        <button id="backpack-close-btn" type="button" title="Close backpack">✕</button>
+      </div>
+      <div id="backpack-grid"></div>
+      <div class="backpack-tip">Pick a block, then aim and tap ⬛ to place it.</div>
+    </div>
+  </div>
+
+  <!-- Block-name indicator that fades in above the hotbar -->
+  <div id="block-name-toast"></div>
+
+  <!-- Top-right action buttons -->
+  <div id="actions">
+    <button id="hub-btn"        type="button" title="Back to GameHub">🏠 GameHub</button>
+    <button id="worlds-btn"     type="button" title="Load or manage worlds">🌍 Worlds</button>
+    <button id="save-btn"       type="button">💾 Save</button>
+    <button id="screenshot-btn" type="button" title="Screenshot (F2)">📷</button>
+    <button id="new-btn"        type="button">🌱 New World</button>
+  </div>
+  <div id="toast"></div>
+
+  <div id="photo-tools" aria-label="Photo mode tools">
+    <button id="photo-shot-btn" type="button" title="Take photo">📷</button>
+    <button id="photo-clean-btn" type="button" title="Hide/show photo controls">🙈</button>
+    <button id="photo-exit-btn" type="button" title="Exit photo mode">↩️</button>
+  </div>
+
+  <div id="missions-panel" title="Missions">
+    <h3>⭐ Missions</h3>
+    <div id="missions-list"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       TABLET / TOUCH HUD — hidden by default, shown when body.touch
+  ══════════════════════════════════════════════════════════════════ -->
+  <!-- Top-left: pause + day/night buttons (touch only) -->
+  <div id="touch-topleft">
+    <button id="touch-pause-btn"  type="button" title="Pause">⏸</button>
+    <button id="touch-help-btn"   type="button" title="Controls help">❔</button>
+    <button id="touch-undo-btn"   type="button" title="Undo last build action">↶</button>
+    <button id="touch-redo-btn"   type="button" title="Redo last build action">↷</button>
+    <button id="touch-day-btn"    type="button" title="Toggle day/night">☀️</button>
+    <button id="touch-photo-btn"  type="button" title="Photo mode">📸</button>
+  </div>
+
+  <!-- Touch-friendly controls help -->
+  <div id="controls-help" class="hidden" role="dialog" aria-modal="true" aria-labelledby="controls-help-title">
+    <div id="controls-card">
+      <h2 id="controls-help-title">How to play 🎮</h2>
+      <div class="controls-grid">
+        <div class="control-tip"><strong>🕹 Move</strong>Push the left joystick.</div>
+        <div class="control-tip"><strong>👀 Look</strong>Drag anywhere empty on the screen.</div>
+        <div class="control-tip"><strong>⤴ Jump</strong>Tap the green jump button.</div>
+        <div class="control-tip"><strong>⬛ Place</strong>Aim at a block, then tap place.</div>
+        <div class="control-tip"><strong>⛏ Break</strong>Aim at a block, then tap break.</div>
+        <div class="control-tip"><strong>↶ Undo</strong>Tap undo to reverse your last place/break.</div>
+        <div class="control-tip"><strong>📸 Photo</strong>Tap 📸, fly with joystick, tap ↩️ to exit.</div>
+      </div>
+      <button id="controls-close-btn" type="button">Got it!</button>
+    </div>
+  </div>
+
+  <!-- Bottom-left: virtual joystick -->
+  <div id="joystick"><div id="joystick-knob"></div></div>
+
+  <!-- Bottom-right: action buttons (jump on top, place + break below) -->
+  <div id="touch-actions">
+    <button id="touch-jump-btn"  class="touch-btn" type="button" title="Jump">⤴</button>
+    <button id="touch-place-btn" class="touch-btn" type="button" title="Place">⬛</button>
+    <button id="touch-break-btn" class="touch-btn" type="button" title="Break">⛏</button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+
+    console.log('Three.js loaded', THREE.REVISION);
+
+    // ── Scene, camera, renderer ──────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB); // sky blue
+
+    const camera = new THREE.PerspectiveCamera(
+      75, window.innerWidth / window.innerHeight, 0.1, 1000
+    );
+    const EYE_HEIGHT = 1.62;
+    // Spawn position is set after world generation (see spawnPlayer below)
+    camera.position.set(0, 20, 0); // temporary — overwritten by spawnPlayer()
+
+    // preserveDrawingBuffer:true lets toDataURL() capture any frame on demand
+    const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    // ── Lights & Day/Night Cycle (JP-57) ─────────────────────────────
+    let alwaysDay = false;
+    let timeOfDay = 0; // 0 to 1 over CYCLE_DURATION
+    const CYCLE_DURATION = 600; // 10 minutes in seconds
+    
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    const celestialGroup = new THREE.Group();
+    scene.add(celestialGroup);
+    
+    // Sun
+    const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    sunLight.position.set(0, 50, 0);
+    celestialGroup.add(sunLight);
+    
+    const sunGeo = new THREE.SphereGeometry(4, 16, 16);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffffee });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.set(0, 50, 0);
+    celestialGroup.add(sunMesh);
+    
+    // Moon
+    const moonGeo = new THREE.SphereGeometry(3, 16, 16);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddff });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    moonMesh.position.set(0, -50, 0);
+    celestialGroup.add(moonMesh);
+
+    // Moonlight
+    const moonLight = new THREE.DirectionalLight(0xaaccff, 0.0); // Intensity set dynamically
+    moonLight.position.set(0, -50, 0);
+    celestialGroup.add(moonLight);
+
+    const skyColorDay = new THREE.Color(0x87CEEB);
+    const skyColorSunset = new THREE.Color(0xFF8C00); // orange
+    const skyColorNight = new THREE.Color(0x0B1021); // deep blue
+    const currentSkyColor = new THREE.Color();
+    
+    function updateCelestialCycle(dt) {
+      if (alwaysDay) {
+        timeOfDay = 0; // Lock to high noon
+      } else {
+        timeOfDay = (timeOfDay + dt / CYCLE_DURATION) % 1.0;
+      }
+      
+      const angle = timeOfDay * Math.PI * 2;
+      celestialGroup.rotation.z = angle;
+      
+      const sunHeight = Math.cos(angle);
+      
+      if (sunHeight > 0.2) {
+        currentSkyColor.copy(skyColorDay);
+        ambientLight.intensity = 0.5;
+        sunLight.intensity = 1.0;
+        moonLight.intensity = 0.0;
+      } else if (sunHeight > 0.0) {
+        const t = sunHeight / 0.2;
+        currentSkyColor.lerpColors(skyColorSunset, skyColorDay, t);
+        ambientLight.intensity = 0.3 + 0.2 * t;
+        sunLight.intensity = t;
+        moonLight.intensity = 0.0;
+      } else if (sunHeight > -0.2) {
+        const t = (sunHeight + 0.2) / 0.2;
+        currentSkyColor.lerpColors(skyColorNight, skyColorSunset, t);
+        ambientLight.intensity = 0.15 + 0.15 * t;
+        sunLight.intensity = 0.0;
+        moonLight.intensity = 0.3 * (1 - t);
+      } else {
+        currentSkyColor.copy(skyColorNight);
+        ambientLight.intensity = 0.15; // Dim but not pitch black
+        sunLight.intensity = 0.0;
+        moonLight.intensity = 0.3;
+      }
+      scene.background = currentSkyColor;
+    }
+
+    // Pool of point lights for Glow Blocks (JP-62)
+    // We only use 8 real lights to keep performance perfect. They dynamically
+    // attach to the 8 closest Glow Blocks to the player.
+    const MAX_GLOW_LIGHTS = 8;
+    const glowLights = [];
+    for (let i = 0; i < MAX_GLOW_LIGHTS; i++) {
+      const light = new THREE.PointLight(0xffffaa, 0, 12);
+      scene.add(light);
+      glowLights.push(light);
+    }
+    let lastGlowUpdate = 0;
+
+    // ── Block registry ───────────────────────────────────────────────
+    // cssColor (optional): overrides the flat swatch in the hotbar with a
+    // CSS background string. Used by Astro Block for its space-gradient look.
+    // The Three.js material still uses the numeric `color` field.
+    const BLOCKS = {
+      1: { name: 'Grass',       color: 0x4CAF50, breakSound: 'crack',      placeSound: 'thud'       },
+      2: { name: 'Dirt',        color: 0x8D6E63, breakSound: 'crack',      placeSound: 'thud'       },
+      3: { name: 'Stone',       color: 0x9E9E9E, breakSound: 'stoneCrack', placeSound: 'stoneThud'  },
+      4: { name: 'Wood',        color: 0x8B5A2B, breakSound: 'woodCrack',  placeSound: 'woodThud'   },
+      5: { name: 'Sand',        color: 0xF4E1A4, breakSound: 'sandCrack',  placeSound: 'sandThud'   },
+      // ── JP-52 — Jaxx's personalised block ───────────────────────────
+      // Astro Block: Jaxx's space block (Astro Bot + space ships theme).
+      // Dodger Blue in-world; deep-space gradient in the hotbar swatch.
+      6: {
+        name:       'Astro Block',
+        color:      0x1E90FF,
+        cssColor:   'linear-gradient(135deg, #42A5F5 0%, #0D47A1 55%, #1565C0 100%)',
+        breakSound: 'astroCrack',
+        placeSound: 'astroThud',
+        special:    true,          // flags the slot for the blue glow effect
+      },
+      7: { name: 'Leaves',      color: 0x2E7D32, breakSound: 'crack',      placeSound: 'thud'       },
+      8: { name: 'Water',       color: 0x3399ff, breakSound: 'sandCrack',  placeSound: 'sandThud', transparent: true, opacity: 0.65, nonSolid: true },
+      9: {
+        name:       'Rainbow',
+        color:      0xff0000,
+        cssColor:   'linear-gradient(90deg, red, orange, yellow, green, blue, indigo, violet)',
+        breakSound: 'crack',
+        placeSound: 'thud'
+      },
+      10: {
+        name:       'Bouncy',
+        color:      0xFF1493, // Bright pink
+        breakSound: 'crack',
+        placeSound: 'boing'
+      },
+      11: {
+        name:       'Giggle Block',
+        color:      0xffb6c1, // Light pink
+        breakSound: 'crack',
+        placeSound: 'giggle'
+      },
+      12: {
+        name:       'Cow Block',
+        color:      0x8b4513, // Saddle brown
+        breakSound: 'crack',
+        placeSound: 'moo'
+      },
+      13: {
+        name:       'Toot Block',
+        color:      0x556b2f, // Olive drab
+        breakSound: 'crack',
+        placeSound: 'toot'
+      },
+      14: {
+        name:       'Glow Block',
+        color:      0xffffff,
+        emissive:   0xffffaa,
+        emissiveIntensity: 0.8,
+        breakSound: 'crack',
+        placeSound: 'thud'
+      },
+      // ── Snow biome blocks (JP-101) ───────────────────────────────────
+      15: { name: 'Snow',       color: 0xEEF4F8, breakSound: 'crack', placeSound: 'thud' },
+      16: { name: 'Ice',        color: 0xADD8E6, transparent: true, opacity: 0.82, depthWrite: false, breakSound: 'crack', placeSound: 'thud' },
+      17: { name: 'Pine Wood',  color: 0x4A3728, breakSound: 'crack', placeSound: 'thud' },
+      18: { name: 'Pine Leaves',color: 0x1A4A1A, breakSound: 'crack', placeSound: 'thud' },
+      // ── Desert biome blocks (JP-102) ─────────────────────────────────
+      19: { name: 'Sandstone',  color: 0xD4A84B, breakSound: 'crack', placeSound: 'thud' },
+      20: { name: 'Cactus',     color: 0x4B7C3A, breakSound: 'crack', placeSound: 'thud' },
+      21: { name: 'Ruin Stone', color: 0xB0A090, breakSound: 'crack', placeSound: 'thud' },
+      // ── Space biome blocks (JP-103) ──────────────────────────────────
+      22: { name: 'Moon Rock',    color: 0x888888, breakSound: 'crack', placeSound: 'thud' },
+      23: { name: 'Moon Dust',    color: 0xC0BDB8, breakSound: 'crack', placeSound: 'thud' },
+      24: { name: 'Star Block',   color: 0xFFFDE0, emissive: 0xFFFF88, emissiveIntensity: 1.2, breakSound: 'crack', placeSound: 'thud' },
+      25: { name: 'Rocket Metal', color: 0x8BA7BE, breakSound: 'crack', placeSound: 'thud' },
+      // ── Candy biome blocks (JP-104) ──────────────────────────────────
+      26: { name: 'Cotton Candy', color: 0xF9A8D4, breakSound: 'crack', placeSound: 'thud' },
+      27: { name: 'Frosting',     color: 0xFFF0F8, breakSound: 'crack', placeSound: 'thud' },
+      28: { name: 'Lollipop',     color: 0xFFFFFF, breakSound: 'crack', placeSound: 'thud' },
+      29: { name: 'Chocolate',    color: 0x3D1A0A, breakSound: 'crack', placeSound: 'thud' },
+      30: { name: 'Sprinkle',     cssColor: 'linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff)', breakSound: 'crack', placeSound: 'thud' },
+      // ── Underwater biome blocks (JP-105) ─────────────────────────────
+      31: { name: 'Coral Red',    color: 0xFF6B6B, breakSound: 'crack', placeSound: 'thud' },
+      32: { name: 'Coral Blue',   color: 0x00B4D8, breakSound: 'crack', placeSound: 'thud' },
+      33: { name: 'Coral Yellow', color: 0xFFD166, breakSound: 'crack', placeSound: 'thud' },
+      34: { name: 'Kelp',         color: 0x2D5016, breakSound: 'crack', placeSound: 'thud' },
+      35: { name: 'Seafloor Sand',color: 0xE8D5A3, breakSound: 'crack', placeSound: 'thud' },
+      36: { name: 'Sea Stone',    color: 0x4A6874, breakSound: 'crack', placeSound: 'thud' },
+    };
+    const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
+    const SNOW = 15, ICE = 16, PINE_WOOD = 17, PINE_LEAVES = 18;
+    const SANDSTONE = 19, CACTUS = 20, RUIN_STONE = 21;
+    const MOON_ROCK = 22, MOON_DUST = 23, STAR_BLOCK = 24, ROCKET_METAL = 25;
+    const COTTON_CANDY = 26, FROSTING = 27, LOLLIPOP = 28, CHOCOLATE = 29, SPRINKLE = 30;
+    const CORAL_RED = 31, CORAL_BLUE = 32, CORAL_YELLOW = 33, KELP = 34, SEAFLOOR_SAND = 35, SEA_STONE = 36;
+
+    // ── Biome registry (JP-100) ─────────────────────────────────────
+    // Each entry: { id, name, icon, description, skyColor }
+    // Additional biomes are appended in M10-T2 through T6.
+    const BIOMES = {
+      meadow: {
+        id:          'meadow',
+        name:        'Meadow',
+        icon:        '🌿',
+        description: 'Rolling hills, trees & lakes',
+        skyColor:    0x87CEEB,
+      },
+      snow: {
+        id:          'snow',
+        name:        'Snow',
+        icon:        '❄️',
+        description: 'Frozen tundra, pine forests & ice',
+        skyColor:    0xC8E8F5,
+      },
+      desert: {
+        id:          'desert',
+        name:        'Desert',
+        icon:        '🏜️',
+        description: 'Sandy dunes, cacti & ancient ruins',
+        skyColor:    0xE8C97A,
+      },
+      space: {
+        id:          'space',
+        name:        'Space',
+        icon:        '🚀',
+        description: 'Low gravity moon surface & starfield',
+        skyColor:    0x000008,
+        gravityScale: 0.3,
+      },
+      candy: {
+        id:          'candy',
+        name:        'Candy',
+        icon:        '🍭',
+        description: 'Cotton candy hills, chocolate rivers & lollipop trees',
+        skyColor:    0xFFB6E8,
+      },
+      underwater: {
+        id:          'underwater',
+        name:        'Underwater',
+        icon:        '🐠',
+        description: 'Submerged seafloor with kelp, coral & blue fog',
+        skyColor:    0x0077B6,
+        gravityScale: 0.55,
+        moveScale:   0.70,
+        fog:         { color: 0x0044AA, density: 0.035 },
+      },
+    };
+
+    // One MeshStandardMaterial per block type, shared across all instances.
+    const blockMaterials = new Map();
+    function materialFor(blockId) {
+      let mat = blockMaterials.get(blockId);
+      if (!mat) {
+        const def = BLOCKS[blockId];
+        mat = new THREE.MeshStandardMaterial({ 
+          color: def.color,
+          transparent: !!def.transparent,
+          opacity: def.opacity || 1.0,
+          depthWrite: !def.transparent, // prevents weird self-occlusion for water
+          emissive: def.emissive || 0x000000,
+          emissiveIntensity: def.emissiveIntensity || 0,
+        });
+        blockMaterials.set(blockId, mat);
+      }
+      return mat;
+    }
+
+    let selectedBlockId  = GRASS;
+    let isFlying         = false;
+    let lastSpaceRelease = -1000; // timestamp of last Space keyup, for double-tap fly toggle
+
+    // ── Hotbar UI ────────────────────────────────────────────────────
+    const hotbarEl = document.getElementById('hotbar');
+    const backpackBtn = document.getElementById('backpack-btn');
+    const backpackPanel = document.getElementById('backpack-panel');
+    const backpackGrid = document.getElementById('backpack-grid');
+    const backpackCloseBtn = document.getElementById('backpack-close-btn');
+    const slotEls  = new Map(); // blockId → .slot DOM node
+    const backpackItemEls = new Map(); // blockId → backpack item DOM node
+    function hexToCss(hex) { return '#' + hex.toString(16).padStart(6, '0'); }
+
+    for (const id of Object.keys(BLOCKS)) {
+      const blockId    = Number(id);
+      const def        = BLOCKS[blockId];
+      const swatchBg   = def.cssColor || hexToCss(def.color); // gradient OR flat
+      const slot       = document.createElement('div');
+      slot.className   = 'slot' + (def.special ? ' astro-slot' : '');
+      
+      let keyLabel = '';
+      if (blockId < 10) keyLabel = blockId.toString();
+      else if (blockId === 10) keyLabel = '0';
+      // >10 has no direct number key, selected via Q/E or scroll
+      
+      slot.innerHTML   = `
+        <span class="key">${keyLabel}</span>
+        <div class="swatch" style="background:${swatchBg}"></div>
+        <div class="label">${def.name}</div>
+      `;
+      hotbarEl.appendChild(slot);
+      slotEls.set(blockId, slot);
+      // Tap-to-select for touch devices (pointer-events enabled via .touch CSS)
+      slot.addEventListener('click', () => setSelectedBlock(blockId));
+
+      const backpackItem = document.createElement('button');
+      backpackItem.type = 'button';
+      backpackItem.className = 'backpack-item' + (def.special ? ' astro-slot' : '');
+      backpackItem.innerHTML = `
+        <div class="backpack-swatch" style="background:${swatchBg}"></div>
+        <div class="backpack-name">${def.name}</div>
+      `;
+      backpackGrid.appendChild(backpackItem);
+      backpackItemEls.set(blockId, backpackItem);
+      backpackItem.addEventListener('click', () => {
+        setSelectedBlock(blockId);
+        closeBackpack();
+      });
+    }
+
+    // Fly indicator (JP-94)
+    const flyIndicatorEl = document.getElementById('fly-indicator');
+    function updateFlyIndicator() {
+      flyIndicatorEl.classList.toggle('show', isFlying);
+      hotbarEl.classList.toggle('flying', isFlying);
+    }
+
+    // Block-name toast: fades in above hotbar on block switch, fades out after 1.2 s.
+    const blockNameToastEl = document.getElementById('block-name-toast');
+    let   blockNameTimer   = null;
+    function showBlockName(blockId) {
+      const def = BLOCKS[blockId];
+      blockNameToastEl.textContent = def.name;
+      // Astro Block gets its own blue-glow style
+      blockNameToastEl.classList.toggle('astro', !!def.special);
+      blockNameToastEl.classList.add('show');
+      clearTimeout(blockNameTimer);
+      blockNameTimer = setTimeout(() => blockNameToastEl.classList.remove('show'), 1200);
+    }
+
+    function setSelectedBlock(blockId, announce = true) {
+      if (!BLOCKS[blockId]) return;
+      selectedBlockId = blockId;
+      for (const [id, el] of slotEls) {
+        el.classList.toggle('selected', id === blockId);
+      }
+      for (const [id, el] of backpackItemEls) {
+        el.classList.toggle('selected', id === blockId);
+      }
+      if (announce) showBlockName(blockId);
+    }
+
+    function openBackpack() {
+      backpackPanel.classList.remove('hidden');
+      endJoystick?.();
+      endLook?.();
+      keys[' '] = false;
+      jumpRequested = false;
+    }
+    function closeBackpack() {
+      backpackPanel.classList.add('hidden');
+    }
+    backpackBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openBackpack();
+    });
+    backpackCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      closeBackpack();
+    });
+    backpackPanel.addEventListener('click', (e) => {
+      if (e.target === backpackPanel) closeBackpack();
+    });
+
+    setSelectedBlock(GRASS, false); // initial highlight — no toast on startup
+
+    // ── World — InstancedMesh rendering ─────────────────────────────
+    // One InstancedMesh per block type → 6 draw calls for the whole world.
+    // blockMap: "x,y,z" → { blockId, instanceId }  (source of truth)
+    // instanceCoords: blockId → [{x,y,z},…]         (raycaster reverse-lookup)
+    // Removal uses "swap with last" so active instances stay packed.
+    const blockGeo           = new THREE.BoxGeometry(1, 1, 1);
+    const WORLD_SIZE         = 64;
+    const offset             = Math.floor(WORLD_SIZE / 2); // force integer grid
+    const INSTANCES_PER_TYPE = 32768; // Increased for height variations
+
+    const blockMap          = new Map();
+    const coordKey          = (x, y, z) => `${x},${y},${z}`;
+    const instancedMeshes   = new Map();
+    const instanceCoords    = new Map();
+    const instancedMeshList = [];
+    const _tmpMatrix        = new THREE.Matrix4();
+
+    for (const id of Object.keys(BLOCKS)) {
+      const blockId = Number(id);
+      const mesh    = new THREE.InstancedMesh(blockGeo, materialFor(blockId), INSTANCES_PER_TYPE);
+      mesh.count            = 0;
+      mesh.userData.blockId = blockId;
+      mesh.frustumCulled    = false;
+      if (BLOCKS[blockId].transparent) {
+        mesh.renderOrder = 1; // renders after opaque blocks
+      }
+      scene.add(mesh);
+      instancedMeshes.set(blockId, mesh);
+      instanceCoords.set(blockId, []);
+      instancedMeshList.push(mesh);
+    }
+
+    // Null-out the bounding sphere so the raycaster recomputes it on the
+    // next intersect. Without this, meshes that start empty (count=0) get an
+    // empty sphere and raycasting silently skips them forever.
+    function invalidateBounds(mesh) { mesh.boundingSphere = null; }
+
+    function addBlock(gx, gy, gz, blockId) {
+      const key = coordKey(gx, gy, gz);
+      if (blockMap.has(key)) return;
+      const mesh = instancedMeshes.get(blockId);
+      const slot = mesh.count;
+      if (slot >= INSTANCES_PER_TYPE) return;
+      _tmpMatrix.makeTranslation(gx, gy, gz);
+      mesh.setMatrixAt(slot, _tmpMatrix);
+      mesh.count = slot + 1;
+      mesh.instanceMatrix.needsUpdate = true;
+      invalidateBounds(mesh);
+      instanceCoords.get(blockId)[slot] = { x: gx, y: gy, z: gz };
+      blockMap.set(key, { blockId, instanceId: slot });
+    }
+
+    function removeBlock(x, y, z) {
+      const key   = coordKey(x, y, z);
+      const entry = blockMap.get(key);
+      if (!entry) return;
+      const { blockId, instanceId } = entry;
+      const mesh   = instancedMeshes.get(blockId);
+      const coords = instanceCoords.get(blockId);
+      const lastId = mesh.count - 1;
+      if (instanceId !== lastId) {
+        mesh.getMatrixAt(lastId, _tmpMatrix);
+        mesh.setMatrixAt(instanceId, _tmpMatrix);
+        const moved = coords[lastId];
+        coords[instanceId] = moved;
+        blockMap.set(coordKey(moved.x, moved.y, moved.z), { blockId, instanceId });
+      }
+      coords.length = lastId;
+      mesh.count    = lastId;
+      mesh.instanceMatrix.needsUpdate = true;
+      invalidateBounds(mesh);
+      blockMap.delete(key);
+    }
+
+    // ── Star field (JP-103 — Space biome) ───────────────────────────
+    let starField = null;
+
+    function buildStarField() {
+      if (starField) { scene.remove(starField); starField.geometry.dispose(); starField.material.dispose(); }
+      const count = 800;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        // Random point on a large sphere
+        const theta = Math.random() * Math.PI * 2;
+        const phi   = Math.acos(2 * Math.random() - 1);
+        const r     = 400;
+        positions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: true });
+      starField = new THREE.Points(geo, mat);
+      scene.add(starField);
+    }
+
+    function removeStarField() {
+      if (!starField) return;
+      scene.remove(starField);
+      starField.geometry.dispose();
+      starField.material.dispose();
+      starField = null;
+    }
+
+    function applySkyForBiome(biomeId) {
+      const biome = BIOMES[biomeId] || BIOMES.meadow;
+      skyColorDay.set(biome.skyColor);
+      gravityScale = biome.gravityScale ?? 1.0;
+      moveScale    = biome.moveScale    ?? 1.0;
+      if (biomeId === 'space') buildStarField(); else removeStarField();
+      if (biome.fog) {
+        scene.fog = new THREE.FogExp2(biome.fog.color, biome.fog.density);
+      } else {
+        scene.fog = null;
+      }
+    }
+
+    function generateFreshWorld(biomeId = 'meadow') {
+      applySkyForBiome(biomeId);
+      const simplex = new SimplexNoise("jaxx-world");
+
+      if (biomeId === 'snow') {
+        // ── Snow biome (JP-101) ─────────────────────────────────────
+        const SEA_LEVEL = 2;
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = SNOW;
+              else if (y >= height - 2) blockType = DIRT;
+              addBlock(gx, y, gz, blockType);
+            }
+            // Frozen water = ice
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, ICE);
+            }
+            // Pine trees on land (taller, pointed canopy)
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.93) {
+                const treeHeight = 5 + Math.abs(gx * gz) % 3; // 5-7 blocks
+                for (let ty = 1; ty <= treeHeight; ty++) {
+                  addBlock(gx, height + ty, gz, PINE_WOOD);
+                }
+                // Pointed layered canopy: wide base → narrow tip
+                const topY = height + treeHeight;
+                const layers = [
+                  { dy: -2, r: 2 }, // widest base ring (5×5 minus corners)
+                  { dy: -1, r: 1 }, // 3×3 mid
+                  { dy:  0, r: 1 }, // 3×3 upper
+                  { dy:  1, r: 0 }, // single-block tip
+                ];
+                for (const { dy, r } of layers) {
+                  for (let lx = -r; lx <= r; lx++) {
+                    for (let lz = -r; lz <= r; lz++) {
+                      if (lx === 0 && lz === 0 && dy <= 0) continue; // keep trunk
+                      if (r === 2 && Math.abs(lx) + Math.abs(lz) > 3) continue; // trim corners
+                      addBlock(gx + lx, topY + dy, gz + lz, PINE_LEAVES);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else if (biomeId === 'space') {
+        // ── Space / Moon biome (JP-103) ──────────────────────────────
+        // Pre-compute crater centres (seeded deterministically)
+        const craterCentres = [];
+        const rng = new SimplexNoise("space-craters");
+        for (let i = 0; i < 18; i++) {
+          const cx = Math.round((rng.noise2D(i * 0.3, 0) + 1) * 0.5 * (WORLD_SIZE - 8)) - offset + 4;
+          const cz = Math.round((rng.noise2D(0, i * 0.3) + 1) * 0.5 * (WORLD_SIZE - 8)) - offset + 4;
+          const cr = 3 + Math.floor(((rng.noise2D(i * 0.3, i * 0.3) + 1) * 0.5) * 4); // radius 3-6
+          craterCentres.push({ cx, cz, cr });
+        }
+
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            let height = Math.floor((noiseVal + 1) * 2.5); // gentle surface 0-5
+
+            // Carve craters: bowl shape lowers the surface
+            for (const { cx, cz, cr } of craterCentres) {
+              const dist = Math.sqrt((gx - cx) ** 2 + (gz - cz) ** 2);
+              if (dist < cr) {
+                const depth = Math.round((1 - dist / cr) * 3); // up to 3 deep at centre
+                height = Math.max(0, height - depth);
+              }
+            }
+
+            for (let y = height; y >= -2; y--) {
+              let blockType;
+              if (y === height)         blockType = MOON_DUST;
+              else if (y >= height - 2) blockType = MOON_ROCK;
+              else                      blockType = STONE;
+              addBlock(gx, y, gz, blockType);
+            }
+          }
+        }
+      } else if (biomeId === 'desert') {
+        // ── Desert biome (JP-102) ────────────────────────────────────
+        const SEA_LEVEL = 0; // no open water in the desert
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            // Low height variance → gently rolling dunes
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            const height = Math.floor((noiseVal + 1) * 2); // Range 0-4
+
+            for (let y = height; y >= -2; y--) {
+              let blockType;
+              if (y === height)         blockType = SAND;
+              else if (y >= height - 2) blockType = SANDSTONE;
+              else                      blockType = STONE;
+              addBlock(gx, y, gz, blockType);
+            }
+
+            // Cacti: sparser than trees, 2-4 blocks tall
+            const cactusNoise = simplex.noise2D(gx * 4.7, gz * 4.7);
+            if (cactusNoise > 0.92) {
+              const cactusH = 2 + Math.abs(gx + gz) % 3; // 2-4 blocks
+              for (let cy = 1; cy <= cactusH; cy++) {
+                addBlock(gx, height + cy, gz, CACTUS);
+              }
+            }
+
+            // Ruins: rare stone column clusters (2-4 tall, 1-2 wide stub)
+            const ruinNoise = simplex.noise2D(gx * 2.1 + 99, gz * 2.1 + 99);
+            if (ruinNoise > 0.96) {
+              const ruinH = 2 + Math.abs(gx * gz) % 3;
+              for (let ry = 1; ry <= ruinH; ry++) {
+                addBlock(gx, height + ry, gz, RUIN_STONE);
+              }
+            }
+          }
+        }
+      } else if (biomeId === 'candy') {
+        // ── Candy biome (JP-104) ─────────────────────────────────────
+        const SEA_LEVEL = 2;
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = COTTON_CANDY;
+              else if (y >= height - 2) blockType = FROSTING;
+              addBlock(gx, y, gz, blockType);
+            }
+            // Chocolate rivers replace water
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, CHOCOLATE);
+            }
+            // Lollipop trees: white stick + spherical RAINBOW canopy
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.93) {
+                const stickH = 3 + Math.abs(gx * gz) % 2; // 3-4 blocks
+                for (let ty = 1; ty <= stickH; ty++) {
+                  addBlock(gx, height + ty, gz, LOLLIPOP);
+                }
+                const topY = height + stickH;
+                for (let lx = -1; lx <= 1; lx++) {
+                  for (let ly = -1; ly <= 1; ly++) {
+                    for (let lz = -1; lz <= 1; lz++) {
+                      if (lx === 0 && lz === 0 && ly <= 0) continue;
+                      if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
+                      // Alternate RAINBOW and SPRINKLE for visual variety
+                      const useBlock = ((lx + ly + lz) % 2 === 0) ? RAINBOW : SPRINKLE;
+                      addBlock(gx + lx, topY + ly, gz + lz, useBlock);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else if (biomeId === 'underwater') {
+        // ── Underwater biome (JP-105) ────────────────────────────────
+        const SEA_LEVEL = 8; // all terrain sits well below the water surface
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            const height = Math.floor((noiseVal + 1) * 1.5); // flat seafloor 0-3
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = SEAFLOOR_SAND;
+              else if (y >= height - 2) blockType = SEA_STONE;
+              addBlock(gx, y, gz, blockType);
+            }
+            // Flood everything up to SEA_LEVEL with water
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, WATER);
+            }
+            // Kelp: vertical green columns on the seafloor
+            const kelpNoise = simplex.noise2D(gx * 4.1, gz * 4.1);
+            if (kelpNoise > 0.90) {
+              const kelpH = 2 + Math.abs(gx + gz) % 4; // 2-5 blocks
+              for (let ky = 1; ky <= kelpH; ky++) {
+                addBlock(gx, height + ky, gz, KELP);
+              }
+            }
+            // Coral: scattered on seafloor
+            const coralNoise = simplex.noise2D(gx * 6.3 + 50, gz * 6.3 + 50);
+            if (coralNoise > 0.91) {
+              const coralBlock = [CORAL_RED, CORAL_BLUE, CORAL_YELLOW][Math.abs(gx * gz + gz) % 3];
+              addBlock(gx, height + 1, gz, coralBlock);
+            }
+          }
+        }
+      } else {
+        // ── Meadow biome (default) ──────────────────────────────────
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+
+            const SEA_LEVEL = 2;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height) {
+                blockType = height <= SEA_LEVEL + 1 ? SAND : GRASS;
+              } else if (y >= height - 2) {
+                blockType = DIRT;
+              }
+              addBlock(gx, y, gz, blockType);
+            }
+
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, WATER);
+            }
+
+            // ── Trees (JP-55) ────────────────────────────────────────
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.94) {
+                const treeHeight = 3 + Math.abs(gx * gz) % 4;
+                for (let ty = 1; ty <= treeHeight; ty++) {
+                  addBlock(gx, height + ty, gz, WOOD);
+                }
+                const topY = height + treeHeight;
+                for (let lx = -1; lx <= 1; lx++) {
+                  for (let ly = -1; ly <= 1; ly++) {
+                    for (let lz = -1; lz <= 1; lz++) {
+                      if (lx === 0 && lz === 0 && ly <= 0) continue;
+                      if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
+                      addBlock(gx + lx, topY + ly, gz + lz, LEAVES);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // ── Easter egg room (JP-65) ────────────────────────────────────
+      generateEasterEggRoom();
+    }
+
+    // Hidden room buried deep under spawn with a special message
+    function generateEasterEggRoom() {
+      // 5×5 pixel font — each letter is a 5-wide × 5-tall grid
+      // 1 = filled pixel, 0 = empty
+      const FONT = {
+        W: [1,0,0,0,1, 1,0,0,0,1, 1,0,1,0,1, 1,1,0,1,1, 1,0,0,0,1],
+        E: [1,1,1,1,1, 1,0,0,0,0, 1,1,1,0,0, 1,0,0,0,0, 1,1,1,1,1],
+        L: [1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 1,1,1,1,1],
+        C: [0,1,1,1,0, 1,0,0,0,0, 1,0,0,0,0, 1,0,0,0,0, 0,1,1,1,0],
+        O: [0,1,1,1,0, 1,0,0,0,1, 1,0,0,0,1, 1,0,0,0,1, 0,1,1,1,0],
+        M: [1,0,0,0,1, 1,1,0,1,1, 1,0,1,0,1, 1,0,0,0,1, 1,0,0,0,1],
+        J: [0,0,1,1,1, 0,0,0,1,0, 0,0,0,1,0, 1,0,0,1,0, 0,1,1,0,0],
+        A: [0,1,1,1,0, 1,0,0,0,1, 1,1,1,1,1, 1,0,0,0,1, 1,0,0,0,1],
+        X: [1,0,0,0,1, 0,1,0,1,0, 0,0,1,0,0, 0,1,0,1,0, 1,0,0,0,1],
+        ' ':[0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0],
+      };
+
+      const message = 'WELCOME JAXX';
+      const ROOM_Y    = -10;         // Deep underground
+      const ROOM_H    = 7;           // Room height (floor to ceiling)
+      const LETTER_W  = 5;
+      const LETTER_H  = 5;
+      const GAP       = 1;           // Gap between letters
+      const totalW    = message.length * (LETTER_W + GAP) - GAP;
+      const ROOM_W    = totalW + 4;  // 2-block padding each side
+      const ROOM_D    = 8;           // Room depth (Z)
+
+      // Center the room around X=0, Z=0
+      const startX = -Math.floor(ROOM_W / 2);
+      const startZ = -Math.floor(ROOM_D / 2);
+
+      // Carve out the room (replace with air) and build walls/floor/ceiling
+      for (let x = 0; x < ROOM_W; x++) {
+        for (let z = 0; z < ROOM_D; z++) {
+          for (let y = 0; y < ROOM_H; y++) {
+            const wx = startX + x;
+            const wy = ROOM_Y + y;
+            const wz = startZ + z;
+            const key = coordKey(wx, wy, wz);
+
+            const isFloor   = (y === 0);
+            const isCeiling = (y === ROOM_H - 1);
+            const isWallX   = (x === 0 || x === ROOM_W - 1);
+            const isWallZ   = (z === 0 || z === ROOM_D - 1);
+
+            if (isFloor) {
+              // Glow block floor so the room is always lit
+              blockMap.delete(key);
+              addBlock(wx, wy, wz, GLOW);
+            } else if (isCeiling || isWallX || isWallZ) {
+              // Stone walls and ceiling
+              blockMap.delete(key);
+              addBlock(wx, wy, wz, STONE);
+            } else {
+              // Clear interior air
+              blockMap.delete(key);
+            }
+          }
+        }
+      }
+
+      // Write the message on the back wall (Z = startZ + 1, facing +Z)
+      const wallZ = startZ + 1;
+      const letterStartY = ROOM_Y + 1; // One block above floor
+      const letterStartX = startX + 2;  // 2-block left padding
+
+      for (let i = 0; i < message.length; i++) {
+        const ch = message[i];
+        const pixels = FONT[ch];
+        if (!pixels) continue;
+
+        const offsetX = i * (LETTER_W + GAP);
+
+        for (let row = 0; row < LETTER_H; row++) {
+          for (let col = 0; col < LETTER_W; col++) {
+            if (pixels[row * LETTER_W + col]) {
+              const bx = letterStartX + offsetX + col;
+              const by = letterStartY + (LETTER_H - 1 - row); // top-down → bottom-up
+              const key = coordKey(bx, by, wallZ);
+              blockMap.delete(key);
+              addBlock(bx, by, wallZ, RAINBOW);
+            }
+          }
+        }
+      }
+    }
+
+    // ── Persistence ──────────────────────────────────────────────────
+    // World save format: { v: 1, blocks: [[x, y, z, blockId], …] }
+    // World index format: { v: 2, currentId, worlds: [{ id, name, createdAt, updatedAt }] }
+    // Backward-compatible: the old single SAVE_KEY is migrated into the first named world.
+    const LEGACY_SAVE_KEY = 'blockventure:world:default';
+    const WORLD_INDEX_KEY = 'blockventure:worlds:index';
+    const WORLD_KEY_PREFIX = 'blockventure:world:';
+    const MISSIONS_KEY_PREFIX = 'blockventure:missions:';
+    const DEFAULT_WORLD_NAME = 'Jaxx World 1';
+    let currentWorldId = null;
+
+    function makeWorldId() {
+      return `world-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+    }
+    function worldStorageKey(id) { return WORLD_KEY_PREFIX + id; }
+    function missionStorageKey(id) { return MISSIONS_KEY_PREFIX + id; }
+    function cleanWorldName(name) {
+      return String(name || '').trim().slice(0, 40) || `Jaxx World ${listWorlds().length + 1}`;
+    }
+    function readWorldIndex() {
+      try {
+        const raw = localStorage.getItem(WORLD_INDEX_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.v !== 2 || !Array.isArray(parsed.worlds)) return null;
+        return parsed;
+      } catch (_) {
+        return null;
+      }
+    }
+    function writeWorldIndex(index) {
+      localStorage.setItem(WORLD_INDEX_KEY, JSON.stringify(index));
+    }
+    function ensureWorldIndex() {
+      let index = readWorldIndex();
+      if (index && index.worlds.length) {
+        currentWorldId = index.currentId || index.worlds[0].id;
+        // Back-fill biomeId for worlds saved before JP-100
+        let dirty = false;
+        for (const w of index.worlds) {
+          if (!w.biomeId) { w.biomeId = 'meadow'; dirty = true; }
+        }
+        if (dirty) try { writeWorldIndex(index); } catch (_) { /* private browsing */ }
+        return index;
+      }
+
+      const now = new Date().toISOString();
+      const id = makeWorldId();
+      index = { v: 2, currentId: id, worlds: [{ id, name: DEFAULT_WORLD_NAME, createdAt: now, updatedAt: now }] };
+      currentWorldId = id;
+
+      // Migrate old single-world save if it exists; otherwise startup will generate fresh terrain.
+      try {
+        const legacy = localStorage.getItem(LEGACY_SAVE_KEY);
+        if (legacy) localStorage.setItem(worldStorageKey(id), legacy);
+      } catch (_) { /* private browsing */ }
+      try { writeWorldIndex(index); } catch (_) { /* private browsing */ }
+      return index;
+    }
+    function listWorlds() {
+      return ensureWorldIndex().worlds;
+    }
+    function getCurrentWorldMeta() {
+      const index = ensureWorldIndex();
+      return index.worlds.find(w => w.id === currentWorldId) || index.worlds[0];
+    }
+    function getCurrentBiomeId() {
+      return getCurrentWorldMeta()?.biomeId || 'meadow';
+    }
+    function setCurrentWorld(id) {
+      const index = ensureWorldIndex();
+      if (!index.worlds.some(w => w.id === id)) return false;
+      index.currentId = id;
+      currentWorldId = id;
+      writeWorldIndex(index);
+      return true;
+    }
+    function touchCurrentWorldMeta() {
+      const index = ensureWorldIndex();
+      const meta = index.worlds.find(w => w.id === currentWorldId);
+      if (meta) meta.updatedAt = new Date().toISOString();
+      writeWorldIndex(index);
+      return meta;
+    }
+    function createWorldMeta(name, biomeId = 'meadow') {
+      const index = ensureWorldIndex();
+      const now = new Date().toISOString();
+      const meta = { id: makeWorldId(), name: cleanWorldName(name), biomeId, createdAt: now, updatedAt: now };
+      index.worlds.push(meta);
+      index.currentId = meta.id;
+      currentWorldId = meta.id;
+      writeWorldIndex(index);
+      return meta;
+    }
+    function validateWorldData(parsed) {
+      if (!parsed || parsed.v !== 1 || !Array.isArray(parsed.blocks)) return false;
+      for (const b of parsed.blocks) {
+        if (!Array.isArray(b) || b.length !== 4) return false;
+        const [x, y, z, id] = b;
+        if (typeof x !== 'number' || typeof y !== 'number' || typeof z !== 'number') return false;
+        if (!BLOCKS[id]) return false;
+      }
+      return true;
+    }
+    function loadWorldData(id) {
+      let raw;
+      try { raw = localStorage.getItem(worldStorageKey(id)); } catch (_) { return false; }
+      if (!raw) return false;
+      let parsed;
+      try { parsed = JSON.parse(raw); } catch (_) { return false; }
+      if (!validateWorldData(parsed)) return false;
+      for (const [x, y, z, id] of parsed.blocks) {
+        addBlock(Math.round(x), Math.round(y), Math.round(z), id);
+      }
+      return true;
+    }
+
+    ensureWorldIndex();
+    if (!loadWorldData(currentWorldId)) generateFreshWorld(getCurrentBiomeId());
+    applySkyForBiome(getCurrentBiomeId());
+
+    // ── Simple Missions (JP-84) ─────────────────────────────────────
+    const MISSIONS = [
+      { id: 'place-10', title: 'Place 10 blocks', target: 10, type: 'place-any' },
+      { id: 'break-5', title: 'Break 5 blocks', target: 5, type: 'break-any' },
+      { id: 'rainbow-3', title: 'Place 3 Rainbow blocks', target: 3, type: 'place-block', blockId: RAINBOW },
+      { id: 'bouncy-1', title: 'Try a Bouncy block', target: 1, type: 'place-block', blockId: BOUNCY },
+      { id: 'glow-3', title: 'Light it up with 3 Glow blocks', target: 3, type: 'place-block', blockId: GLOW },
+    ];
+    const missionProgress = {};
+    const missionsListEl = document.getElementById('missions-list');
+    const missionsPanelEl = document.getElementById('missions-panel');
+
+    function defaultMissionProgress() {
+      const state = {};
+      for (const mission of MISSIONS) state[mission.id] = 0;
+      return state;
+    }
+    function loadMissionProgress() {
+      Object.assign(missionProgress, defaultMissionProgress());
+      try {
+        const raw = localStorage.getItem(missionStorageKey(currentWorldId));
+        if (!raw) return;
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.v !== 1 || !parsed.progress) return;
+        for (const mission of MISSIONS) {
+          const value = Number(parsed.progress[mission.id] || 0);
+          missionProgress[mission.id] = Math.max(0, Math.min(mission.target, value));
+        }
+      } catch (_) { /* private browsing */ }
+    }
+    function saveMissionProgress() {
+      try {
+        localStorage.setItem(missionStorageKey(currentWorldId), JSON.stringify({ v: 1, progress: missionProgress }));
+      } catch (_) { /* private browsing */ }
+    }
+    function renderMissions() {
+      missionsListEl.innerHTML = '';
+      let remaining = 0;
+      for (const mission of MISSIONS) {
+        const value = Math.min(mission.target, missionProgress[mission.id] || 0);
+        const done = value >= mission.target;
+        if (!done) remaining++;
+        const row = document.createElement('div');
+        row.className = 'mission-row' + (done ? ' done' : '');
+        row.innerHTML = `<span>${done ? '✅ ' : ''}${mission.title}</span><span class="mission-progress">${value}/${mission.target}</span>`;
+        missionsListEl.appendChild(row);
+      }
+      missionsPanelEl.classList.toggle('collapsed', remaining === 0);
+    }
+    function resetMissionsForCurrentWorld() {
+      Object.assign(missionProgress, defaultMissionProgress());
+      saveMissionProgress();
+      renderMissions();
+    }
+    function switchMissionWorld() {
+      loadMissionProgress();
+      renderMissions();
+    }
+    function completeMissionToast(mission) {
+      showToast(`⭐ Mission complete: ${mission.title}!`);
+      playSound('giggle');
+    }
+    function trackMission(eventType, blockId = null) {
+      let changed = false;
+      for (const mission of MISSIONS) {
+        if ((missionProgress[mission.id] || 0) >= mission.target) continue;
+        if (mission.type === eventType || (mission.type === 'place-block' && eventType === 'place-block' && mission.blockId === blockId)) {
+          missionProgress[mission.id] = Math.min(mission.target, (missionProgress[mission.id] || 0) + 1);
+          changed = true;
+          if (missionProgress[mission.id] >= mission.target) completeMissionToast(mission);
+        }
+      }
+      if (changed) {
+        saveMissionProgress();
+        renderMissions();
+      }
+    }
+    switchMissionWorld();
+
+    // ── Spawn helper — place the player above the terrain ────────────
+    function spawnPlayer() {
+      // Scan downward at (0, 0) to find the highest block
+      for (let y = 20; y >= -5; y--) {
+        if (blockMap.has(coordKey(0, y, 0))) {
+          // Place feet on top of this block (block top = y + 0.5)
+          camera.position.set(0, y + 0.5 + EYE_HEIGHT, 0);
+          if (isFlying) { isFlying = false; updateFlyIndicator(); }
+          return;
+        }
+      }
+      // Fallback if no block found at origin
+      camera.position.set(0, 10 + EYE_HEIGHT, 0);
+      if (isFlying) { isFlying = false; updateFlyIndicator(); }
+    }
+    spawnPlayer();
+
+    // ── NPCs (JP-64) ─────────────────────────────────────────────────
+    function createTextSprite(message) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.font = 'Bold 40px "Fredoka One", Arial';
+      const width = ctx.measureText(message).width;
+      canvas.width = width + 20;
+      canvas.height = 64;
+      ctx.font = 'Bold 40px "Fredoka One", Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = 'black';
+      ctx.strokeText(message, canvas.width/2, canvas.height/2 + 4);
+      ctx.fillStyle = 'white';
+      ctx.fillText(message, canvas.width/2, canvas.height/2 + 4);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+      const sprite = new THREE.Sprite(spriteMaterial);
+      sprite.scale.set(canvas.width / 40, canvas.height / 40, 1);
+      return sprite;
+    }
+
+    function createNPC(name, color, type) {
+      const group = new THREE.Group();
+      const mat = new THREE.MeshStandardMaterial({ color });
+      
+      if (type === 'bear') {
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.8, 0.8), mat);
+        head.position.y = 1.4;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.0, 0.5), mat);
+        body.position.y = 0.5;
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat);
+        armL.position.set(-0.5, 0.7, 0);
+        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.8, 0.3), mat);
+        armR.position.set(0.5, 0.7, 0);
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), mat);
+        legL.position.set(-0.2, 0.25, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5, 0.3), mat);
+        legR.position.set(0.2, 0.25, 0);
+        const earL = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
+        earL.position.set(-0.4, 1.8, 0);
+        const earR = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), mat);
+        earR.position.set(0.4, 1.8, 0);
+        const snoutMat = new THREE.MeshStandardMaterial({ color: 0xdeb887 }); 
+        const snout = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.2), snoutMat);
+        snout.position.set(0, 1.3, 0.4);
+        group.add(head, body, armL, armR, legL, legR, earL, earR, snout);
+      } else if (type === 'human') {
+        const headMat = new THREE.MeshStandardMaterial({ color: 0xffe0bd }); // skin tone
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 0.6), headMat);
+        head.position.y = 1.5;
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.9, 0.4), mat); // clothing
+        body.position.y = 0.75;
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), headMat);
+        armL.position.set(-0.425, 0.75, 0);
+        const armR = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.9, 0.25), headMat);
+        armR.position.set(0.425, 0.75, 0);
+        const pantsMat = new THREE.MeshStandardMaterial({ color: 0x000080 }); // navy pants
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.7, 0.28), pantsMat);
+        legL.position.set(-0.15, 0.35, 0);
+        const legR = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.7, 0.28), pantsMat);
+        legR.position.set(0.15, 0.35, 0);
+        group.add(head, body, armL, armR, legL, legR);
+      }
+      
+      const label = createTextSprite(name);
+      label.position.y = 2.2;
+      group.add(label);
+      
+      return group;
+    }
+
+    const friendlyCreatures = [];
+    const npcGroup = new THREE.Group();
+    scene.add(npcGroup);
+
+    function createAnimal(name, type) {
+      const group = new THREE.Group();
+      let bodyMat, headMat, accentMat;
+      if (type === 'sheep') {
+        bodyMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f0 });
+        headMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+        accentMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.7, 0.55), bodyMat);
+        body.position.y = 0.75;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.42, 0.38), headMat);
+        head.position.set(0, 0.88, 0.48);
+        const wool = new THREE.Mesh(new THREE.BoxGeometry(0.88, 0.22, 0.64), accentMat);
+        wool.position.y = 1.18;
+        group.add(body, head, wool);
+      } else {
+        bodyMat = new THREE.MeshStandardMaterial({ color: 0xfff2a8 });
+        headMat = new THREE.MeshStandardMaterial({ color: 0xfff7c7 });
+        accentMat = new THREE.MeshStandardMaterial({ color: 0xff8c22 });
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.5, 0.48), bodyMat);
+        body.position.y = 0.48;
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.38, 0.38, 0.38), headMat);
+        head.position.set(0, 0.78, 0.34);
+        const beak = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.18), accentMat);
+        beak.position.set(0, 0.78, 0.62);
+        const comb = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.12, 0.08), new THREE.MeshStandardMaterial({ color: 0xe53935 }));
+        comb.position.set(0, 1.03, 0.30);
+        group.add(body, head, beak, comb);
+      }
+
+      const legMat = new THREE.MeshStandardMaterial({ color: type === 'sheep' ? 0x222222 : 0xffa333 });
+      for (const [lx, lz] of [[-0.25, -0.18], [0.25, -0.18], [-0.25, 0.18], [0.25, 0.18]]) {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.42, 0.12), legMat);
+        leg.position.set(lx, 0.18, lz);
+        group.add(leg);
+      }
+
+      const label = createTextSprite(name);
+      label.position.y = type === 'sheep' ? 1.8 : 1.45;
+      label.scale.multiplyScalar(0.62);
+      group.add(label);
+      group.userData = { name, type, wanderAngle: Math.random() * Math.PI * 2, nextTurnAt: 0, speed: type === 'sheep' ? 0.55 : 0.85, home: new THREE.Vector3() };
+      return group;
+    }
+
+    function placeCreature(creature, x, z) {
+      const y = getGroundHeight(x, 20, z);
+      if (y <= -10) return false;
+      creature.position.set(x, y, z);
+      creature.userData.home.set(x, y, z);
+      npcGroup.add(creature);
+      friendlyCreatures.push(creature);
+      return true;
+    }
+
+    function clearFriendlyCreatures() {
+      while (npcGroup.children.length) npcGroup.remove(npcGroup.children[0]);
+      friendlyCreatures.length = 0;
+    }
+
+    function initNPCs() {
+      clearFriendlyCreatures();
+
+      const teddy = createNPC("Teddy", 0x8b4513, 'bear');
+      const tx = 3; const tz = -3;
+      const ty = getGroundHeight(tx, 20, tz); 
+      if (ty > -10) {
+        teddy.position.set(tx, ty, tz);
+        teddy.lookAt(0, ty, 0); // Face spawn
+        npcGroup.add(teddy);
+      }
+      
+      const dad = createNPC("Dad", 0x228b22, 'human'); // Green shirt
+      const dx = -3; const dz = -2;
+      const dy = getGroundHeight(dx, 20, dz);
+      if (dy > -10) {
+        dad.position.set(dx, dy, dz);
+        dad.lookAt(0, dy, 0); // Face spawn
+        npcGroup.add(dad);
+      }
+
+      placeCreature(createAnimal('Baa', 'sheep'), 5, 3);
+      placeCreature(createAnimal('Fluffy', 'sheep'), -6, 4);
+      placeCreature(createAnimal('Peep', 'chicken'), 4, -6);
+      placeCreature(createAnimal('Nugget', 'chicken'), -5, -5);
+    }
+
+    function updateFriendlyCreatures(dt) {
+      const now = performance.now();
+      for (const creature of friendlyCreatures) {
+        const data = creature.userData;
+        if (now > data.nextTurnAt) {
+          data.nextTurnAt = now + 1200 + Math.random() * 2600;
+          data.wanderAngle += (Math.random() - 0.5) * 1.8;
+        }
+
+        const homeDx = data.home.x - creature.position.x;
+        const homeDz = data.home.z - creature.position.z;
+        if (Math.hypot(homeDx, homeDz) > 7) data.wanderAngle = Math.atan2(homeDx, homeDz);
+
+        const nx = creature.position.x + Math.sin(data.wanderAngle) * data.speed * dt;
+        const nz = creature.position.z + Math.cos(data.wanderAngle) * data.speed * dt;
+        const ny = getGroundHeight(nx, 20, nz);
+        if (ny > -10 && Math.abs(ny - creature.position.y) < 1.4 && !collidesAt(nx, ny, nz)) {
+          creature.position.set(nx, ny, nz);
+          creature.rotation.y = data.wanderAngle;
+        } else {
+          data.wanderAngle += Math.PI * (0.45 + Math.random() * 0.4);
+          data.nextTurnAt = now + 500;
+        }
+
+        creature.position.y += Math.sin(now * 0.005 + creature.id) * 0.006;
+      }
+    }
+
+    // Toast helper
+    const toastEl  = document.getElementById('toast');
+    let   toastTimer = null;
+    function showToast(msg, isError = false) {
+      toastEl.textContent = msg;
+      toastEl.style.color = isError ? '#ff8a8a' : 'white';
+      toastEl.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1800);
+    }
+
+    function serializeWorld() {
+      const blocks = [];
+      for (const [key, entry] of blockMap) {
+        const [x, y, z] = key.split(',').map(Number);
+        blocks.push([x, y, z, entry.blockId]);
+      }
+      return { v: 1, blocks };
+    }
+
+    function saveWorld(showSavedToast = true) {
+      try {
+        const data = serializeWorld();
+        const json = JSON.stringify(data);
+        localStorage.setItem(worldStorageKey(currentWorldId), json);
+        const meta = touchCurrentWorldMeta();
+        if (showSavedToast) showToast(`Saved ${meta?.name || 'world'}! ${data.blocks.length} blocks · ${(json.length / 1024).toFixed(0)} KB`);
+        return true;
+      } catch (err) {
+        console.error('save failed', err);
+        if (showSavedToast) showToast(`Save failed: ${err.message}`, true);
+        return false;
+      }
+    }
+
+    function clearWorld() {
+      for (const mesh of instancedMeshList) {
+        mesh.count = 0;
+        mesh.instanceMatrix.needsUpdate = true;
+        invalidateBounds(mesh);
+      }
+      for (const arr of instanceCoords.values()) arr.length = 0;
+      blockMap.clear();
+    }
+
+    function startNewWorld(biomeId = 'meadow') {
+      const suggested = `Jaxx World ${listWorlds().length + 1}`;
+      const name = prompt('Name this new world:', suggested);
+      if (name === null) return;
+      saveWorld(false); // preserve the current world before switching away
+      const meta = createWorldMeta(name, biomeId);
+      clearWorld();
+      undoStack.length = 0;
+      redoStack.length = 0;
+      syncUndoButton();
+      syncRedoButton();
+      generateFreshWorld(biomeId);
+      spawnPlayer();
+      velocityY = 0;
+      initNPCs();
+      resetMissionsForCurrentWorld();
+      saveWorld(false);
+      showToast(`Created ${meta.name} 🌱`);
+    }
+
+    function loadWorld(id) {
+      const meta = listWorlds().find(w => w.id === id);
+      if (!meta || id === currentWorldId) return;
+      saveWorld(false);
+      clearWorld();
+      undoStack.length = 0;
+      redoStack.length = 0;
+      syncUndoButton();
+      syncRedoButton();
+      setCurrentWorld(id);
+      if (!loadWorldData(id)) generateFreshWorld(meta.biomeId || 'meadow');
+      applySkyForBiome(meta.biomeId || 'meadow');
+      spawnPlayer();
+      velocityY = 0;
+      initNPCs();
+      switchMissionWorld();
+      showToast(`Loaded ${meta.name} 🌍`);
+    }
+
+    function deleteWorld(id) {
+      const index = ensureWorldIndex();
+      const meta = index.worlds.find(w => w.id === id);
+      if (!meta || index.worlds.length <= 1) {
+        showToast('Keep at least one world', true);
+        return;
+      }
+      if (!confirm(`Delete "${meta.name}"? This cannot be undone.`)) return;
+      try { localStorage.removeItem(worldStorageKey(id)); } catch (_) { /* private browsing */ }
+      index.worlds = index.worlds.filter(w => w.id !== id);
+      if (index.currentId === id) {
+        index.currentId = index.worlds[0].id;
+        currentWorldId = index.currentId;
+        clearWorld();
+        undoStack.length = 0;
+        redoStack.length = 0;
+        syncUndoButton();
+        syncRedoButton();
+        if (!loadWorldData(currentWorldId)) generateFreshWorld(getCurrentBiomeId());
+        spawnPlayer();
+        velocityY = 0;
+        initNPCs();
+        switchMissionWorld();
+      }
+      writeWorldIndex(index);
+      showToast(`Deleted ${meta.name}`);
+    }
+
+    function manageWorlds() {
+      const worlds = listWorlds();
+      const lines = worlds.map((w, i) => `${i + 1}. ${w.id === currentWorldId ? '✓ ' : ''}${w.name}`);
+      const choice = prompt(`Worlds\n\n${lines.join('\n')}\n\nType a number to load, N for new, or D + number to delete (example D2).`);
+      if (!choice) return;
+      const value = choice.trim().toLowerCase();
+      if (value === 'n' || value === 'new') return startNewWorld();
+      if (value.startsWith('d')) {
+        const idx = Number(value.slice(1)) - 1;
+        if (worlds[idx]) deleteWorld(worlds[idx].id);
+        return;
+      }
+      const idx = Number(value) - 1;
+      if (worlds[idx]) loadWorld(worlds[idx].id);
+    }
+
+    document.getElementById('hub-btn').addEventListener('click', () => {
+      window.location.href = '../';
+    });
+    document.getElementById('worlds-btn').addEventListener('click', manageWorlds);
+    document.getElementById('save-btn').addEventListener('click', () => saveWorld(true));
+    document.getElementById('new-btn').addEventListener('click', startNewWorld);
+
+    // ── Screenshot (JP-50) ───────────────────────────────────────────
+    const HUD_IDS = ['hotbar', 'crosshair', 'actions', 'toast', 'block-name-toast', 'overlay', 'missions-panel', 'backpack-btn', 'photo-tools', 'touch-topleft', 'joystick', 'touch-actions'];
+
+    function takeScreenshot() {
+      const hiddenEls = [];
+      HUD_IDS.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && el.style.visibility !== 'hidden') {
+          hiddenEls.push(el);
+          el.style.visibility = 'hidden';
+        }
+      });
+      renderer.render(scene, camera); // clean frame with no HUD
+      const dataURL = renderer.domElement.toDataURL('image/png');
+      hiddenEls.forEach(el => { el.style.visibility = ''; });
+      const a    = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `jaxx-world-${date}.png`;
+      a.href     = dataURL;
+      a.click();
+      showToast('Screenshot saved! 📷');
+    }
+
+    document.getElementById('screenshot-btn').addEventListener('click', takeScreenshot);
+
+    // ── Audio ────────────────────────────────────────────────────────
+    let audioCtx   = null;
+    let masterGain = null;
+
+    function ensureAudio() {
+      if (audioCtx) return audioCtx;
+      const Ctx  = window.AudioContext || window.webkitAudioContext;
+      audioCtx   = new Ctx();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.35;
+      masterGain.connect(audioCtx.destination);
+      return audioCtx;
+    }
+
+    function thudHit({ type = 'sine', from, to, peak = 0.6, length = 0.18, sweep = 0.08 }) {
+      const ctx = ensureAudio();
+      const t0  = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const env = ctx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, t0);
+      osc.frequency.exponentialRampToValueAtTime(to, t0 + sweep);
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + length);
+      osc.connect(env).connect(masterGain);
+      osc.start(t0);
+      osc.stop(t0 + length + 0.02);
+    }
+
+    function noiseBurst({ filterType = 'bandpass', freq = 1800, Q = 0.9, peak = 0.5, length = 0.12 }) {
+      const ctx  = ensureAudio();
+      const t0   = ctx.currentTime;
+      const buf  = ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * length)), ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+      const src    = ctx.createBufferSource();
+      src.buffer   = buf;
+      const filter = ctx.createBiquadFilter();
+      filter.type            = filterType;
+      filter.frequency.value = freq;
+      filter.Q.value         = Q;
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0.0001, t0);
+      env.gain.exponentialRampToValueAtTime(peak, t0 + 0.005);
+      env.gain.exponentialRampToValueAtTime(0.0001, t0 + length);
+      src.connect(filter).connect(env).connect(masterGain);
+      src.start(t0);
+      src.stop(t0 + length + 0.01);
+    }
+
+    const SOUND_RECIPES = {
+      // Grass / Dirt
+      thud:       () => thudHit({ from: 140, to: 70 }),
+      crack:      () => noiseBurst({ freq: 1800, Q: 0.9 }),
+      // Stone
+      stoneThud:  () => thudHit({ type: 'square', from: 220, to: 110, peak: 0.45, length: 0.12, sweep: 0.05 }),
+      stoneCrack: () => noiseBurst({ freq: 3200, Q: 1.6, length: 0.09 }),
+      // Wood
+      woodThud:   () => thudHit({ from: 110, to: 55, length: 0.28, sweep: 0.12, peak: 0.55 }),
+      woodCrack:  () => noiseBurst({ freq: 800, Q: 2.0, length: 0.13 }),
+      // Sand
+      sandThud:   () => noiseBurst({ filterType: 'lowpass',  freq: 600,  Q: 0.6, peak: 0.35, length: 0.16 }),
+      sandCrack:  () => noiseBurst({ filterType: 'highpass', freq: 4000, Q: 0.6, peak: 0.30, length: 0.10 }),
+      // ── Astro Block (JP-52) — space-themed sounds ─────────────────
+      // Place: two oscillators an octave apart sweep downward together,
+      //        making a rich sci-fi "bloop" chord.
+      astroThud: () => {
+        thudHit({ type: 'triangle', from: 523, to: 262, peak: 0.38, length: 0.22, sweep: 0.09 });
+        thudHit({ type: 'sine',    from: 784, to: 392, peak: 0.18, length: 0.18, sweep: 0.07 });
+      },
+      // Break: sawtooth oscillator sweeps 1200 → 200 Hz — classic laser zap.
+      astroCrack: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(1200, t0);
+        osc.frequency.exponentialRampToValueAtTime(200, t0 + 0.11);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.exponentialRampToValueAtTime(0.42, t0 + 0.004);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.11);
+        osc.connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.13);
+      },
+      // Bouncy Block (JP-60)
+      boing: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, t0);
+        osc.frequency.exponentialRampToValueAtTime(600, t0 + 0.15);
+        osc.frequency.exponentialRampToValueAtTime(400, t0 + 0.3);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.exponentialRampToValueAtTime(0.4, t0 + 0.02);
+        env.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        osc.connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.35);
+      },
+      giggle: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        for (let i = 0; i < 4; i++) {
+          const osc = ctx.createOscillator();
+          const env = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(800 + i * 50, t0 + i * 0.1);
+          osc.frequency.exponentialRampToValueAtTime(1200 + i * 50, t0 + i * 0.1 + 0.08);
+          env.gain.setValueAtTime(0.0001, t0 + i * 0.1);
+          env.gain.exponentialRampToValueAtTime(0.3, t0 + i * 0.1 + 0.02);
+          env.gain.exponentialRampToValueAtTime(0.0001, t0 + i * 0.1 + 0.08);
+          osc.connect(env).connect(masterGain);
+          osc.start(t0 + i * 0.1);
+          osc.stop(t0 + i * 0.1 + 0.1);
+        }
+      },
+      moo: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, t0);
+        osc.frequency.linearRampToValueAtTime(100, t0 + 0.8);
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(800, t0);
+        filter.frequency.linearRampToValueAtTime(200, t0 + 0.8);
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.linearRampToValueAtTime(0.4, t0 + 0.2);
+        env.gain.linearRampToValueAtTime(0.0001, t0 + 0.8);
+        osc.connect(filter).connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.8);
+      },
+      toot: () => {
+        const ctx = ensureAudio();
+        const t0  = ctx.currentTime;
+        const osc = ctx.createOscillator();
+        const env = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(60, t0);
+        osc.frequency.linearRampToValueAtTime(30, t0 + 0.3);
+        
+        // Add a bit of LFO for "flapping"
+        const lfo = ctx.createOscillator();
+        lfo.type = 'square';
+        lfo.frequency.value = 40;
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 20;
+        lfo.connect(lfoGain).connect(osc.frequency);
+        lfo.start(t0);
+        lfo.stop(t0 + 0.3);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(300, t0);
+        filter.frequency.linearRampToValueAtTime(100, t0 + 0.3);
+        
+        env.gain.setValueAtTime(0.0001, t0);
+        env.gain.linearRampToValueAtTime(0.4, t0 + 0.05);
+        env.gain.linearRampToValueAtTime(0.0001, t0 + 0.3);
+        osc.connect(filter).connect(env).connect(masterGain);
+        osc.start(t0);
+        osc.stop(t0 + 0.3);
+      },
+    };
+
+    function playSound(name) {
+      const recipe = SOUND_RECIPES[name];
+      if (recipe) recipe();
+    }
+
+    // pointerdown covers mouse, touch, and pen — so iPad gets audio too
+    window.addEventListener('pointerdown', () => ensureAudio(), { once: true });
+
+    // ── Targeting ────────────────────────────────────────────────────
+    const REACH        = 5;
+    const raycaster    = new THREE.Raycaster();
+    raycaster.far      = REACH;
+    const screenCentre = new THREE.Vector2(0, 0);
+
+    const highlightEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1.02, 1.02, 1.02));
+    const highlightMat   = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+    const highlight      = new THREE.LineSegments(highlightEdges, highlightMat);
+    highlight.visible    = false;
+    scene.add(highlight);
+
+    let targetedBlock    = null;
+    const targetedNormal = new THREE.Vector3();
+
+    function updateTarget() {
+      raycaster.setFromCamera(screenCentre, camera);
+      const hits = raycaster.intersectObjects(instancedMeshList, false);
+      if (hits.length > 0) {
+        const hit     = hits[0];
+        const blockId = hit.object.userData.blockId;
+        const coord   = instanceCoords.get(blockId)[hit.instanceId];
+        if (coord) {
+          targetedBlock = { x: coord.x, y: coord.y, z: coord.z, blockId };
+          targetedNormal.copy(hit.face.normal).round();
+          highlight.position.set(coord.x, coord.y, coord.z);
+          highlight.visible = true;
+          syncTouchActionButtons();
+          return;
+        }
+      }
+      targetedBlock     = null;
+      highlight.visible = false;
+      syncTouchActionButtons();
+    }
+
+    const PLAYER_HALF = 0.3;
+    function blockOverlapsPlayer(bx, by, bz) {
+      const p    = camera.position;
+      const feet = p.y - 1.7;
+      const head = p.y;
+      return Math.abs(bx - p.x) < 0.5 + PLAYER_HALF &&
+             Math.abs(bz - p.z) < 0.5 + PLAYER_HALF &&
+             (by + 0.5) > feet && (by - 0.5) < head;
+    }
+
+    // ── Build assists (JP-87 / JP-95): undo/redo for place & break ──────
+    const undoStack = [];
+    const redoStack = [];
+    const MAX_UNDO = 50;
+
+    function syncUndoButton() {
+      const btn = document.getElementById('touch-undo-btn');
+      if (!btn) return;
+      btn.disabled = undoStack.length === 0;
+      btn.setAttribute('aria-disabled', String(btn.disabled));
+    }
+
+    function syncRedoButton() {
+      const btn = document.getElementById('touch-redo-btn');
+      if (!btn) return;
+      btn.disabled = redoStack.length === 0;
+      btn.setAttribute('aria-disabled', String(btn.disabled));
+    }
+
+    function recordBuildAction(action) {
+      undoStack.push(action);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      redoStack.length = 0; // new action clears redo history
+      syncUndoButton();
+      syncRedoButton();
+    }
+
+    function undoLastBuildAction() {
+      const action = undoStack.pop();
+      if (!action) {
+        showToast('Nothing to undo yet', true);
+        syncUndoButton();
+        return;
+      }
+      if (action.type === 'place') {
+        removeBlock(action.x, action.y, action.z);
+        showToast(`Undid ${BLOCKS[action.blockId].name} placement ↶`);
+      } else if (action.type === 'break') {
+        addBlock(action.x, action.y, action.z, action.blockId);
+        showToast(`Restored ${BLOCKS[action.blockId].name} ↶`);
+      }
+      redoStack.push(action);
+      updateTarget();
+      syncTouchActionButtons();
+      syncUndoButton();
+      syncRedoButton();
+    }
+
+    function redoLastBuildAction() {
+      const action = redoStack.pop();
+      if (!action) {
+        showToast('Nothing to redo', true);
+        syncRedoButton();
+        return;
+      }
+      if (action.type === 'place') {
+        addBlock(action.x, action.y, action.z, action.blockId);
+        showToast(`Redid ${BLOCKS[action.blockId].name} placement ↷`);
+      } else if (action.type === 'break') {
+        removeBlock(action.x, action.y, action.z);
+        showToast(`Re-broke ${BLOCKS[action.blockId].name} ↷`);
+      }
+      undoStack.push(action);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      updateTarget();
+      syncTouchActionButtons();
+      syncUndoButton();
+      syncRedoButton();
+    }
+    syncUndoButton();
+    syncRedoButton();
+
+    function placeBlock() {
+      if (!targetedBlock) return false;
+      const nx = targetedBlock.x + targetedNormal.x;
+      const ny = targetedBlock.y + targetedNormal.y;
+      const nz = targetedBlock.z + targetedNormal.z;
+      if (blockMap.has(coordKey(nx, ny, nz))) return false;
+      if (blockOverlapsPlayer(nx, ny, nz)) return false;
+      addBlock(nx, ny, nz, selectedBlockId);
+      recordBuildAction({ type: 'place', x: nx, y: ny, z: nz, blockId: selectedBlockId });
+      trackMission('place-any');
+      trackMission('place-block', selectedBlockId);
+      return true;
+    }
+
+    // ── Pointer lock + title-screen / pause logic ────────────────────
+    let gameStarted = false;
+
+    const titleScreen = document.getElementById('title-screen');
+    const overlay     = document.getElementById('overlay');
+    const canvas      = renderer.domElement;
+
+    // ── Touch / tablet device detection ────────────────────────────
+    // Set the body class so all the .touch CSS rules turn on. We check
+    // for any touch capability — covers iPad, Android tablets, hybrid
+    // laptops with touchscreens. On a hybrid the mouse path keeps working;
+    // touch path simply becomes available as well.
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    if (hasTouch) document.body.classList.add('touch');
+
+    // ── Biome picker (JP-100) ────────────────────────────────────────
+    function startGame() {
+      titleScreen.classList.add('hidden');
+      gameStarted = true;
+      if (!hasTouch) canvas.requestPointerLock();
+    }
+
+    const biomePickerEl = document.getElementById('biome-picker');
+
+    function buildBiomePicker() {
+      biomePickerEl.innerHTML = '';
+      const currentBiomeId = getCurrentBiomeId();
+      for (const biome of Object.values(BIOMES)) {
+        const card = document.createElement('div');
+        card.className = 'biome-card' + (biome.id === currentBiomeId ? ' active' : '');
+        card.dataset.biomeId = biome.id;
+        card.innerHTML = `
+          <div class="biome-icon">${biome.icon}</div>
+          <div class="biome-name">${biome.name}</div>
+          <div class="biome-desc">${biome.description}</div>
+          <button class="biome-play-btn" type="button">▶ Play</button>
+        `;
+        card.querySelector('.biome-play-btn').addEventListener('click', () => {
+          const activeBiomeId = getCurrentBiomeId();
+          if (biome.id !== activeBiomeId) {
+            if (!confirm(`Switch to ${biome.name} biome? Your current world will be reset.`)) return;
+            clearWorld();
+            undoStack.length = 0;
+            redoStack.length = 0;
+            syncUndoButton();
+            syncRedoButton();
+            // Update current world's biome and regenerate
+            const idx = ensureWorldIndex();
+            const meta = idx.worlds.find(w => w.id === currentWorldId);
+            if (meta) meta.biomeId = biome.id;
+            try { writeWorldIndex(idx); } catch (_) { /* private browsing */ }
+            generateFreshWorld(biome.id);
+            spawnPlayer();
+            velocityY = 0;
+            initNPCs();
+            resetMissionsForCurrentWorld();
+            saveWorld(false);
+          }
+          startGame();
+        });
+        biomePickerEl.appendChild(card);
+      }
+    }
+    buildBiomePicker();
+
+    overlay.addEventListener('click', () => {
+      if (!gameStarted) return;
+      if (hasTouch) {
+        // Touch: just hide the pause overlay, no pointer to lock
+        overlay.classList.add('hidden');
+      } else {
+        canvas.requestPointerLock();
+      }
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+      if (document.pointerLockElement !== canvas) {
+        if (e.button === 0 && gameStarted) canvas.requestPointerLock();
+        return;
+      }
+      if (e.button === 0 && targetedBlock) {
+        highlight.visible = false;
+        const { x, y, z, blockId: brokenId } = targetedBlock;
+        removeBlock(x, y, z);
+        recordBuildAction({ type: 'break', x, y, z, blockId: brokenId });
+        targetedBlock = null;
+        trackMission('break-any');
+        playSound(BLOCKS[brokenId].breakSound);
+      } else if (e.button === 2) {
+        const before = blockMap.size;
+        placeBlock();
+        if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
+      }
+    });
+
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    document.addEventListener('pointerlockchange', () => {
+      const locked = document.pointerLockElement === canvas;
+      if (gameStarted) overlay.classList.toggle('hidden', locked);
+    });
+
+    // ── Mouse-look ───────────────────────────────────────────────────
+    let yaw   = 0;
+    let pitch = 0;
+    const PITCH_LIMIT      = Math.PI / 2 - 0.01;
+    const LOOK_SENSITIVITY = 0.002;
+
+    document.addEventListener('mousemove', (e) => {
+      if (document.pointerLockElement !== canvas) return;
+      yaw   -= e.movementX * LOOK_SENSITIVITY;
+      pitch -= e.movementY * LOOK_SENSITIVITY;
+      if (pitch >  PITCH_LIMIT) pitch =  PITCH_LIMIT;
+      if (pitch < -PITCH_LIMIT) pitch = -PITCH_LIMIT;
+    });
+
+    // ── Keyboard input ───────────────────────────────────────────────
+    const keys       = { w: false, a: false, s: false, d: false, ' ': false, shift: false };
+    let jumpRequested = false;
+    const blockOrder = Object.keys(BLOCKS).map(Number);
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' && e.repeat) return; // Prevent continuous jumping from holding space
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = true;
+      if (e.key === ' ' && !photoMode) {
+        const now = performance.now();
+        if (now - lastSpaceRelease < 300) {
+          // Double-tap: toggle fly mode (JP-94)
+          isFlying = !isFlying;
+          if (!isFlying && velocityY < 0) velocityY = 0; // gentle fall on exit
+          updateFlyIndicator();
+          lastSpaceRelease = -1000; // prevent triple-tap from immediately re-toggling
+        } else {
+          jumpRequested = true;
+        }
+      }
+      if (e.key >= '1' && e.key <= '9') {
+        const id = Number(e.key);
+        if (BLOCKS[id]) setSelectedBlock(id);
+      } else if (e.key === '0') {
+        if (BLOCKS[10]) setSelectedBlock(10);
+      } else if (k === 'q') {
+        const idx  = blockOrder.indexOf(selectedBlockId);
+        const next = (idx - 1 + blockOrder.length) % blockOrder.length;
+        setSelectedBlock(blockOrder[next]);
+      } else if (k === 'e') {
+        const idx  = blockOrder.indexOf(selectedBlockId);
+        const next = (idx + 1) % blockOrder.length;
+        setSelectedBlock(blockOrder[next]);
+      }
+      
+      if (e.key === 'F2') {
+        e.preventDefault();
+        takeScreenshot();
+      }
+      if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoLastBuildAction();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoLastBuildAction();
+        return;
+      }
+      if (e.key === 'F3') {
+        e.preventDefault();
+        togglePhotoMode();
+        return;
+      }
+      if (e.key === 'Escape' && !backpackPanel.classList.contains('hidden')) {
+        closeBackpack();
+        return;
+      }
+      if (e.key === 'Escape' && !controlsHelpEl.classList.contains('hidden')) {
+        hideControlsHelp();
+        return;
+      }
+      if (e.key.toLowerCase() === 'n') {
+        alwaysDay = !alwaysDay;
+        showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
+      }
+    });
+
+    window.addEventListener('keyup', (e) => {
+      const k = e.key.toLowerCase();
+      if (k in keys) keys[k] = false;
+      if (e.key === ' ') lastSpaceRelease = performance.now();
+    });
+
+    window.addEventListener('wheel', (e) => {
+      if (document.pointerLockElement !== canvas) return;
+      const idx  = blockOrder.indexOf(selectedBlockId);
+      const dir  = e.deltaY > 0 ? 1 : -1;
+      const next = (idx + dir + blockOrder.length) % blockOrder.length;
+      setSelectedBlock(blockOrder[next]);
+    }, { passive: true });
+
+    window.addEventListener('blur', () => {
+      for (const k in keys) keys[k] = false;
+    });
+
+    // ══════════════════════════════════════════════════════════════════
+    // TOUCH INPUT — virtual joystick, look-by-drag, action buttons
+    // (No-ops on desktop because the touch UI elements are display:none.)
+    // ══════════════════════════════════════════════════════════════════
+
+    // Analog joystick output, consumed by the render loop alongside WASD.
+    const joystick = { x: 0, y: 0 };           // each component in -1..1
+    const JOYSTICK_RADIUS = 50;                // max knob travel from centre
+    const TOUCH_LOOK_SENSITIVITY = 0.005;      // higher than mouse — fingers move slower
+
+    const joystickEl     = document.getElementById('joystick');
+    const knobEl         = document.getElementById('joystick-knob');
+    const touchActionsEl = document.getElementById('touch-actions');
+    const touchTopLeftEl = document.getElementById('touch-topleft');
+    const touchBreakBtn  = document.getElementById('touch-break-btn');
+    const touchPlaceBtn  = document.getElementById('touch-place-btn');
+    const touchJumpBtn   = document.getElementById('touch-jump-btn');
+    const touchPauseBtn  = document.getElementById('touch-pause-btn');
+    const touchHelpBtn   = document.getElementById('touch-help-btn');
+    const touchUndoBtn   = document.getElementById('touch-undo-btn');
+    const touchDayBtn    = document.getElementById('touch-day-btn');
+    const controlsHelpEl = document.getElementById('controls-help');
+    const controlsCloseBtn = document.getElementById('controls-close-btn');
+    const photoToolsEl   = document.getElementById('photo-tools');
+    const photoShotBtn   = document.getElementById('photo-shot-btn');
+    const photoCleanBtn  = document.getElementById('photo-clean-btn');
+    const photoExitBtn   = document.getElementById('photo-exit-btn');
+    const actionsEl      = document.getElementById('actions');
+
+    function syncTouchActionButtons() {
+      const canEditTarget = gameStarted && !!targetedBlock;
+      touchBreakBtn.disabled = !canEditTarget;
+      touchPlaceBtn.disabled = !canEditTarget;
+      touchBreakBtn.setAttribute('aria-disabled', String(!canEditTarget));
+      touchPlaceBtn.setAttribute('aria-disabled', String(!canEditTarget));
+      syncUndoButton();
+    }
+    syncTouchActionButtons();
+
+    // Track active touches by identifier so multiple fingers don't collide.
+    let joystickTouchId = null;
+    let lookTouchId     = null;
+    let joystickCenterX = 0, joystickCenterY = 0;
+    let lookLastX = 0,       lookLastY = 0;
+
+    function isInsideEl(el, x, y) {
+      if (!el) return false;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none') return false;
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    }
+
+    function startJoystick(t) {
+      const r = joystickEl.getBoundingClientRect();
+      joystickCenterX = r.left + r.width  / 2;
+      joystickCenterY = r.top  + r.height / 2;
+      joystickTouchId = t.identifier;
+      updateJoystick(t);
+    }
+    function updateJoystick(t) {
+      let dx = t.clientX - joystickCenterX;
+      let dy = t.clientY - joystickCenterY;
+      const dist = Math.hypot(dx, dy);
+      if (dist > JOYSTICK_RADIUS) {
+        const k = JOYSTICK_RADIUS / dist;
+        dx *= k; dy *= k;
+      }
+      joystick.x =  dx / JOYSTICK_RADIUS;
+      joystick.y = -dy / JOYSTICK_RADIUS;     // screen Y is inverted; up = forward
+      knobEl.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+    function endJoystick() {
+      joystickTouchId = null;
+      joystick.x = 0;
+      joystick.y = 0;
+      knobEl.style.transform = '';
+    }
+
+    function startLook(t) {
+      lookTouchId = t.identifier;
+      lookLastX = t.clientX;
+      lookLastY = t.clientY;
+    }
+    function updateLook(t) {
+      const dx = t.clientX - lookLastX;
+      const dy = t.clientY - lookLastY;
+      yaw   -= dx * TOUCH_LOOK_SENSITIVITY;
+      pitch -= dy * TOUCH_LOOK_SENSITIVITY;
+      if (pitch >  PITCH_LIMIT) pitch =  PITCH_LIMIT;
+      if (pitch < -PITCH_LIMIT) pitch = -PITCH_LIMIT;
+      lookLastX = t.clientX;
+      lookLastY = t.clientY;
+    }
+    function endLook() { lookTouchId = null; }
+
+    // List of UI elements that should NOT trigger a look drag when touched.
+    // (They have their own click handlers that fire normally.)
+    function isOnUI(x, y) {
+      return isInsideEl(touchActionsEl, x, y) ||
+             isInsideEl(touchTopLeftEl, x, y) ||
+             isInsideEl(actionsEl,      x, y) ||
+             isInsideEl(hotbarEl,       x, y) ||
+             isInsideEl(backpackBtn,    x, y) ||
+             isInsideEl(backpackPanel,  x, y) ||
+             isInsideEl(photoToolsEl,   x, y) ||
+             isInsideEl(overlay,        x, y) ||
+             isInsideEl(controlsHelpEl, x, y) ||
+             isInsideEl(titleScreen,    x, y);
+    }
+
+    document.addEventListener('touchstart', (e) => {
+      if (!gameStarted) return;
+      let consume = false;
+      for (const t of e.changedTouches) {
+        // Joystick area takes priority
+        if (joystickTouchId === null && isInsideEl(joystickEl, t.clientX, t.clientY)) {
+          startJoystick(t);
+          consume = true;
+          continue;
+        }
+        // Buttons & hotbar handle their own clicks — don't intercept
+        if (isOnUI(t.clientX, t.clientY)) continue;
+        // Anywhere else = look drag
+        if (lookTouchId === null) {
+          startLook(t);
+          consume = true;
+        }
+      }
+      // preventDefault stops iOS from synthesising mouse events / scrolling
+      if (consume) e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      let consume = false;
+      for (const t of e.changedTouches) {
+        if (t.identifier === joystickTouchId) { updateJoystick(t); consume = true; }
+        else if (t.identifier === lookTouchId) { updateLook(t);   consume = true; }
+      }
+      if (consume) e.preventDefault();
+    }, { passive: false });
+
+    function handleTouchEnd(e) {
+      for (const t of e.changedTouches) {
+        if (t.identifier === joystickTouchId) endJoystick();
+        if (t.identifier === lookTouchId)     endLook();
+      }
+    }
+    document.addEventListener('touchend',    handleTouchEnd);
+    document.addEventListener('touchcancel', handleTouchEnd);
+
+    // ── Touch action button handlers ─────────────────────────────────
+    function bindTouchButton(button, handler) {
+      let lastRunAt = 0;
+      const run = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const now = performance.now();
+        if (now - lastRunAt < 160) return; // avoid pointer/touch/click double-fires
+        lastRunAt = now;
+        if (!button.disabled) handler();
+      };
+      // pointerdown fires immediately during multi-touch, unlike click on iPad
+      // which can be delayed/suppressed while the joystick finger is moving.
+      button.addEventListener('pointerdown', run, { passive: false });
+      button.addEventListener('touchstart', run, { passive: false });
+      button.addEventListener('click', run);
+    }
+
+    // BREAK — same logic as left-click in the canvas mousedown handler
+    bindTouchButton(touchBreakBtn, () => {
+      if (!gameStarted || !targetedBlock) return;
+      highlight.visible = false;
+      const { x, y, z, blockId: brokenId } = targetedBlock;
+      removeBlock(x, y, z);
+      recordBuildAction({ type: 'break', x, y, z, blockId: brokenId });
+      targetedBlock = null;
+      trackMission('break-any');
+      syncTouchActionButtons();
+      playSound(BLOCKS[brokenId].breakSound);
+    });
+
+    // PLACE — same logic as right-click
+    bindTouchButton(touchPlaceBtn, () => {
+      if (!gameStarted || !targetedBlock) return;
+      const before = blockMap.size;
+      placeBlock();
+      if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
+    });
+
+    // JUMP — one-shot in gameplay; hold-to-rise in photo mode.
+    // Use a separate jump request instead of leaving the virtual spacebar
+    // pressed, otherwise iPad can keep jumping/flying after one tap.
+    let lastTouchJumpTime = -1000;
+    function beginTouchJump(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchJumpBtn.disabled) return;
+      if (photoMode) { keys[' '] = true; return; }
+      // Double-tap jump button toggles fly mode (JP-94)
+      const now = performance.now();
+      if (now - lastTouchJumpTime < 300) {
+        isFlying = !isFlying;
+        if (!isFlying && velocityY < 0) velocityY = 0;
+        updateFlyIndicator();
+        lastTouchJumpTime = -1000;
+        return;
+      }
+      lastTouchJumpTime = now;
+      jumpRequested = true;
+    }
+    function endTouchJump(e) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      keys[' '] = false;
+    }
+    touchJumpBtn.addEventListener('pointerdown', beginTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('pointerup',   endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('pointercancel', endTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('touchstart',  beginTouchJump, { passive: false });
+    touchJumpBtn.addEventListener('touchend',    endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('touchcancel', endTouchJump,   { passive: false });
+    touchJumpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+    });
+
+    // UNDO — reverse the last block place/break action
+    touchUndoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchUndoBtn.disabled) return;
+      undoLastBuildAction();
+    });
+
+    // REDO — re-apply the last undone action (JP-95)
+    const touchRedoBtn = document.getElementById('touch-redo-btn');
+    touchRedoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchRedoBtn.disabled) return;
+      redoLastBuildAction();
+    });
+
+    // PAUSE — show the pause overlay (no pointer to release on touch)
+    touchPauseBtn.addEventListener('click', () => {
+      if (!gameStarted) return;
+      overlay.classList.remove('hidden');
+    });
+
+    // HELP — touch-friendly controls cheat sheet
+    function showControlsHelp() {
+      controlsHelpEl.classList.remove('hidden');
+      endJoystick();
+      endLook();
+      keys[' '] = false;
+      jumpRequested = false;
+    }
+    function hideControlsHelp() {
+      controlsHelpEl.classList.add('hidden');
+    }
+    touchHelpBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      showControlsHelp();
+    });
+    controlsCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      hideControlsHelp();
+    });
+    controlsHelpEl.addEventListener('click', (e) => {
+      if (e.target === controlsHelpEl) hideControlsHelp();
+    });
+
+    // DAY/NIGHT toggle — same as the keyboard "N" shortcut
+    touchDayBtn.addEventListener('click', () => {
+      alwaysDay = !alwaysDay;
+      touchDayBtn.textContent = alwaysDay ? '🌙' : '☀️';
+      showToast(alwaysDay ? '☀️ Always Day: ON' : '🌙 Always Day: OFF');
+    });
+
+    // PHOTO MODE tools (JP-86)
+    photoShotBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      takeScreenshot();
+    });
+    photoCleanBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      document.body.classList.toggle('photo-clean');
+      photoCleanBtn.textContent = document.body.classList.contains('photo-clean') ? '👁️' : '🙈';
+      showToast(document.body.classList.contains('photo-clean') ? 'Photo controls faded' : 'Photo controls visible');
+    });
+    photoExitBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (photoMode) togglePhotoMode();
+    });
+
+    // PHOTO MODE toggle for touch (JP-66)
+    document.getElementById('touch-photo-btn').addEventListener('click', () => {
+      togglePhotoMode();
+    });
+
+    // Suppress iOS long-press context menu globally so it can't pop up
+    // mid-gameplay (e.g. on the canvas or any button).
+    window.addEventListener('contextmenu', (e) => {
+      if (gameStarted) e.preventDefault();
+    });
+
+    // ── Resize ───────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    // ── Physics constants (JP-71) ─────────────────────────────────────
+    // Floaty gravity and a generous jump — fun for a kid, not punishing.
+    const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
+    let   gravityScale   = 1.0;   // multiplied into GRAVITY; space biome sets 0.3 (JP-103)
+    let   moveScale      = 1.0;   // multiplied into MOVE_SPEED; underwater biome sets 0.7 (JP-105)
+    const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
+    const MOVE_SPEED     = 4;
+    const FLY_SPEED      = 6;     // blocks/s while flying (JP-94)
+    const PLAYER_WIDTH   = 0.6;   // full width of the player hitbox
+    const PLAYER_HEIGHT  = 1.62;  // feet to eyes (matches EYE_HEIGHT)
+    let   velocityY      = 0;
+    let   onGround       = false;
+
+    // Check if a solid block exists at integer grid coords.
+    function isSolid(x, y, z) {
+      const entry = blockMap.get(coordKey(x, y, z));
+      if (!entry) return false;
+      return !BLOCKS[entry.blockId].nonSolid;
+    }
+
+    // Does the player AABB overlap any solid block?
+    // Blocks are CENTERED at integer coords, occupying ±0.5 around center.
+    // A block at grid (bx, by, bz) fills the box:
+    //   (bx-0.5, by-0.5, bz-0.5) to (bx+0.5, by+0.5, bz+0.5)
+    // The player AABB: (cx±hw, feetY to feetY+PLAYER_HEIGHT, cz±hw)
+    function collidesAt(cx, feetY, cz) {
+      const hw = PLAYER_WIDTH / 2;
+      // Convert player AABB edges to block grid range
+      // A point p is inside block b when: b-0.5 < p < b+0.5, i.e. b = round(p)
+      // For a range [pMin, pMax], blocks that overlap are:
+      //   floor(pMin + 0.5)  to  floor(pMax + 0.5 - epsilon)
+      const eps = 0.001;
+      const bx0 = Math.floor(cx - hw + 0.5 + eps);
+      const bx1 = Math.floor(cx + hw + 0.5 - eps);
+      const by0 = Math.floor(feetY + 0.5 + eps);
+      const by1 = Math.floor(feetY + PLAYER_HEIGHT + 0.5 - eps);
+      const bz0 = Math.floor(cz - hw + 0.5 + eps);
+      const bz1 = Math.floor(cz + hw + 0.5 - eps);
+      for (let bx = bx0; bx <= bx1; bx++)
+        for (let bz = bz0; bz <= bz1; bz++)
+          for (let by = by0; by <= by1; by++)
+            if (isSolid(bx, by, bz)) return true;
+      return false;
+    }
+
+    // Helper to find exactly which block we landed on when falling
+    function getGroundHeight(cx, feetY, cz) {
+      const hw = PLAYER_WIDTH / 2;
+      const eps = 0.001;
+      const bx0 = Math.floor(cx - hw + 0.5 + eps);
+      const bx1 = Math.floor(cx + hw + 0.5 - eps);
+      const bz0 = Math.floor(cz - hw + 0.5 + eps);
+      const bz1 = Math.floor(cz + hw + 0.5 - eps);
+      
+      let testY = Math.floor(feetY + 0.5 + eps);
+      while (testY >= -10) {
+        let hit = false;
+        for (let bx = bx0; bx <= bx1; bx++) {
+          for (let bz = bz0; bz <= bz1; bz++) {
+            if (isSolid(bx, testY, bz)) { hit = true; break; }
+          }
+          if (hit) break;
+        }
+        if (hit) return testY + 0.5; // Top of the block
+        testY--;
+      }
+      return -10; // Fall into void
+    }
+
+    // Initialize NPCs after all physics constants (PLAYER_WIDTH) are defined
+    initNPCs();
+
+    // ── Render loop ──────────────────────────────────────────────────
+    const forward    = new THREE.Vector3();
+    const right      = new THREE.Vector3();
+    const move       = new THREE.Vector3();
+    const UP         = new THREE.Vector3(0, 1, 0);
+    const lookEuler  = new THREE.Euler(0, 0, 0, 'YXZ');
+    const clock      = new THREE.Clock();
+    let   lastBoingTime = 0;
+
+    // Photo mode (JP-66)
+    let photoMode = false;
+    const savedPlayerPos = new THREE.Vector3();
+    let   savedVelocityY = 0;
+    const PHOTO_SPEED = 12;
+
+    function togglePhotoMode() {
+      photoMode = !photoMode;
+      const hud = [document.getElementById('crosshair'),
+                   document.getElementById('hotbar'),
+                   document.getElementById('backpack-btn'),
+                   document.getElementById('actions'),
+                   document.getElementById('block-name-toast')];
+      const photoBtn = document.getElementById('touch-photo-btn');
+      if (photoMode) {
+        savedPlayerPos.copy(camera.position);
+        savedVelocityY = velocityY;
+        closeBackpack();
+        document.body.classList.add('photo-mode');
+        document.body.classList.remove('photo-clean');
+        photoCleanBtn.textContent = '🙈';
+        hud.forEach(el => { if (el) el.style.display = 'none'; });
+        if (photoBtn) {
+          photoBtn.textContent = '↩️';
+          photoBtn.title = 'Exit photo mode';
+        }
+        showToast(hasTouch ? '📸 Photo Mode — 📷 photo, 🙈 fade controls, ↩️ exit' : '📸 Photo Mode — F3 to exit, 📷 for photo');
+      } else {
+        camera.position.copy(savedPlayerPos);
+        velocityY = savedVelocityY;
+        document.body.classList.remove('photo-mode');
+        document.body.classList.remove('photo-clean');
+        photoCleanBtn.textContent = '🙈';
+        endJoystick();
+        endLook();
+        keys[' '] = false;
+        hud.forEach(el => { if (el) el.style.display = ''; });
+        if (photoBtn) {
+          photoBtn.textContent = '📸';
+          photoBtn.title = 'Photo mode';
+        }
+        showToast('📸 Photo Mode OFF');
+      }
+    }
+
+    renderer.setAnimationLoop(() => {
+      const dt = Math.min(clock.getDelta(), 0.1);
+
+      // Update Rainbow block material color (JP-59)
+      const rainbowMat = blockMaterials.get(RAINBOW);
+      if (rainbowMat) {
+        const hue = (performance.now() / 3000) % 1.0; // full cycle every 3 seconds
+        rainbowMat.color.setHSL(hue, 0.8, 0.5);
+      }
+
+      // Update Glow lights (JP-62)
+      const now = performance.now();
+      if (now - lastGlowUpdate > 250) {
+        lastGlowUpdate = now;
+        const glowCoords = instanceCoords.get(GLOW);
+        if (glowCoords) {
+          const p = camera.position;
+          const sorted = glowCoords.map(c => {
+            const dx = c.x - p.x; const dy = c.y - p.y; const dz = c.z - p.z;
+            return { c, distSq: dx*dx + dy*dy + dz*dz };
+          }).sort((a, b) => a.distSq - b.distSq);
+          
+          const sunHeight = Math.cos(timeOfDay * Math.PI * 2);
+          const nightFactor = Math.max(0, -sunHeight);
+          const intensity = 0.5 + nightFactor * 2.5; // Glows much brighter at night
+          
+          for (let i = 0; i < MAX_GLOW_LIGHTS; i++) {
+            if (i < sorted.length && sorted[i].distSq < 1000) { // Only cast light if within ~31 blocks
+              glowLights[i].position.set(sorted[i].c.x, sorted[i].c.y, sorted[i].c.z);
+              glowLights[i].intensity = intensity;
+            } else {
+              glowLights[i].intensity = 0;
+            }
+          }
+        }
+      }
+
+      // ── Look direction ─────────────────────────────────────────────
+      lookEuler.set(pitch, yaw, 0);
+      camera.quaternion.setFromEuler(lookEuler);
+
+      camera.getWorldDirection(forward);
+
+      if (photoMode) {
+        // ── Photo mode: noclip free-fly ──────────────────────────────
+        const flyForward = forward.clone(); // Keep Y component for flying
+        right.crossVectors(flyForward, UP).normalize();
+
+        move.set(0, 0, 0);
+        if (keys.w) move.add(flyForward);
+        if (keys.s) move.sub(flyForward);
+        if (keys.d) move.add(right);
+        if (keys.a) move.sub(right);
+        if (keys[' ']) move.add(UP);    // Space goes up
+        if (joystick.y !== 0) move.addScaledVector(flyForward, joystick.y);
+        if (joystick.x !== 0) move.addScaledVector(right, joystick.x);
+        // Q/E remapped: in photo mode Q = down, E = up
+        // (block switching disabled in photo mode)
+
+        if (move.lengthSq() > 0.0025) {
+          if (move.lengthSq() > 1) move.normalize();
+          move.multiplyScalar(PHOTO_SPEED * dt);
+          camera.position.add(move);
+        }
+
+        updateFriendlyCreatures(dt);
+        updateCelestialCycle(dt);
+        renderer.render(scene, camera);
+        return; // Skip all physics & block interaction
+      }
+
+      // ── Normal gameplay below ────────────────────────────────────────
+      forward.y = 0;
+      forward.normalize();
+      right.crossVectors(forward, UP).normalize();
+
+      // ── Horizontal movement with collision ─────────────────────────
+      const pos   = camera.position;
+      let   feetY = pos.y - EYE_HEIGHT;
+
+      // Combine keyboard (digital ±1) with joystick (analog -1..1).
+      // After both are added we clamp magnitude to 1 so diagonal/joystick
+      // combos don't move faster than walking forward.
+      move.set(0, 0, 0);
+      if (keys.w) move.add(forward);
+      if (keys.s) move.sub(forward);
+      if (keys.d) move.add(right);
+      if (keys.a) move.sub(right);
+      if (joystick.y !== 0) move.addScaledVector(forward, joystick.y);
+      if (joystick.x !== 0) move.addScaledVector(right,   joystick.x);
+
+      if (move.lengthSq() > 0.0025) {           // ignore tiny drift (~0.05 mag)
+        if (move.lengthSq() > 1) move.normalize();
+        move.multiplyScalar(MOVE_SPEED * moveScale * dt);
+
+        // Try X movement independently so sliding along walls works
+        if (!collidesAt(pos.x + move.x, feetY, pos.z)) {
+          pos.x += move.x;
+        }
+        // Try Z movement independently
+        if (!collidesAt(pos.x, feetY, pos.z + move.z)) {
+          pos.z += move.z;
+        }
+      }
+
+      // ── Vertical movement: fly or gravity + jump (JP-94) ─────────────
+      let newFeetY;
+
+      if (isFlying) {
+        // Space = rise, Shift = descend, no gravity
+        if (keys[' '] || jumpRequested) {
+          velocityY = FLY_SPEED;
+        } else if (keys.shift) {
+          velocityY = -FLY_SPEED;
+        } else {
+          velocityY = 0;
+        }
+        jumpRequested = false;
+        keys[' '] = false;
+
+        newFeetY = feetY + velocityY * dt;
+
+        if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          // Head collision — stop rising
+          newFeetY  = feetY;
+          velocityY = 0;
+        } else if (velocityY < 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          // Touched ground while descending — land and exit fly mode
+          newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
+          velocityY = 0;
+          onGround  = true;
+          isFlying  = false;
+          updateFlyIndicator();
+        } else {
+          onGround = false;
+        }
+      } else {
+        // ── Normal jump + gravity ───────────────────────────────────────
+        if (jumpRequested || keys[' ']) {
+          if (onGround) {
+            velocityY = JUMP_VELOCITY;
+            onGround  = false;
+          }
+          jumpRequested = false;
+          keys[' '] = false; // Consume the jump press immediately
+        }
+
+        velocityY -= GRAVITY * gravityScale * dt;
+        newFeetY = feetY + velocityY * dt;
+
+        // Falling — check for landing
+        if (velocityY <= 0) {
+          if (collidesAt(pos.x, newFeetY, pos.z)) {
+            // Snap perfectly to the top of the highest block under us
+            newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
+            velocityY = 0;
+            onGround  = true;
+          } else {
+            onGround = false;
+          }
+        }
+
+        // Rising — check for head bump
+        if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          newFeetY  = feetY;
+          velocityY = 0;
+        }
+
+        // Bouncy block logic (JP-60)
+        if (onGround) {
+          const bx = Math.floor(pos.x + 0.5);
+          const by = Math.floor(newFeetY - 0.5 + 0.001);
+          const bz = Math.floor(pos.z + 0.5);
+          const entry = blockMap.get(coordKey(bx, by, bz));
+
+          if (entry && entry.blockId === BOUNCY) {
+            const now = performance.now();
+            if (now - lastBoingTime > 500) {
+              playSound('boing');
+              lastBoingTime = now;
+
+              velocityY = JUMP_VELOCITY * 0.45;
+              onGround = false;
+            }
+          }
+        }
+      }
+
+      pos.y = newFeetY + EYE_HEIGHT;
+
+      // Safety net: if player falls into the void, respawn
+      if (pos.y < -20) {
+        spawnPlayer();
+        velocityY = 0;
+        if (isFlying) { isFlying = false; updateFlyIndicator(); }
+      }
+
+      updateTarget();
+      updateFriendlyCreatures(dt);
+      updateCelestialCycle(dt);
+      renderer.render(scene, camera);
+    });
+  </script>
+</body>
+</html>
