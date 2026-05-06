@@ -1452,6 +1452,12 @@
       starField = null;
     }
 
+    // Biome movement modifiers must be declared before world generation runs.
+    // generateFreshWorld() calls applySkyForBiome() during startup, before the
+    // physics section below is reached.
+    let gravityScale = 1.0;   // multiplied into GRAVITY; space biome sets 0.3 (JP-103)
+    let moveScale    = 1.0;   // multiplied into MOVE_SPEED; underwater biome sets 0.7 (JP-105)
+
     function applySkyForBiome(biomeId) {
       const biome = BIOMES[biomeId] || BIOMES.meadow;
       skyColorDay.set(biome.skyColor);
@@ -3247,8 +3253,6 @@
     // ── Physics constants (JP-71) ─────────────────────────────────────
     // Floaty gravity and a generous jump — fun for a kid, not punishing.
     const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
-    let   gravityScale   = 1.0;   // multiplied into GRAVITY; space biome sets 0.3 (JP-103)
-    let   moveScale      = 1.0;   // multiplied into MOVE_SPEED; underwater biome sets 0.7 (JP-105)
     const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
     const MOVE_SPEED     = 4;
     const FLY_SPEED      = 6;     // blocks/s while flying (JP-94)
