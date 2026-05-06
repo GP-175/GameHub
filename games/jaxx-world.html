@@ -244,6 +244,38 @@
     #block-name-toast.astro { color: #90CAFF; text-shadow: 0 0 12px rgba(96,186,255,0.6), 0 2px 8px rgba(0,0,0,0.7); }
 
     /* ══════════════════════════════════════════════════════════════════
+       FLY INDICATOR  (JP-94 — shown above hotbar while flying)
+    ══════════════════════════════════════════════════════════════════ */
+    #fly-indicator {
+      position: fixed;
+      left: 50%; bottom: 100px;
+      transform: translateX(-50%);
+      font-family: var(--font-game);
+      font-size: 16px;
+      color: #90f0ff;
+      text-shadow: 0 0 10px rgba(100, 220, 255, 0.8), 0 2px 6px rgba(0, 0, 0, 0.7);
+      background: rgba(0, 40, 80, 0.55);
+      border: 1px solid rgba(100, 220, 255, 0.45);
+      border-radius: 20px;
+      padding: 4px 14px;
+      opacity: 0;
+      transition: opacity 0.22s;
+      pointer-events: none;
+      z-index: 60;
+      white-space: nowrap;
+    }
+    #fly-indicator.show { opacity: 1; }
+    /* Hotbar gets a subtle cyan tint while flying */
+    #hotbar.flying .slot {
+      border-color: rgba(100, 220, 255, 0.45);
+      background: rgba(0, 40, 80, 0.50);
+    }
+    #hotbar.flying .slot.selected {
+      border-color: #90f0ff;
+      box-shadow: 0 0 14px rgba(100, 220, 255, 0.65);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════
        SAVE / ERROR TOAST
     ══════════════════════════════════════════════════════════════════ */
     #toast {
@@ -735,6 +767,9 @@
   <!-- Hotbar — populated by JS from the BLOCKS registry -->
   <div id="hotbar"></div>
 
+  <!-- Fly indicator — shown while flying mode is active (JP-94) -->
+  <div id="fly-indicator">✈ Flying</div>
+
   <!-- Creative inventory / backpack picker -->
   <button id="backpack-btn" type="button" title="Open block backpack">🎒</button>
   <div id="backpack-panel" class="hidden" role="dialog" aria-modal="true" aria-labelledby="backpack-title">
@@ -1006,7 +1041,9 @@
       return mat;
     }
 
-    let selectedBlockId = GRASS;
+    let selectedBlockId  = GRASS;
+    let isFlying         = false;
+    let lastSpaceRelease = -1000; // timestamp of last Space keyup, for double-tap fly toggle
 
     // ── Hotbar UI ────────────────────────────────────────────────────
     const hotbarEl = document.getElementById('hotbar');
@@ -1053,6 +1090,13 @@
         setSelectedBlock(blockId);
         closeBackpack();
       });
+    }
+
+    // Fly indicator (JP-94)
+    const flyIndicatorEl = document.getElementById('fly-indicator');
+    function updateFlyIndicator() {
+      flyIndicatorEl.classList.toggle('show', isFlying);
+      hotbarEl.classList.toggle('flying', isFlying);
     }
 
     // Block-name toast: fades in above hotbar on block switch, fades out after 1.2 s.
@@ -1532,11 +1576,13 @@
         if (blockMap.has(coordKey(0, y, 0))) {
           // Place feet on top of this block (block top = y + 0.5)
           camera.position.set(0, y + 0.5 + EYE_HEIGHT, 0);
+          if (isFlying) { isFlying = false; updateFlyIndicator(); }
           return;
         }
       }
       // Fallback if no block found at origin
       camera.position.set(0, 10 + EYE_HEIGHT, 0);
+      if (isFlying) { isFlying = false; updateFlyIndicator(); }
     }
     spawnPlayer();
 
@@ -2238,7 +2284,7 @@
     });
 
     // ── Keyboard input ───────────────────────────────────────────────
-    const keys       = { w: false, a: false, s: false, d: false, ' ': false };
+    const keys       = { w: false, a: false, s: false, d: false, ' ': false, shift: false };
     let jumpRequested = false;
     const blockOrder = Object.keys(BLOCKS).map(Number);
 
@@ -2246,7 +2292,18 @@
       if (e.key === ' ' && e.repeat) return; // Prevent continuous jumping from holding space
       const k = e.key.toLowerCase();
       if (k in keys) keys[k] = true;
-      if (e.key === ' ' && !photoMode) jumpRequested = true;
+      if (e.key === ' ' && !photoMode) {
+        const now = performance.now();
+        if (now - lastSpaceRelease < 300) {
+          // Double-tap: toggle fly mode (JP-94)
+          isFlying = !isFlying;
+          if (!isFlying && velocityY < 0) velocityY = 0; // gentle fall on exit
+          updateFlyIndicator();
+          lastSpaceRelease = -1000; // prevent triple-tap from immediately re-toggling
+        } else {
+          jumpRequested = true;
+        }
+      }
       if (e.key >= '1' && e.key <= '9') {
         const id = Number(e.key);
         if (BLOCKS[id]) setSelectedBlock(id);
@@ -2293,6 +2350,7 @@
     window.addEventListener('keyup', (e) => {
       const k = e.key.toLowerCase();
       if (k in keys) keys[k] = false;
+      if (e.key === ' ') lastSpaceRelease = performance.now();
     });
 
     window.addEventListener('wheel', (e) => {
@@ -2500,12 +2558,23 @@
     // JUMP — one-shot in gameplay; hold-to-rise in photo mode.
     // Use a separate jump request instead of leaving the virtual spacebar
     // pressed, otherwise iPad can keep jumping/flying after one tap.
+    let lastTouchJumpTime = -1000;
     function beginTouchJump(e) {
       e.preventDefault();
       e.stopPropagation();
       if (!gameStarted || touchJumpBtn.disabled) return;
-      if (photoMode) keys[' '] = true;
-      else jumpRequested = true;
+      if (photoMode) { keys[' '] = true; return; }
+      // Double-tap jump button toggles fly mode (JP-94)
+      const now = performance.now();
+      if (now - lastTouchJumpTime < 300) {
+        isFlying = !isFlying;
+        if (!isFlying && velocityY < 0) velocityY = 0;
+        updateFlyIndicator();
+        lastTouchJumpTime = -1000;
+        return;
+      }
+      lastTouchJumpTime = now;
+      jumpRequested = true;
     }
     function endTouchJump(e) {
       if (e) {
@@ -2613,6 +2682,7 @@
     const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
     const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
     const MOVE_SPEED     = 4;
+    const FLY_SPEED      = 6;     // blocks/s while flying (JP-94)
     const PLAYER_WIDTH   = 0.6;   // full width of the player hitbox
     const PLAYER_HEIGHT  = 1.62;  // feet to eyes (matches EYE_HEIGHT)
     let   velocityY      = 0;
@@ -2836,53 +2906,85 @@
         }
       }
 
-      // ── Vertical movement: gravity + jump ──────────────────────────
-      if (jumpRequested || keys[' ']) {
-        if (onGround) {
-          velocityY = JUMP_VELOCITY;
-          onGround  = false;
+      // ── Vertical movement: fly or gravity + jump (JP-94) ─────────────
+      let newFeetY;
+
+      if (isFlying) {
+        // Space = rise, Shift = descend, no gravity
+        if (keys[' '] || jumpRequested) {
+          velocityY = FLY_SPEED;
+        } else if (keys.shift) {
+          velocityY = -FLY_SPEED;
+        } else {
+          velocityY = 0;
         }
         jumpRequested = false;
-        keys[' '] = false; // Consume the jump press immediately
-      }
+        keys[' '] = false;
 
-      velocityY -= GRAVITY * dt;
-      let newFeetY = feetY + velocityY * dt;
+        newFeetY = feetY + velocityY * dt;
 
-      // Falling — check for landing
-      if (velocityY <= 0) {
-        if (collidesAt(pos.x, newFeetY, pos.z)) {
-          // Snap perfectly to the top of the highest block under us
+        if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          // Head collision — stop rising
+          newFeetY  = feetY;
+          velocityY = 0;
+        } else if (velocityY < 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          // Touched ground while descending — land and exit fly mode
           newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
           velocityY = 0;
           onGround  = true;
+          isFlying  = false;
+          updateFlyIndicator();
         } else {
           onGround = false;
         }
-      }
+      } else {
+        // ── Normal jump + gravity ───────────────────────────────────────
+        if (jumpRequested || keys[' ']) {
+          if (onGround) {
+            velocityY = JUMP_VELOCITY;
+            onGround  = false;
+          }
+          jumpRequested = false;
+          keys[' '] = false; // Consume the jump press immediately
+        }
 
-      // Rising — check for head bump
-      if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
-        newFeetY  = feetY;
-        velocityY = 0;
-      }
+        velocityY -= GRAVITY * dt;
+        newFeetY = feetY + velocityY * dt;
 
-      // Bouncy block logic (JP-60)
-      if (onGround) {
-        const bx = Math.floor(pos.x + 0.5);
-        const by = Math.floor(newFeetY - 0.5 + 0.001);
-        const bz = Math.floor(pos.z + 0.5);
-        const entry = blockMap.get(coordKey(bx, by, bz));
-        
-        if (entry && entry.blockId === BOUNCY) {
-          const now = performance.now();
-          if (now - lastBoingTime > 500) {
-            playSound('boing');
-            lastBoingTime = now;
-            
-            // Stretch goal: Small physical bounce effect on contact
-            velocityY = JUMP_VELOCITY * 0.45;
+        // Falling — check for landing
+        if (velocityY <= 0) {
+          if (collidesAt(pos.x, newFeetY, pos.z)) {
+            // Snap perfectly to the top of the highest block under us
+            newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
+            velocityY = 0;
+            onGround  = true;
+          } else {
             onGround = false;
+          }
+        }
+
+        // Rising — check for head bump
+        if (velocityY > 0 && collidesAt(pos.x, newFeetY, pos.z)) {
+          newFeetY  = feetY;
+          velocityY = 0;
+        }
+
+        // Bouncy block logic (JP-60)
+        if (onGround) {
+          const bx = Math.floor(pos.x + 0.5);
+          const by = Math.floor(newFeetY - 0.5 + 0.001);
+          const bz = Math.floor(pos.z + 0.5);
+          const entry = blockMap.get(coordKey(bx, by, bz));
+
+          if (entry && entry.blockId === BOUNCY) {
+            const now = performance.now();
+            if (now - lastBoingTime > 500) {
+              playSound('boing');
+              lastBoingTime = now;
+
+              velocityY = JUMP_VELOCITY * 0.45;
+              onGround = false;
+            }
           }
         }
       }
@@ -2893,6 +2995,7 @@
       if (pos.y < -20) {
         spawnPlayer();
         velocityY = 0;
+        if (isFlying) { isFlying = false; updateFlyIndicator(); }
       }
 
       updateTarget();
