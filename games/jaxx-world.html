@@ -815,6 +815,7 @@
     <button id="touch-pause-btn"  type="button" title="Pause">⏸</button>
     <button id="touch-help-btn"   type="button" title="Controls help">❔</button>
     <button id="touch-undo-btn"   type="button" title="Undo last build action">↶</button>
+    <button id="touch-redo-btn"   type="button" title="Redo last build action">↷</button>
     <button id="touch-day-btn"    type="button" title="Toggle day/night">☀️</button>
     <button id="touch-photo-btn"  type="button" title="Photo mode">📸</button>
   </div>
@@ -1831,7 +1832,9 @@
       const meta = createWorldMeta(name);
       clearWorld();
       undoStack.length = 0;
+      redoStack.length = 0;
       syncUndoButton();
+      syncRedoButton();
       generateFreshWorld();
       spawnPlayer();
       velocityY = 0;
@@ -1847,7 +1850,9 @@
       saveWorld(false);
       clearWorld();
       undoStack.length = 0;
+      redoStack.length = 0;
       syncUndoButton();
+      syncRedoButton();
       setCurrentWorld(id);
       if (!loadWorldData(id)) generateFreshWorld();
       spawnPlayer();
@@ -1872,7 +1877,9 @@
         currentWorldId = index.currentId;
         clearWorld();
         undoStack.length = 0;
+        redoStack.length = 0;
         syncUndoButton();
+        syncRedoButton();
         if (!loadWorldData(currentWorldId)) generateFreshWorld();
         spawnPlayer();
         velocityY = 0;
@@ -2158,9 +2165,10 @@
              (by + 0.5) > feet && (by - 0.5) < head;
     }
 
-    // ── Build assists (JP-87): undo last place/break ────────────────
+    // ── Build assists (JP-87 / JP-95): undo/redo for place & break ──────
     const undoStack = [];
-    const MAX_UNDO = 30;
+    const redoStack = [];
+    const MAX_UNDO = 50;
 
     function syncUndoButton() {
       const btn = document.getElementById('touch-undo-btn');
@@ -2169,10 +2177,19 @@
       btn.setAttribute('aria-disabled', String(btn.disabled));
     }
 
+    function syncRedoButton() {
+      const btn = document.getElementById('touch-redo-btn');
+      if (!btn) return;
+      btn.disabled = redoStack.length === 0;
+      btn.setAttribute('aria-disabled', String(btn.disabled));
+    }
+
     function recordBuildAction(action) {
       undoStack.push(action);
       if (undoStack.length > MAX_UNDO) undoStack.shift();
+      redoStack.length = 0; // new action clears redo history
       syncUndoButton();
+      syncRedoButton();
     }
 
     function undoLastBuildAction() {
@@ -2189,11 +2206,36 @@
         addBlock(action.x, action.y, action.z, action.blockId);
         showToast(`Restored ${BLOCKS[action.blockId].name} ↶`);
       }
+      redoStack.push(action);
       updateTarget();
       syncTouchActionButtons();
       syncUndoButton();
+      syncRedoButton();
+    }
+
+    function redoLastBuildAction() {
+      const action = redoStack.pop();
+      if (!action) {
+        showToast('Nothing to redo', true);
+        syncRedoButton();
+        return;
+      }
+      if (action.type === 'place') {
+        addBlock(action.x, action.y, action.z, action.blockId);
+        showToast(`Redid ${BLOCKS[action.blockId].name} placement ↷`);
+      } else if (action.type === 'break') {
+        removeBlock(action.x, action.y, action.z);
+        showToast(`Re-broke ${BLOCKS[action.blockId].name} ↷`);
+      }
+      undoStack.push(action);
+      if (undoStack.length > MAX_UNDO) undoStack.shift();
+      updateTarget();
+      syncTouchActionButtons();
+      syncUndoButton();
+      syncRedoButton();
     }
     syncUndoButton();
+    syncRedoButton();
 
     function placeBlock() {
       if (!targetedBlock) return false;
@@ -2323,9 +2365,14 @@
         e.preventDefault();
         takeScreenshot();
       }
-      if ((e.ctrlKey || e.metaKey) && k === 'z') {
+      if ((e.ctrlKey || e.metaKey) && k === 'z' && !e.shiftKey) {
         e.preventDefault();
         undoLastBuildAction();
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (k === 'y' || (k === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoLastBuildAction();
         return;
       }
       if (e.key === 'F3') {
@@ -2600,6 +2647,15 @@
       e.stopPropagation();
       if (!gameStarted || touchUndoBtn.disabled) return;
       undoLastBuildAction();
+    });
+
+    // REDO — re-apply the last undone action (JP-95)
+    const touchRedoBtn = document.getElementById('touch-redo-btn');
+    touchRedoBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!gameStarted || touchRedoBtn.disabled) return;
+      redoLastBuildAction();
     });
 
     // PAUSE — show the pause overlay (no pointer to release on touch)
