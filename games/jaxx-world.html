@@ -1093,10 +1093,16 @@
       19: { name: 'Sandstone',  color: 0xD4A84B, breakSound: 'crack', placeSound: 'thud' },
       20: { name: 'Cactus',     color: 0x4B7C3A, breakSound: 'crack', placeSound: 'thud' },
       21: { name: 'Ruin Stone', color: 0xB0A090, breakSound: 'crack', placeSound: 'thud' },
+      // ── Space biome blocks (JP-103) ──────────────────────────────────
+      22: { name: 'Moon Rock',    color: 0x888888, breakSound: 'crack', placeSound: 'thud' },
+      23: { name: 'Moon Dust',    color: 0xC0BDB8, breakSound: 'crack', placeSound: 'thud' },
+      24: { name: 'Star Block',   color: 0xFFFDE0, emissive: 0xFFFF88, emissiveIntensity: 1.2, breakSound: 'crack', placeSound: 'thud' },
+      25: { name: 'Rocket Metal', color: 0x8BA7BE, breakSound: 'crack', placeSound: 'thud' },
     };
     const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
     const SNOW = 15, ICE = 16, PINE_WOOD = 17, PINE_LEAVES = 18;
     const SANDSTONE = 19, CACTUS = 20, RUIN_STONE = 21;
+    const MOON_ROCK = 22, MOON_DUST = 23, STAR_BLOCK = 24, ROCKET_METAL = 25;
 
     // ── Biome registry (JP-100) ─────────────────────────────────────
     // Each entry: { id, name, icon, description, skyColor }
@@ -1122,6 +1128,14 @@
         icon:        '🏜️',
         description: 'Sandy dunes, cacti & ancient ruins',
         skyColor:    0xE8C97A,
+      },
+      space: {
+        id:          'space',
+        name:        'Space',
+        icon:        '🚀',
+        description: 'Low gravity moon surface & starfield',
+        skyColor:    0x000008,
+        gravityScale: 0.3,
       },
     };
 
@@ -1327,9 +1341,42 @@
       blockMap.delete(key);
     }
 
+    // ── Star field (JP-103 — Space biome) ───────────────────────────
+    let starField = null;
+
+    function buildStarField() {
+      if (starField) { scene.remove(starField); starField.geometry.dispose(); starField.material.dispose(); }
+      const count = 800;
+      const positions = new Float32Array(count * 3);
+      for (let i = 0; i < count; i++) {
+        // Random point on a large sphere
+        const theta = Math.random() * Math.PI * 2;
+        const phi   = Math.acos(2 * Math.random() - 1);
+        const r     = 400;
+        positions[i * 3]     = r * Math.sin(phi) * Math.cos(theta);
+        positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        positions[i * 3 + 2] = r * Math.cos(phi);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 1.6, sizeAttenuation: true });
+      starField = new THREE.Points(geo, mat);
+      scene.add(starField);
+    }
+
+    function removeStarField() {
+      if (!starField) return;
+      scene.remove(starField);
+      starField.geometry.dispose();
+      starField.material.dispose();
+      starField = null;
+    }
+
     function applySkyForBiome(biomeId) {
       const biome = BIOMES[biomeId] || BIOMES.meadow;
       skyColorDay.set(biome.skyColor);
+      gravityScale = biome.gravityScale ?? 1.0;
+      if (biomeId === 'space') buildStarField(); else removeStarField();
     }
 
     function generateFreshWorld(biomeId = 'meadow') {
@@ -1382,6 +1429,43 @@
                   }
                 }
               }
+            }
+          }
+        }
+      } else if (biomeId === 'space') {
+        // ── Space / Moon biome (JP-103) ──────────────────────────────
+        // Pre-compute crater centres (seeded deterministically)
+        const craterCentres = [];
+        const rng = new SimplexNoise("space-craters");
+        for (let i = 0; i < 18; i++) {
+          const cx = Math.round((rng.noise2D(i * 0.3, 0) + 1) * 0.5 * (WORLD_SIZE - 8)) - offset + 4;
+          const cz = Math.round((rng.noise2D(0, i * 0.3) + 1) * 0.5 * (WORLD_SIZE - 8)) - offset + 4;
+          const cr = 3 + Math.floor(((rng.noise2D(i * 0.3, i * 0.3) + 1) * 0.5) * 4); // radius 3-6
+          craterCentres.push({ cx, cz, cr });
+        }
+
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            let height = Math.floor((noiseVal + 1) * 2.5); // gentle surface 0-5
+
+            // Carve craters: bowl shape lowers the surface
+            for (const { cx, cz, cr } of craterCentres) {
+              const dist = Math.sqrt((gx - cx) ** 2 + (gz - cz) ** 2);
+              if (dist < cr) {
+                const depth = Math.round((1 - dist / cr) * 3); // up to 3 deep at centre
+                height = Math.max(0, height - depth);
+              }
+            }
+
+            for (let y = height; y >= -2; y--) {
+              let blockType;
+              if (y === height)         blockType = MOON_DUST;
+              else if (y >= height - 2) blockType = MOON_ROCK;
+              else                      blockType = STONE;
+              addBlock(gx, y, gz, blockType);
             }
           }
         }
@@ -2972,6 +3056,7 @@
     // ── Physics constants (JP-71) ─────────────────────────────────────
     // Floaty gravity and a generous jump — fun for a kid, not punishing.
     const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
+    let   gravityScale   = 1.0;   // multiplied into GRAVITY; space biome sets 0.3 (JP-103)
     const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
     const MOVE_SPEED     = 4;
     const FLY_SPEED      = 6;     // blocks/s while flying (JP-94)
@@ -3240,7 +3325,7 @@
           keys[' '] = false; // Consume the jump press immediately
         }
 
-        velocityY -= GRAVITY * dt;
+        velocityY -= GRAVITY * gravityScale * dt;
         newFeetY = feetY + velocityY * dt;
 
         // Falling — check for landing
