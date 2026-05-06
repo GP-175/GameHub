@@ -1084,8 +1084,14 @@
         breakSound: 'crack',
         placeSound: 'thud'
       },
+      // ── Snow biome blocks (JP-101) ───────────────────────────────────
+      15: { name: 'Snow',       color: 0xEEF4F8, breakSound: 'crack', placeSound: 'thud' },
+      16: { name: 'Ice',        color: 0xADD8E6, transparent: true, opacity: 0.82, depthWrite: false, breakSound: 'crack', placeSound: 'thud' },
+      17: { name: 'Pine Wood',  color: 0x4A3728, breakSound: 'crack', placeSound: 'thud' },
+      18: { name: 'Pine Leaves',color: 0x1A4A1A, breakSound: 'crack', placeSound: 'thud' },
     };
     const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
+    const SNOW = 15, ICE = 16, PINE_WOOD = 17, PINE_LEAVES = 18;
 
     // ── Biome registry (JP-100) ─────────────────────────────────────
     // Each entry: { id, name, icon, description, skyColor }
@@ -1097,6 +1103,13 @@
         icon:        '🌿',
         description: 'Rolling hills, trees & lakes',
         skyColor:    0x87CEEB,
+      },
+      snow: {
+        id:          'snow',
+        name:        'Snow',
+        icon:        '❄️',
+        description: 'Frozen tundra, pine forests & ice',
+        skyColor:    0xC8E8F5,
       },
     };
 
@@ -1302,69 +1315,112 @@
       blockMap.delete(key);
     }
 
+    function applySkyForBiome(biomeId) {
+      const biome = BIOMES[biomeId] || BIOMES.meadow;
+      skyColorDay.set(biome.skyColor);
+    }
+
     function generateFreshWorld(biomeId = 'meadow') {
-      // Seeded simplex noise ensures the same "Jaxx World" generates every time
+      applySkyForBiome(biomeId);
       const simplex = new SimplexNoise("jaxx-world");
 
-      for (let x = 0; x < WORLD_SIZE; x++) {
-        for (let z = 0; z < WORLD_SIZE; z++) {
-          const gx = x - offset;
-          const gz = z - offset;
-          
-          // Generate a smooth noise value and map it to a height (gentle hills)
-          const SEA_LEVEL = 2; // Configurable sea level
-          const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
-          const height = Math.floor((noiseVal + 1) * 3.5); // Range ~0 to 7
-          
-          // Build columns downwards to y = -2 to ensure a solid foundation
-          for (let y = height; y >= -2; y--) {
-            let blockType = STONE;
-            if (y === height) {
-              blockType = height <= SEA_LEVEL + 1 ? SAND : GRASS;
-            } else if (y >= height - 2) {
-              blockType = DIRT;
-            }
-            addBlock(gx, y, gz, blockType);
-          }
+      if (biomeId === 'snow') {
+        // ── Snow biome (JP-101) ─────────────────────────────────────
+        const SEA_LEVEL = 2;
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
 
-          // Fill water up to SEA_LEVEL
-          for (let y = height + 1; y <= SEA_LEVEL; y++) {
-            addBlock(gx, y, gz, WATER);
-          }
-          
-          // ── Trees (JP-55) ──────────────────────────────────────────────
-          // Only spawn trees on land. Use high-frequency noise for scattered placement.
-          if (height > SEA_LEVEL) {
-            const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
-          
-          // ~1.5% chance per block. Values above 0.94 are rare in simplex noise.
-          if (treeNoise > 0.94) {
-            // Pseudo-random height between 3 and 6
-            const treeHeight = 3 + Math.abs(gx * gz) % 4;
-            
-            // Build Wood trunk
-            for (let ty = 1; ty <= treeHeight; ty++) {
-              addBlock(gx, height + ty, gz, WOOD);
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = SNOW;
+              else if (y >= height - 2) blockType = DIRT;
+              addBlock(gx, y, gz, blockType);
             }
-            
-            // Build Leaves canopy
-            const topY = height + treeHeight;
-            for (let lx = -1; lx <= 1; lx++) {
-              for (let ly = -1; ly <= 1; ly++) {
-                for (let lz = -1; lz <= 1; lz++) {
-                  // Leave the trunk intact inside the canopy
-                  if (lx === 0 && lz === 0 && ly <= 0) continue;
-                  // Skip corners to make the canopy look rounded instead of cubic
-                  if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
-                  
-                  addBlock(gx + lx, topY + ly, gz + lz, LEAVES);
+            // Frozen water = ice
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, ICE);
+            }
+            // Pine trees on land (taller, pointed canopy)
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.93) {
+                const treeHeight = 5 + Math.abs(gx * gz) % 3; // 5-7 blocks
+                for (let ty = 1; ty <= treeHeight; ty++) {
+                  addBlock(gx, height + ty, gz, PINE_WOOD);
+                }
+                // Pointed layered canopy: wide base → narrow tip
+                const topY = height + treeHeight;
+                const layers = [
+                  { dy: -2, r: 2 }, // widest base ring (5×5 minus corners)
+                  { dy: -1, r: 1 }, // 3×3 mid
+                  { dy:  0, r: 1 }, // 3×3 upper
+                  { dy:  1, r: 0 }, // single-block tip
+                ];
+                for (const { dy, r } of layers) {
+                  for (let lx = -r; lx <= r; lx++) {
+                    for (let lz = -r; lz <= r; lz++) {
+                      if (lx === 0 && lz === 0 && dy <= 0) continue; // keep trunk
+                      if (r === 2 && Math.abs(lx) + Math.abs(lz) > 3) continue; // trim corners
+                      addBlock(gx + lx, topY + dy, gz + lz, PINE_LEAVES);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // ── Meadow biome (default) ──────────────────────────────────
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+
+            const SEA_LEVEL = 2;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height) {
+                blockType = height <= SEA_LEVEL + 1 ? SAND : GRASS;
+              } else if (y >= height - 2) {
+                blockType = DIRT;
+              }
+              addBlock(gx, y, gz, blockType);
+            }
+
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, WATER);
+            }
+
+            // ── Trees (JP-55) ────────────────────────────────────────
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.94) {
+                const treeHeight = 3 + Math.abs(gx * gz) % 4;
+                for (let ty = 1; ty <= treeHeight; ty++) {
+                  addBlock(gx, height + ty, gz, WOOD);
+                }
+                const topY = height + treeHeight;
+                for (let lx = -1; lx <= 1; lx++) {
+                  for (let ly = -1; ly <= 1; ly++) {
+                    for (let lz = -1; lz <= 1; lz++) {
+                      if (lx === 0 && lz === 0 && ly <= 0) continue;
+                      if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
+                      addBlock(gx + lx, topY + ly, gz + lz, LEAVES);
+                    }
+                  }
                 }
               }
             }
           }
         }
       }
-    }
 
       // ── Easter egg room (JP-65) ────────────────────────────────────
       generateEasterEggRoom();
@@ -1576,6 +1632,7 @@
 
     ensureWorldIndex();
     if (!loadWorldData(currentWorldId)) generateFreshWorld(getCurrentBiomeId());
+    applySkyForBiome(getCurrentBiomeId());
 
     // ── Simple Missions (JP-84) ─────────────────────────────────────
     const MISSIONS = [
@@ -1941,6 +1998,7 @@
       syncRedoButton();
       setCurrentWorld(id);
       if (!loadWorldData(id)) generateFreshWorld(meta.biomeId || 'meadow');
+      applySkyForBiome(meta.biomeId || 'meadow');
       spawnPlayer();
       velocityY = 0;
       initNPCs();
