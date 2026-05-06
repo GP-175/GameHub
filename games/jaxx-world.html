@@ -1089,9 +1089,14 @@
       16: { name: 'Ice',        color: 0xADD8E6, transparent: true, opacity: 0.82, depthWrite: false, breakSound: 'crack', placeSound: 'thud' },
       17: { name: 'Pine Wood',  color: 0x4A3728, breakSound: 'crack', placeSound: 'thud' },
       18: { name: 'Pine Leaves',color: 0x1A4A1A, breakSound: 'crack', placeSound: 'thud' },
+      // ── Desert biome blocks (JP-102) ─────────────────────────────────
+      19: { name: 'Sandstone',  color: 0xD4A84B, breakSound: 'crack', placeSound: 'thud' },
+      20: { name: 'Cactus',     color: 0x4B7C3A, breakSound: 'crack', placeSound: 'thud' },
+      21: { name: 'Ruin Stone', color: 0xB0A090, breakSound: 'crack', placeSound: 'thud' },
     };
     const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
     const SNOW = 15, ICE = 16, PINE_WOOD = 17, PINE_LEAVES = 18;
+    const SANDSTONE = 19, CACTUS = 20, RUIN_STONE = 21;
 
     // ── Biome registry (JP-100) ─────────────────────────────────────
     // Each entry: { id, name, icon, description, skyColor }
@@ -1110,6 +1115,13 @@
         icon:        '❄️',
         description: 'Frozen tundra, pine forests & ice',
         skyColor:    0xC8E8F5,
+      },
+      desert: {
+        id:          'desert',
+        name:        'Desert',
+        icon:        '🏜️',
+        description: 'Sandy dunes, cacti & ancient ruins',
+        skyColor:    0xE8C97A,
       },
     };
 
@@ -1369,6 +1381,44 @@
                     }
                   }
                 }
+              }
+            }
+          }
+        }
+      } else if (biomeId === 'desert') {
+        // ── Desert biome (JP-102) ────────────────────────────────────
+        const SEA_LEVEL = 0; // no open water in the desert
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            // Low height variance → gently rolling dunes
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            const height = Math.floor((noiseVal + 1) * 2); // Range 0-4
+
+            for (let y = height; y >= -2; y--) {
+              let blockType;
+              if (y === height)         blockType = SAND;
+              else if (y >= height - 2) blockType = SANDSTONE;
+              else                      blockType = STONE;
+              addBlock(gx, y, gz, blockType);
+            }
+
+            // Cacti: sparser than trees, 2-4 blocks tall
+            const cactusNoise = simplex.noise2D(gx * 4.7, gz * 4.7);
+            if (cactusNoise > 0.92) {
+              const cactusH = 2 + Math.abs(gx + gz) % 3; // 2-4 blocks
+              for (let cy = 1; cy <= cactusH; cy++) {
+                addBlock(gx, height + cy, gz, CACTUS);
+              }
+            }
+
+            // Ruins: rare stone column clusters (2-4 tall, 1-2 wide stub)
+            const ruinNoise = simplex.noise2D(gx * 2.1 + 99, gz * 2.1 + 99);
+            if (ruinNoise > 0.96) {
+              const ruinH = 2 + Math.abs(gx * gz) % 3;
+              for (let ry = 1; ry <= ruinH; ry++) {
+                addBlock(gx, height + ry, gz, RUIN_STONE);
               }
             }
           }
