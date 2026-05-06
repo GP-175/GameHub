@@ -1098,11 +1098,26 @@
       23: { name: 'Moon Dust',    color: 0xC0BDB8, breakSound: 'crack', placeSound: 'thud' },
       24: { name: 'Star Block',   color: 0xFFFDE0, emissive: 0xFFFF88, emissiveIntensity: 1.2, breakSound: 'crack', placeSound: 'thud' },
       25: { name: 'Rocket Metal', color: 0x8BA7BE, breakSound: 'crack', placeSound: 'thud' },
+      // ── Candy biome blocks (JP-104) ──────────────────────────────────
+      26: { name: 'Cotton Candy', color: 0xF9A8D4, breakSound: 'crack', placeSound: 'thud' },
+      27: { name: 'Frosting',     color: 0xFFF0F8, breakSound: 'crack', placeSound: 'thud' },
+      28: { name: 'Lollipop',     color: 0xFFFFFF, breakSound: 'crack', placeSound: 'thud' },
+      29: { name: 'Chocolate',    color: 0x3D1A0A, breakSound: 'crack', placeSound: 'thud' },
+      30: { name: 'Sprinkle',     cssColor: 'linear-gradient(135deg,#ff6b6b,#ffd93d,#6bcb77,#4d96ff)', breakSound: 'crack', placeSound: 'thud' },
+      // ── Underwater biome blocks (JP-105) ─────────────────────────────
+      31: { name: 'Coral Red',    color: 0xFF6B6B, breakSound: 'crack', placeSound: 'thud' },
+      32: { name: 'Coral Blue',   color: 0x00B4D8, breakSound: 'crack', placeSound: 'thud' },
+      33: { name: 'Coral Yellow', color: 0xFFD166, breakSound: 'crack', placeSound: 'thud' },
+      34: { name: 'Kelp',         color: 0x2D5016, breakSound: 'crack', placeSound: 'thud' },
+      35: { name: 'Seafloor Sand',color: 0xE8D5A3, breakSound: 'crack', placeSound: 'thud' },
+      36: { name: 'Sea Stone',    color: 0x4A6874, breakSound: 'crack', placeSound: 'thud' },
     };
     const GRASS = 1, DIRT = 2, STONE = 3, WOOD = 4, SAND = 5, ASTRO = 6, LEAVES = 7, WATER = 8, RAINBOW = 9, BOUNCY = 10, GIGGLE = 11, COW = 12, TOOT = 13, GLOW = 14;
     const SNOW = 15, ICE = 16, PINE_WOOD = 17, PINE_LEAVES = 18;
     const SANDSTONE = 19, CACTUS = 20, RUIN_STONE = 21;
     const MOON_ROCK = 22, MOON_DUST = 23, STAR_BLOCK = 24, ROCKET_METAL = 25;
+    const COTTON_CANDY = 26, FROSTING = 27, LOLLIPOP = 28, CHOCOLATE = 29, SPRINKLE = 30;
+    const CORAL_RED = 31, CORAL_BLUE = 32, CORAL_YELLOW = 33, KELP = 34, SEAFLOOR_SAND = 35, SEA_STONE = 36;
 
     // ── Biome registry (JP-100) ─────────────────────────────────────
     // Each entry: { id, name, icon, description, skyColor }
@@ -1136,6 +1151,23 @@
         description: 'Low gravity moon surface & starfield',
         skyColor:    0x000008,
         gravityScale: 0.3,
+      },
+      candy: {
+        id:          'candy',
+        name:        'Candy',
+        icon:        '🍭',
+        description: 'Cotton candy hills, chocolate rivers & lollipop trees',
+        skyColor:    0xFFB6E8,
+      },
+      underwater: {
+        id:          'underwater',
+        name:        'Underwater',
+        icon:        '🐠',
+        description: 'Submerged seafloor with kelp, coral & blue fog',
+        skyColor:    0x0077B6,
+        gravityScale: 0.55,
+        moveScale:   0.70,
+        fog:         { color: 0x0044AA, density: 0.035 },
       },
     };
 
@@ -1376,7 +1408,13 @@
       const biome = BIOMES[biomeId] || BIOMES.meadow;
       skyColorDay.set(biome.skyColor);
       gravityScale = biome.gravityScale ?? 1.0;
+      moveScale    = biome.moveScale    ?? 1.0;
       if (biomeId === 'space') buildStarField(); else removeStarField();
+      if (biome.fog) {
+        scene.fog = new THREE.FogExp2(biome.fog.color, biome.fog.density);
+      } else {
+        scene.fog = null;
+      }
     }
 
     function generateFreshWorld(biomeId = 'meadow') {
@@ -1504,6 +1542,86 @@
               for (let ry = 1; ry <= ruinH; ry++) {
                 addBlock(gx, height + ry, gz, RUIN_STONE);
               }
+            }
+          }
+        }
+      } else if (biomeId === 'candy') {
+        // ── Candy biome (JP-104) ─────────────────────────────────────
+        const SEA_LEVEL = 2;
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.05, gz * 0.05);
+            const height = Math.floor((noiseVal + 1) * 3.5);
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = COTTON_CANDY;
+              else if (y >= height - 2) blockType = FROSTING;
+              addBlock(gx, y, gz, blockType);
+            }
+            // Chocolate rivers replace water
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, CHOCOLATE);
+            }
+            // Lollipop trees: white stick + spherical RAINBOW canopy
+            if (height > SEA_LEVEL) {
+              const treeNoise = simplex.noise2D(gx * 5.3, gz * 5.3);
+              if (treeNoise > 0.93) {
+                const stickH = 3 + Math.abs(gx * gz) % 2; // 3-4 blocks
+                for (let ty = 1; ty <= stickH; ty++) {
+                  addBlock(gx, height + ty, gz, LOLLIPOP);
+                }
+                const topY = height + stickH;
+                for (let lx = -1; lx <= 1; lx++) {
+                  for (let ly = -1; ly <= 1; ly++) {
+                    for (let lz = -1; lz <= 1; lz++) {
+                      if (lx === 0 && lz === 0 && ly <= 0) continue;
+                      if (Math.abs(lx) + Math.abs(ly) + Math.abs(lz) === 3) continue;
+                      // Alternate RAINBOW and SPRINKLE for visual variety
+                      const useBlock = ((lx + ly + lz) % 2 === 0) ? RAINBOW : SPRINKLE;
+                      addBlock(gx + lx, topY + ly, gz + lz, useBlock);
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else if (biomeId === 'underwater') {
+        // ── Underwater biome (JP-105) ────────────────────────────────
+        const SEA_LEVEL = 8; // all terrain sits well below the water surface
+        for (let x = 0; x < WORLD_SIZE; x++) {
+          for (let z = 0; z < WORLD_SIZE; z++) {
+            const gx = x - offset;
+            const gz = z - offset;
+            const noiseVal = simplex.noise2D(gx * 0.04, gz * 0.04);
+            const height = Math.floor((noiseVal + 1) * 1.5); // flat seafloor 0-3
+
+            for (let y = height; y >= -2; y--) {
+              let blockType = STONE;
+              if (y === height)         blockType = SEAFLOOR_SAND;
+              else if (y >= height - 2) blockType = SEA_STONE;
+              addBlock(gx, y, gz, blockType);
+            }
+            // Flood everything up to SEA_LEVEL with water
+            for (let y = height + 1; y <= SEA_LEVEL; y++) {
+              addBlock(gx, y, gz, WATER);
+            }
+            // Kelp: vertical green columns on the seafloor
+            const kelpNoise = simplex.noise2D(gx * 4.1, gz * 4.1);
+            if (kelpNoise > 0.90) {
+              const kelpH = 2 + Math.abs(gx + gz) % 4; // 2-5 blocks
+              for (let ky = 1; ky <= kelpH; ky++) {
+                addBlock(gx, height + ky, gz, KELP);
+              }
+            }
+            // Coral: scattered on seafloor
+            const coralNoise = simplex.noise2D(gx * 6.3 + 50, gz * 6.3 + 50);
+            if (coralNoise > 0.91) {
+              const coralBlock = [CORAL_RED, CORAL_BLUE, CORAL_YELLOW][Math.abs(gx * gz + gz) % 3];
+              addBlock(gx, height + 1, gz, coralBlock);
             }
           }
         }
@@ -3057,6 +3175,7 @@
     // Floaty gravity and a generous jump — fun for a kid, not punishing.
     const GRAVITY        = 18;    // blocks/s²  (Minecraft ~32, we go gentler)
     let   gravityScale   = 1.0;   // multiplied into GRAVITY; space biome sets 0.3 (JP-103)
+    let   moveScale      = 1.0;   // multiplied into MOVE_SPEED; underwater biome sets 0.7 (JP-105)
     const JUMP_VELOCITY  = 7.5;   // initial upward speed (blocks/s)
     const MOVE_SPEED     = 4;
     const FLY_SPEED      = 6;     // blocks/s while flying (JP-94)
@@ -3271,7 +3390,7 @@
 
       if (move.lengthSq() > 0.0025) {           // ignore tiny drift (~0.05 mag)
         if (move.lengthSq() > 1) move.normalize();
-        move.multiplyScalar(MOVE_SPEED * dt);
+        move.multiplyScalar(MOVE_SPEED * moveScale * dt);
 
         // Try X movement independently so sliding along walls works
         if (!collidesAt(pos.x + move.x, feetY, pos.z)) {
