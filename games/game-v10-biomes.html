@@ -423,7 +423,7 @@
       transition: transform 50ms;
     }
 
-    /* ── Touch action buttons (bottom-right) — jump / fly / place / break ── */
+    /* ── Touch action buttons (bottom-right) — break / place / jump ── */
     #touch-actions {
       position: fixed;
       right: env(safe-area-inset-right, 24px);
@@ -437,12 +437,6 @@
       touch-action: none;
     }
     body.touch #touch-actions { display: flex; }
-    .touch-action-row {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 14px;
-    }
     .touch-btn {
       width: clamp(76px, 8.5vw, 92px); height: clamp(76px, 8.5vw, 92px);
       border-radius: 50%;
@@ -468,14 +462,6 @@
     #touch-break-btn { background: rgba(180, 60, 60, 0.55); }
     #touch-place-btn { background: rgba(60, 130, 200, 0.55); }
     #touch-jump-btn  { background: rgba(80, 160, 80, 0.55); width: clamp(86px, 9.5vw, 104px); height: clamp(86px, 9.5vw, 104px); font-size: 22px; }
-    #touch-fly-btn   { background: rgba(60, 190, 220, 0.58); width: clamp(86px, 9.5vw, 104px); height: clamp(86px, 9.5vw, 104px); font-size: 24px; }
-    #touch-fly-down-btn { background: rgba(90, 110, 220, 0.58); width: clamp(76px, 8.5vw, 92px); height: clamp(76px, 8.5vw, 92px); font-size: 24px; }
-    #touch-fly-btn.flying,
-    #touch-fly-btn[aria-pressed="true"] {
-      background: rgba(80, 230, 255, 0.82);
-      border-color: rgba(180, 250, 255, 0.95);
-      box-shadow: 0 0 18px rgba(80,230,255,0.75), 0 4px 12px rgba(0,0,0,0.4);
-    }
 
     /* ── Pause / day-night buttons (top-left, touch only) ─────────── */
     #touch-topleft {
@@ -826,7 +812,7 @@
       WASD to move &nbsp;·&nbsp; Space to jump &nbsp;·&nbsp; Mouse to look &nbsp;·&nbsp; Esc to pause &nbsp;·&nbsp; Q/E or scroll to swap blocks &nbsp;·&nbsp; N for day/night &nbsp;·&nbsp; F2 for screenshot
     </div>
     <div id="title-controls" class="touch-only">
-      Joystick to move &nbsp;·&nbsp; Drag to look &nbsp;·&nbsp; ⛏ break &nbsp;·&nbsp; ⬛ place &nbsp;·&nbsp; ⤴ jump/rise &nbsp;·&nbsp; ✈ fly &nbsp;·&nbsp; ⬇ lower
+      Joystick to move &nbsp;·&nbsp; Drag to look &nbsp;·&nbsp; ⛏ break &nbsp;·&nbsp; ⬛ place &nbsp;·&nbsp; ⤴ jump
     </div>
   </div>
 
@@ -906,7 +892,6 @@
         <div class="control-tip"><strong>🕹 Move</strong>Push the left joystick.</div>
         <div class="control-tip"><strong>👀 Look</strong>Drag anywhere empty on the screen.</div>
         <div class="control-tip"><strong>⤴ Jump</strong>Tap the green jump button.</div>
-        <div class="control-tip"><strong>✈ Fly</strong>Tap the blue fly button to start/stop flying. While flying, hold jump to rise and hold ⬇ to lower.</div>
         <div class="control-tip"><strong>⬛ Place</strong>Aim at a block, then tap place.</div>
         <div class="control-tip"><strong>⛏ Break</strong>Aim at a block, then tap break.</div>
         <div class="control-tip"><strong>↶ Undo</strong>Tap undo to reverse your last place/break.</div>
@@ -919,17 +904,11 @@
   <!-- Bottom-left: virtual joystick -->
   <div id="joystick"><div id="joystick-knob"></div></div>
 
-  <!-- Bottom-right: action buttons (jump/rise + fly + lower, place + break below) -->
+  <!-- Bottom-right: action buttons (jump on top, place + break below) -->
   <div id="touch-actions">
-    <div class="touch-action-row">
-      <button id="touch-jump-btn"  class="touch-btn" type="button" title="Jump / rise while flying">⤴</button>
-      <button id="touch-fly-btn"   class="touch-btn" type="button" title="Toggle flying" aria-pressed="false">✈</button>
-      <button id="touch-fly-down-btn" class="touch-btn" type="button" title="Lower while flying">⬇</button>
-    </div>
-    <div class="touch-action-row">
-      <button id="touch-place-btn" class="touch-btn" type="button" title="Place">⬛</button>
-      <button id="touch-break-btn" class="touch-btn" type="button" title="Break">⛏</button>
-    </div>
+    <button id="touch-jump-btn"  class="touch-btn" type="button" title="Jump">⤴</button>
+    <button id="touch-place-btn" class="touch-btn" type="button" title="Place">⬛</button>
+    <button id="touch-break-btn" class="touch-btn" type="button" title="Break">⛏</button>
   </div>
 
   <script type="module">
@@ -1213,7 +1192,6 @@
 
     let selectedBlockId  = GRASS;
     let isFlying         = false;
-    let flyLaunchUntil   = 0;     // short auto-lift after enabling fly on touch/tablet
     let lastSpaceRelease = -1000; // timestamp of last Space keyup, for double-tap fly toggle
 
     // ── Hotbar UI ────────────────────────────────────────────────────
@@ -1268,32 +1246,8 @@
     function updateFlyIndicator() {
       flyIndicatorEl.classList.toggle('show', isFlying);
       hotbarEl.classList.toggle('flying', isFlying);
-      const touchFlyBtn = document.getElementById('touch-fly-btn');
-      if (touchFlyBtn) {
-        touchFlyBtn.classList.toggle('flying', isFlying);
-        touchFlyBtn.setAttribute('aria-pressed', String(isFlying));
-        touchFlyBtn.title = isFlying ? 'Stop flying' : 'Start flying';
-        const touchFlyDownBtn = document.getElementById('touch-fly-down-btn');
-        if (touchFlyDownBtn) touchFlyDownBtn.disabled = !isFlying;
-      }
     }
-    function setFlying(active, launch = false) {
-      if (isFlying === active) return;
-      isFlying = active;
-      if (isFlying && launch) {
-        // Give tablet players an immediate lift-off so tapping Fly feels obvious.
-        // Collision handling below still prevents clipping through ceilings.
-        flyLaunchUntil = performance.now() + 650;
-      }
-      if (!isFlying) {
-        flyLaunchUntil = 0;
-        if (velocityY < 0) velocityY = 0; // gentle fall on exit
-      }
-      updateFlyIndicator();
-    }
-    function toggleFlying(launch = false) {
-      setFlying(!isFlying, launch);
-    }
+
     // Block-name toast: fades in above hotbar on block switch, fades out after 1.2 s.
     const blockNameToastEl = document.getElementById('block-name-toast');
     let   blockNameTimer   = null;
@@ -2822,7 +2776,9 @@
         const now = performance.now();
         if (now - lastSpaceRelease < 300) {
           // Double-tap: toggle fly mode (JP-94)
-          toggleFlying(false);
+          isFlying = !isFlying;
+          if (!isFlying && velocityY < 0) velocityY = 0; // gentle fall on exit
+          updateFlyIndicator();
           lastSpaceRelease = -1000; // prevent triple-tap from immediately re-toggling
         } else {
           jumpRequested = true;
@@ -2911,8 +2867,6 @@
     const touchBreakBtn  = document.getElementById('touch-break-btn');
     const touchPlaceBtn  = document.getElementById('touch-place-btn');
     const touchJumpBtn   = document.getElementById('touch-jump-btn');
-    const touchFlyBtn    = document.getElementById('touch-fly-btn');
-    const touchFlyDownBtn = document.getElementById('touch-fly-down-btn');
     const touchPauseBtn  = document.getElementById('touch-pause-btn');
     const touchHelpBtn   = document.getElementById('touch-help-btn');
     const touchUndoBtn   = document.getElementById('touch-undo-btn');
@@ -3086,14 +3040,25 @@
       if (blockMap.size > before) playSound(BLOCKS[selectedBlockId].placeSound);
     });
 
-    // JUMP — one-shot in gameplay; hold-to-rise while flying/photo mode.
+    // JUMP — one-shot in gameplay; hold-to-rise in photo mode.
     // Use a separate jump request instead of leaving the virtual spacebar
     // pressed, otherwise iPad can keep jumping/flying after one tap.
+    let lastTouchJumpTime = -1000;
     function beginTouchJump(e) {
       e.preventDefault();
       e.stopPropagation();
       if (!gameStarted || touchJumpBtn.disabled) return;
-      if (photoMode || isFlying) { keys[' '] = true; return; }
+      if (photoMode) { keys[' '] = true; return; }
+      // Double-tap jump button toggles fly mode (JP-94)
+      const now = performance.now();
+      if (now - lastTouchJumpTime < 300) {
+        isFlying = !isFlying;
+        if (!isFlying && velocityY < 0) velocityY = 0;
+        updateFlyIndicator();
+        lastTouchJumpTime = -1000;
+        return;
+      }
+      lastTouchJumpTime = now;
       jumpRequested = true;
     }
     function endTouchJump(e) {
@@ -3110,40 +3075,6 @@
     touchJumpBtn.addEventListener('touchend',    endTouchJump,   { passive: false });
     touchJumpBtn.addEventListener('touchcancel', endTouchJump,   { passive: false });
     touchJumpBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    });
-
-    // FLY — dedicated tablet toggle so jump taps never double as fly toggles.
-    bindTouchButton(touchFlyBtn, () => {
-      if (!gameStarted || photoMode) return;
-      toggleFlying(true);
-      showToast(isFlying ? '✈ Flying ON — hold ⤴ up / ⬇ down' : '✈ Flying OFF');
-    });
-
-    // LOWER — hold while flying to descend. Collision still prevents clipping
-    // through floors/blocks; touching ground exits fly mode cleanly.
-    function beginTouchFlyDown(e) {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!gameStarted || photoMode || !isFlying) return;
-      keys.shift = true;
-    }
-    function endTouchFlyDown(e) {
-      if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-      }
-      keys.shift = false;
-    }
-    touchFlyDownBtn.disabled = true;
-    touchFlyDownBtn.addEventListener('pointerdown', beginTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('pointerup', endTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('pointercancel', endTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('touchstart', beginTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('touchend', endTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('touchcancel', endTouchFlyDown, { passive: false });
-    touchFlyDownBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
     });
@@ -3475,9 +3406,8 @@
       let newFeetY;
 
       if (isFlying) {
-        // Hold jump/rise to go up, hold shift/lower to go down, no gravity.
-        // Do NOT consume keys[' '] here — tablet holding must keep rising until release.
-        if (performance.now() < flyLaunchUntil || keys[' '] || jumpRequested) {
+        // Space = rise, Shift = descend, no gravity
+        if (keys[' '] || jumpRequested) {
           velocityY = FLY_SPEED;
         } else if (keys.shift) {
           velocityY = -FLY_SPEED;
@@ -3485,6 +3415,7 @@
           velocityY = 0;
         }
         jumpRequested = false;
+        keys[' '] = false;
 
         newFeetY = feetY + velocityY * dt;
 
@@ -3497,7 +3428,8 @@
           newFeetY  = getGroundHeight(pos.x, feetY, pos.z);
           velocityY = 0;
           onGround  = true;
-          setFlying(false);
+          isFlying  = false;
+          updateFlyIndicator();
         } else {
           onGround = false;
         }
