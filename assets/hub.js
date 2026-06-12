@@ -171,6 +171,16 @@
       accent: '#40e8ff',
     },
     {
+      id: 'cube-basher',
+      title: 'Cube Basher',
+      subject: 'Arcade',
+      icon: '🔨',
+      tagline: 'Survive the cube horde',
+      ageGroups: ['adult'],
+      path: 'games/cube-basher.html',
+      accent: '#ffd23e',
+    },
+    {
       id: 'snake',
       title: 'Snake',
       subject: 'Arcade',
