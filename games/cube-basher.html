@@ -70,6 +70,20 @@
   .controls{margin-top:28px;color:#8d80ad;font-size:13px;font-weight:600;line-height:1.9;text-align:center}
   .hubBack{position:absolute;top:max(16px,env(safe-area-inset-top));left:max(16px,env(safe-area-inset-left));color:#cdb8ff;text-decoration:none;font-size:13px;font-weight:800;letter-spacing:1px;background:#0008;border:1px solid #ffffff24;border-radius:999px;padding:8px 12px}
   .hubBack:hover{color:#fff;border-color:#ffd23e66}
+  /* ---------- touch controls (tablets / phones) ---------- */
+  #touchUI{position:fixed;inset:0;z-index:15;pointer-events:none}
+  #touchUI[hidden]{display:none}
+  #joy{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(28px,env(safe-area-inset-bottom));width:138px;height:138px;border-radius:50%;background:radial-gradient(circle,#ffffff16,#ffffff07);border:2px solid #ffffff30;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
+  #joyKnob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#ffffffcc,#cdb8ff77);border:2px solid #ffffff77;box-shadow:0 4px 14px #0008;will-change:transform}
+  .touchBtn{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;font-family:var(--display);letter-spacing:1px;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #ffffff3a;transition:transform .07s,filter .07s}
+  .touchBtn.pressed{transform:scale(.92);filter:brightness(1.3)}
+  #btnJump{right:max(26px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom));width:108px;height:108px;border-radius:50%;font-size:18px;background:radial-gradient(circle at 40% 34%,#ffe06e,#f5a40b 72%,#d98a00)}
+  #btnJump,#btnSprint{color:#3a2200;text-shadow:0 1px 0 #ffffff66}
+  #btnSprint{right:max(150px,calc(env(safe-area-inset-right) + 150px));bottom:max(52px,calc(env(safe-area-inset-bottom) + 22px));width:84px;height:84px;border-radius:50%;font-size:15px;background:radial-gradient(circle at 40% 34%,#9be8ff,#3aa8e0 72%,#1c7fb8)}
+  #btnPause{top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));width:48px;height:48px;border-radius:13px;font-size:16px;background:#000a;letter-spacing:2px}
+  /* when the touch HUD is on, drop the keyboard hint line */
+  body.touch #hint{display:none}
+  .hubLinkBtn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 
   /* ---------- level up ---------- */
   #levelup{background:radial-gradient(ellipse at 50% 40%, rgba(20,40,18,.55), rgba(6,4,14,.86))}
@@ -148,6 +162,13 @@
     <div id="hint">WASD move &nbsp;·&nbsp; SHIFT sprint &nbsp;·&nbsp; SPACE jump &nbsp;·&nbsp; drag mouse = camera &nbsp;·&nbsp; scroll = zoom &nbsp;·&nbsp; P pause &nbsp;·&nbsp; M mute</div>
   </div>
 
+  <div id="touchUI" hidden>
+    <div id="joy"><div id="joyKnob"></div></div>
+    <button id="btnSprint" class="touchBtn" aria-label="Sprint">RUN</button>
+    <button id="btnJump" class="touchBtn" aria-label="Jump">JUMP</button>
+    <button id="btnPause" class="touchBtn" aria-label="Pause">❚❚</button>
+  </div>
+
   <div class="screen" id="menu" style="display:flex">
     <a class="hubBack" href="../index.html">← GameHub</a>
     <div class="title">CUBE BASHER</div>
@@ -167,6 +188,7 @@
   </div>
 
   <div class="screen" id="deadScr">
+    <a class="hubBack" href="../index.html">← GameHub</a>
     <div class="endTitle" id="deadTitle">YOU GOT BASHED</div>
     <div class="endStats" id="deadStats"></div>
     <div class="btnRow">
@@ -176,6 +198,7 @@
   </div>
 
   <div class="screen" id="winScr">
+    <a class="hubBack" href="../index.html">← GameHub</a>
     <div class="endTitle" id="winTitle">YOU BASHED THE WORLD</div>
     <div class="endStats" id="winStats"></div>
     <div class="btnRow">
@@ -193,8 +216,13 @@
   </div>
 
   <div class="screen" id="pauseScr">
+    <a class="hubBack" href="../index.html">← GameHub</a>
     <div class="endTitle">PAUSED</div>
-    <div class="endStats">press P to resume</div>
+    <div class="endStats">tap RESUME or press P to keep bashing</div>
+    <div class="btnRow">
+      <button class="bigBtn" id="resumeBtn">RESUME</button>
+      <a class="bigBtn secondary hubLinkBtn" href="../index.html">QUIT TO HUB</a>
+    </div>
   </div>
 </div>
 
@@ -1956,16 +1984,20 @@ function refreshWeaponTray() {
    INPUT
 ============================================================ */
 const keys = {};
+// analog movement from the on-screen joystick (tablets); folded into WASD below
+const nav = { mx: 0, mz: 0, mag: 0, sprint: false };
+function togglePause() {
+  if (G.state === 'play') { G.state = 'pause'; Music.stop(); document.getElementById('pauseScr').style.display = 'flex'; }
+  else if (G.state === 'pause') { G.state = 'play'; Music.start(); document.getElementById('pauseScr').style.display = 'none'; }
+}
 addEventListener('keydown', e => {
   keys[e.code] = true;
   if (e.code === 'Space') e.preventDefault();
   if (e.code === 'KeyM') Music.setMuted(Sfx.toggleMute());
-  if ((e.code === 'KeyP' || e.code === 'Escape')) {
-    if (G.state === 'play') { G.state = 'pause'; Music.stop(); document.getElementById('pauseScr').style.display = 'flex'; }
-    else if (G.state === 'pause') { G.state = 'play'; Music.start(); document.getElementById('pauseScr').style.display = 'none'; }
-  }
+  if (e.code === 'KeyP' || e.code === 'Escape') togglePause();
 });
 addEventListener('keyup', e => keys[e.code] = false);
+document.getElementById('resumeBtn').addEventListener('click', () => { if (G.state === 'pause') togglePause(); });
 
 /* ---------- mouse camera: drag to orbit, scroll to zoom ---------- */
 let camYaw = 0, camPitch = 0.66, camDist = 17.2;
@@ -1995,6 +2027,90 @@ addEventListener('mouseup', endDrag);
 addEventListener('blur', endDrag);
 addEventListener('wheel', e => { camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 9.5, 24); }, { passive: true });
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
+
+/* ---------- touch controls: joystick + camera drag + pinch zoom ---------- */
+const IS_TOUCH = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+if (IS_TOUCH) {
+  document.body.classList.add('touch');
+  document.getElementById('touchUI').hidden = false;
+  renderer.domElement.style.touchAction = 'none';
+
+  // left thumb-stick: feeds nav.mx / nav.mz (camera-relative WASD) and nav.mag
+  const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
+  const MAXR = 52;             // px the knob can travel from center
+  let joyId = null;
+  function resetJoy() { joyId = null; nav.mx = nav.mz = nav.mag = 0; knob.style.transform = 'translate(0px,0px)'; }
+  joy.addEventListener('touchstart', e => {
+    e.preventDefault();
+    if (joyId !== null) return;
+    joyId = e.changedTouches[0].identifier;
+    moveJoy(e.changedTouches[0]);
+  }, { passive: false });
+  joy.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === joyId) moveJoy(t);
+  }, { passive: false });
+  const joyEnd = e => { for (const t of e.changedTouches) if (t.identifier === joyId) resetJoy(); };
+  joy.addEventListener('touchend', joyEnd);
+  joy.addEventListener('touchcancel', joyEnd);
+  function moveJoy(t) {
+    const r = joy.getBoundingClientRect();
+    let dx = t.clientX - (r.left + r.width / 2);
+    let dy = t.clientY - (r.top + r.height / 2);
+    const d = Math.hypot(dx, dy) || 1;
+    const clamped = Math.min(d, MAXR);
+    dx = dx / d * clamped; dy = dy / d * clamped;
+    knob.style.transform = `translate(${dx}px,${dy}px)`;
+    nav.mx = dx / MAXR;       // right (+x) -> strafe right, like KeyD
+    nav.mz = dy / MAXR;       // up (-y) -> forward, like KeyW
+    nav.mag = clamped / MAXR;
+  }
+
+  // hold-to-act buttons (press + release), guarding against synthetic mouse events
+  const holdBtn = (id, on, off) => {
+    const el = document.getElementById(id);
+    const press = e => { e.preventDefault(); el.classList.add('pressed'); on(); };
+    const release = e => { e.preventDefault(); el.classList.remove('pressed'); off && off(); };
+    el.addEventListener('touchstart', press, { passive: false });
+    el.addEventListener('touchend', release, { passive: false });
+    el.addEventListener('touchcancel', release, { passive: false });
+  };
+  holdBtn('btnJump', () => { keys.Space = true; }, () => { keys.Space = false; });
+  holdBtn('btnSprint', () => { nav.sprint = true; }, () => { nav.sprint = false; });
+  const pauseBtn = document.getElementById('btnPause');
+  pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); Sfx.ensure(); togglePause(); }, { passive: false });
+
+  // camera: one finger on the world = orbit, two fingers = pinch-zoom
+  const cam = { id: null, x: 0, y: 0 };
+  let pinch0 = 0, pinchDist0 = 0;
+  const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+  renderer.domElement.addEventListener('touchstart', e => {
+    e.preventDefault(); // cancels the compatibility mouse events so the camera isn't driven twice
+    Sfx.ensure();
+    if (e.touches.length >= 2) { pinch0 = camDist; pinchDist0 = dist2(e.touches[0], e.touches[1]); cam.id = null; return; }
+    const t = e.changedTouches[0];
+    cam.id = t.identifier; cam.x = t.clientX; cam.y = t.clientY;
+  }, { passive: false });
+  renderer.domElement.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length >= 2) {
+      const d = dist2(e.touches[0], e.touches[1]);
+      if (pinchDist0) camDist = THREE.MathUtils.clamp(pinch0 * (pinchDist0 / (d || 1)), 9.5, 24);
+      return;
+    }
+    for (const t of e.changedTouches) if (t.identifier === cam.id) {
+      camYaw  -= (t.clientX - cam.x) * 0.006;
+      camPitch = THREE.MathUtils.clamp(camPitch + (t.clientY - cam.y) * 0.005, 0.32, 1.25);
+      cam.x = t.clientX; cam.y = t.clientY;
+    }
+  }, { passive: false });
+  const camEnd = e => {
+    for (const t of e.changedTouches) if (t.identifier === cam.id) cam.id = null;
+    if (e.touches.length < 2) pinchDist0 = 0;
+  };
+  renderer.domElement.addEventListener('touchend', camEnd);
+  renderer.domElement.addEventListener('touchcancel', camEnd);
+}
 
 /* ============================================================
    SPAWN DIRECTOR
@@ -2425,11 +2541,12 @@ function tick(now) {
     if (keys.KeyS || keys.ArrowDown) mz += 1;
     if (keys.KeyA || keys.ArrowLeft) mx -= 1;
     if (keys.KeyD || keys.ArrowRight) mx += 1;
+    if (nav.mag > 0.001) { mx += nav.mx; mz += nav.mz; } // on-screen joystick
     const moving = !!(mx || mz);
     P.movingNow = moving;
 
-    // sprint: hold SHIFT for a burst of speed, gated by stamina
-    const wantSprint = (keys.ShiftLeft || keys.ShiftRight) && moving;
+    // sprint: hold SHIFT (or the RUN button / a full joystick push), gated by stamina
+    const wantSprint = (keys.ShiftLeft || keys.ShiftRight || nav.sprint || nav.mag > 0.92) && moving;
     P.sprinting = wantSprint && !P.winded && P.stamina > 0;
     if (P.sprinting) {
       P.stamina -= 30 * dt;
