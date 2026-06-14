@@ -988,32 +988,40 @@ const COLOR_PALETTE = [
 
 const DEFAULTS_KEY = 'gamehub.ageGroupDefaults';
 
-function getAgeDefaults(ageGroup) {
+function migrateLocalAgeDefaults() {
   try {
     const raw = localStorage.getItem(DEFAULTS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    return all[ageGroup] || null;
-  } catch (_) { return null; }
+    if (!raw) return;
+    const hasSyncedDefaults = Object.keys(Hub.AGE_GROUPS).some(age => Object.keys(Hub.getAgeDefaults(age)).length > 0);
+    if (hasSyncedDefaults) {
+      localStorage.removeItem(DEFAULTS_KEY);
+      return;
+    }
+    Hub.importAgeDefaults(JSON.parse(raw));
+    localStorage.removeItem(DEFAULTS_KEY);
+  } catch (_) {}
+}
+
+function getAgeDefaults(ageGroup) {
+  return Hub.getAgeDefaults(ageGroup);
 }
 
 function setAgeDefault(ageGroup, gameId, enabled) {
-  try {
-    const raw = localStorage.getItem(DEFAULTS_KEY);
-    const all = raw ? JSON.parse(raw) : {};
-    if (!all[ageGroup]) all[ageGroup] = {};
-    all[ageGroup][gameId] = !!enabled;
-    localStorage.setItem(DEFAULTS_KEY, JSON.stringify(all));
-  } catch (_) {}
+  Hub.setAgeDefault(ageGroup, gameId, enabled);
+}
+
+function ageDefaultValue(value) {
+  return value && typeof value === 'object' ? value.enabled : value;
 }
 
 function applyAgeDefaults(profileId, ageGroup) {
   const defaults = getAgeDefaults(ageGroup);
   if (!defaults) return; // no overrides; Hub's auto-enable-all stays
   Hub.GAMES.forEach(g => {
-    if (!g.ageGroups.includes(ageGroup)) return;
-    if (defaults[g.id] === false) {
+    const defaultEnabled = ageDefaultValue(defaults[g.id]);
+    if (defaultEnabled === false) {
       Hub.setGameEnabled(profileId, g.id, false);
-    } else if (defaults[g.id] === true) {
+    } else if (defaultEnabled === true) {
       Hub.setGameEnabled(profileId, g.id, true);
     }
   });
@@ -1045,6 +1053,7 @@ function toggleTheme() {
 
 window.addEventListener('DOMContentLoaded', async () => {
   await Hub.whenReady();
+  migrateLocalAgeDefaults();
   applyAgeOverridesToHub();
   initLockScreen();
   showView('view-lock');
@@ -1221,7 +1230,7 @@ function renderOverview() {
     return;
   }
   container.innerHTML = profiles.map(p => {
-    const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+    const games = gamesForProfile(p);
     const progresses = games.map(g => Hub.getProgress(p.id, g.id));
     const totalPlays = progresses.reduce((s, pr) => s + (pr.plays || 0), 0);
     const totalMins = Math.round(progresses.reduce((s, pr) => s + (pr.totalSeconds || 0), 0) / 60);
@@ -1262,7 +1271,7 @@ function renderProgressTab(pid) {
   const p = profiles.find(x => x.id === pid);
   if (!p) return;
 
-  const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+  const games = gamesForProfile(p);
   const progresses = games.map(g => ({ game: g, pr: Hub.getProgress(p.id, g.id) }));
   const played = progresses.filter(x => x.pr.plays > 0);
 
@@ -1419,7 +1428,7 @@ function renderGamesTable(pid, filter) {
   const tbody = document.getElementById(`games-tbody-${pid}`);
   if (!tbody) return;
 
-  let games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+  let games = gamesForProfile(p);
   if (filter === 'enabled') games = games.filter(g => Hub.isGameEnabled(pid, g.id));
   if (filter === 'disabled') games = games.filter(g => !Hub.isGameEnabled(pid, g.id));
 
@@ -1542,7 +1551,7 @@ function renderKidsTab() {
   profiles.forEach(p => {
     const div = document.createElement('div');
     div.className = 'kid-edit-card';
-    const games = Hub.GAMES.filter(g => g.ageGroups.includes(p.ageGroup));
+    const games = gamesForProfile(p);
     const toggles = games.map(g => {
       const en = Hub.isGameEnabled(p.id, g.id);
       return `
@@ -1742,7 +1751,8 @@ function renderDefaultsManager() {
     const isNative = g.ageGroups.includes(ageGroup);
     // Native: undefined → on (matches Hub's auto-enable). false → default off.
     // Non-native: undefined → off. true → game added to this age group + default on.
-    const enabled = overrides[g.id] === undefined ? isNative : overrides[g.id];
+    const overrideEnabled = ageDefaultValue(overrides[g.id]);
+    const enabled = overrideEnabled === undefined ? isNative : overrideEnabled;
     let tag;
     if (isNative) {
       tag = `<span class="age-tag native">In ${shortAge(ageGroup)}</span>`;
@@ -1772,6 +1782,10 @@ function renderDefaultsManager() {
 
 function shortAge(ag) {
   return ({ 'toddler': 'Toddler', 'early-elem': 'Early Elem', 'adult': 'Adult' })[ag] || ag;
+}
+
+function gamesForProfile(profile) {
+  return Hub.GAMES.filter(g => g.ageGroups.includes(profile.ageGroup) || Hub.isGameEnabled(profile.id, g.id));
 }
 
 function toggleAgeDefault(cb) {
@@ -1819,8 +1833,8 @@ function applyAgeOverridesToHub() {
     if (!raw) return;
     const all = JSON.parse(raw);
     Object.entries(all).forEach(([ageGroup, gameMap]) => {
-      Object.entries(gameMap).forEach(([gid, enabled]) => {
-        if (!enabled) return;
+      Object.entries(gameMap).forEach(([gid, value]) => {
+        if (!ageDefaultValue(value)) return;
         const game = Hub.GAMES.find(g => g.id === gid);
         if (!game) return;
         if (!game.ageGroups.includes(ageGroup)) {

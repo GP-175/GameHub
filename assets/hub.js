@@ -208,6 +208,7 @@
       settings: {}, // settings[profileId][gameId] = { enabled: bool }
       progress: {}, // progress[profileId][gameId] = { plays, bestScore, totalSeconds, lastPlayed }
       gameConfig: {}, // gameConfig[profileId][gameId] = arbitrary per-game settings object
+      ageGroupDefaults: {}, // ageGroupDefaults[ageGroup][gameId] = { enabled: bool }
       quizState: {}, // quizState[profileId] = adaptive quiz state and history
       _sync: { revision: 0, updatedAt: null },
     };
@@ -458,6 +459,31 @@
     ensureProfileBuckets(profileId);
     state.settings[profileId][gameId] = { enabled: !!enabled };
     save(state);
+  }
+
+  function getAgeDefaults(ageGroup) {
+    if (!state.ageGroupDefaults) state.ageGroupDefaults = {};
+    const defaults = state.ageGroupDefaults[ageGroup] || {};
+    return JSON.parse(JSON.stringify(defaults));
+  }
+
+  function setAgeDefault(ageGroup, gameId, enabled) {
+    if (!AGE_GROUPS[ageGroup]) return;
+    if (!state.ageGroupDefaults) state.ageGroupDefaults = {};
+    if (!state.ageGroupDefaults[ageGroup]) state.ageGroupDefaults[ageGroup] = {};
+    state.ageGroupDefaults[ageGroup][gameId] = { enabled: !!enabled };
+    save(state);
+  }
+
+  function importAgeDefaults(defaults) {
+    if (!defaults || typeof defaults !== 'object') return;
+    Object.entries(defaults).forEach(([ageGroup, gameMap]) => {
+      if (!AGE_GROUPS[ageGroup] || !gameMap || typeof gameMap !== 'object') return;
+      Object.entries(gameMap).forEach(([gameId, value]) => {
+        const enabled = typeof value === 'object' ? value.enabled : value;
+        setAgeDefault(ageGroup, gameId, !!enabled);
+      });
+    });
   }
 
   // ---------- Per-game Config API ----------
@@ -953,7 +979,7 @@
     getProfiles, addProfile, updateProfile, removeProfile,
     setActiveProfile, getActiveProfile,
     // settings
-    isGameEnabled, setGameEnabled,
+    isGameEnabled, setGameEnabled, getAgeDefaults, setAgeDefault, importAgeDefaults,
     // per-game config
     getGameConfig, setGameConfig,
     // progress
