@@ -73,16 +73,19 @@
   /* ---------- touch controls (tablets / phones) ---------- */
   #touchUI{position:fixed;inset:0;z-index:15;pointer-events:none}
   #touchUI[hidden]{display:none}
-  #joy{position:absolute;left:max(22px,env(safe-area-inset-left));bottom:max(28px,env(safe-area-inset-bottom));width:138px;height:138px;border-radius:50%;background:radial-gradient(circle,#ffffff16,#ffffff07);border:2px solid #ffffff30;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none}
-  #joyKnob{position:absolute;left:50%;top:50%;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#ffffffcc,#cdb8ff77);border:2px solid #ffffff77;box-shadow:0 4px 14px #0008;will-change:transform}
+  /* the joystick floats to wherever the left thumb lands — purely visual, no hit-testing */
+  #joy{position:fixed;left:0;top:0;width:142px;height:142px;margin:-71px 0 0 -71px;border-radius:50%;background:radial-gradient(circle,#ffffff18,#ffffff07);border:2px solid #ffffff33;pointer-events:none;opacity:0;transition:opacity .1s;will-change:left,top}
+  #joy.on{opacity:1}
+  #joyKnob{position:absolute;left:50%;top:50%;width:62px;height:62px;margin:-31px 0 0 -31px;border-radius:50%;background:radial-gradient(circle at 38% 32%,#ffffffcc,#cdb8ff77);border:2px solid #ffffff77;box-shadow:0 4px 14px #0008;will-change:transform}
   .touchBtn{position:absolute;pointer-events:auto;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;font-family:var(--display);letter-spacing:1px;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #ffffff3a;transition:transform .07s,filter .07s}
   .touchBtn.pressed{transform:scale(.92);filter:brightness(1.3)}
   #btnJump{right:max(26px,env(safe-area-inset-right));bottom:max(30px,env(safe-area-inset-bottom));width:108px;height:108px;border-radius:50%;font-size:18px;background:radial-gradient(circle at 40% 34%,#ffe06e,#f5a40b 72%,#d98a00)}
   #btnJump,#btnSprint{color:#3a2200;text-shadow:0 1px 0 #ffffff66}
   #btnSprint{right:max(150px,calc(env(safe-area-inset-right) + 150px));bottom:max(52px,calc(env(safe-area-inset-bottom) + 22px));width:84px;height:84px;border-radius:50%;font-size:15px;background:radial-gradient(circle at 40% 34%,#9be8ff,#3aa8e0 72%,#1c7fb8)}
   #btnPause{top:max(16px,env(safe-area-inset-top));right:max(16px,env(safe-area-inset-right));width:48px;height:48px;border-radius:13px;font-size:16px;background:#000a;letter-spacing:2px}
-  /* when the touch HUD is on, drop the keyboard hint line */
+  /* when the touch HUD is on, drop the keyboard hint line and lock down browser gestures */
   body.touch #hint{display:none}
+  body.touch{overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
   .hubLinkBtn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
 
   /* ---------- level up ---------- */
@@ -2028,42 +2031,43 @@ addEventListener('blur', endDrag);
 addEventListener('wheel', e => { camDist = THREE.MathUtils.clamp(camDist + e.deltaY * 0.02, 9.5, 24); }, { passive: true });
 renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
 
-/* ---------- touch controls: joystick + camera drag + pinch zoom ---------- */
+/* ---------- touch controls: floating joystick (left) + camera (right) ---------- */
 const IS_TOUCH = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
 if (IS_TOUCH) {
   document.body.classList.add('touch');
   document.getElementById('touchUI').hidden = false;
   renderer.domElement.style.touchAction = 'none';
+  const buzz = ms => { try { navigator.vibrate?.(ms); } catch (e) {} };
 
-  // left thumb-stick: feeds nav.mx / nav.mz (camera-relative WASD) and nav.mag
+  // tell players how the touch layout works
+  const ctrls = document.querySelector('#menu .controls');
+  if (ctrls) ctrls.innerHTML =
+    'Left side — drag anywhere to move (push to the edge to sprint)<br>' +
+    'Right side — drag to look around, pinch to zoom · JUMP / RUN buttons · ❚❚ pauses';
+
+  // --- floating thumb-stick: spawns wherever the left thumb lands ---
   const joy = document.getElementById('joy'), knob = document.getElementById('joyKnob');
-  const MAXR = 52;             // px the knob can travel from center
-  let joyId = null;
-  function resetJoy() { joyId = null; nav.mx = nav.mz = nav.mag = 0; knob.style.transform = 'translate(0px,0px)'; }
-  joy.addEventListener('touchstart', e => {
-    e.preventDefault();
-    if (joyId !== null) return;
-    joyId = e.changedTouches[0].identifier;
-    moveJoy(e.changedTouches[0]);
-  }, { passive: false });
-  joy.addEventListener('touchmove', e => {
-    e.preventDefault();
-    for (const t of e.changedTouches) if (t.identifier === joyId) moveJoy(t);
-  }, { passive: false });
-  const joyEnd = e => { for (const t of e.changedTouches) if (t.identifier === joyId) resetJoy(); };
-  joy.addEventListener('touchend', joyEnd);
-  joy.addEventListener('touchcancel', joyEnd);
-  function moveJoy(t) {
-    const r = joy.getBoundingClientRect();
-    let dx = t.clientX - (r.left + r.width / 2);
-    let dy = t.clientY - (r.top + r.height / 2);
-    const d = Math.hypot(dx, dy) || 1;
-    const clamped = Math.min(d, MAXR);
-    dx = dx / d * clamped; dy = dy / d * clamped;
+  const MAXR = 58;             // px the knob can travel from its spawn point
+  let joyId = null, joyCX = 0, joyCY = 0;
+  function startJoy(t) {
+    joyId = t.identifier; joyCX = t.clientX; joyCY = t.clientY;
+    joy.style.left = joyCX + 'px'; joy.style.top = joyCY + 'px';
+    joy.classList.add('on');
+    updateJoy(t);
+  }
+  function updateJoy(t) {
+    let dx = t.clientX - joyCX, dy = t.clientY - joyCY;
+    const d = Math.hypot(dx, dy) || 1, c = Math.min(d, MAXR);
+    dx = dx / d * c; dy = dy / d * c;
     knob.style.transform = `translate(${dx}px,${dy}px)`;
     nav.mx = dx / MAXR;       // right (+x) -> strafe right, like KeyD
-    nav.mz = dy / MAXR;       // up (-y) -> forward, like KeyW
-    nav.mag = clamped / MAXR;
+    nav.mz = dy / MAXR;       // up (-y)   -> run forward, like KeyW
+    nav.mag = c / MAXR;
+  }
+  function endJoy() {
+    joyId = null; nav.mx = nav.mz = nav.mag = 0;
+    knob.style.transform = 'translate(0px,0px)';
+    joy.classList.remove('on');
   }
 
   // hold-to-act buttons (press + release), guarding against synthetic mouse events
@@ -2075,41 +2079,59 @@ if (IS_TOUCH) {
     el.addEventListener('touchend', release, { passive: false });
     el.addEventListener('touchcancel', release, { passive: false });
   };
-  holdBtn('btnJump', () => { keys.Space = true; }, () => { keys.Space = false; });
+  holdBtn('btnJump', () => { keys.Space = true; buzz(10); }, () => { keys.Space = false; });
   holdBtn('btnSprint', () => { nav.sprint = true; }, () => { nav.sprint = false; });
-  const pauseBtn = document.getElementById('btnPause');
-  pauseBtn.addEventListener('touchstart', e => { e.preventDefault(); Sfx.ensure(); togglePause(); }, { passive: false });
+  document.getElementById('btnPause').addEventListener('touchstart',
+    e => { e.preventDefault(); Sfx.ensure(); buzz(12); togglePause(); }, { passive: false });
 
-  // camera: one finger on the world = orbit, two fingers = pinch-zoom
-  const cam = { id: null, x: 0, y: 0 };
-  let pinch0 = 0, pinchDist0 = 0;
-  const dist2 = (a, b) => Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-  renderer.domElement.addEventListener('touchstart', e => {
-    e.preventDefault(); // cancels the compatibility mouse events so the camera isn't driven twice
+  // --- world surface: left half drives the joystick, right half drives the camera.
+  //     Every finger is tracked by id, so moving and looking can happen at once. ---
+  const camPts = new Map();   // id -> {x,y} for look/zoom fingers
+  let pinchDist0 = 0, pinchCam0 = 0;
+  const dist2 = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+  function refreshPinch() {
+    const ids = [...camPts.keys()];
+    if (ids.length >= 2) { pinchDist0 = dist2(camPts.get(ids[0]), camPts.get(ids[1])); pinchCam0 = camDist; }
+    else pinchDist0 = 0;
+  }
+  const el = renderer.domElement;
+  el.addEventListener('touchstart', e => {
+    e.preventDefault();       // also cancels the compatibility mouse events
     Sfx.ensure();
-    if (e.touches.length >= 2) { pinch0 = camDist; pinchDist0 = dist2(e.touches[0], e.touches[1]); cam.id = null; return; }
-    const t = e.changedTouches[0];
-    cam.id = t.identifier; cam.x = t.clientX; cam.y = t.clientY;
+    const half = innerWidth * 0.5;
+    for (const t of e.changedTouches) {
+      if (t.clientX < half && joyId === null) startJoy(t);
+      else camPts.set(t.identifier, { x: t.clientX, y: t.clientY });
+    }
+    refreshPinch();
   }, { passive: false });
-  renderer.domElement.addEventListener('touchmove', e => {
+  el.addEventListener('touchmove', e => {
     e.preventDefault();
-    if (e.touches.length >= 2) {
-      const d = dist2(e.touches[0], e.touches[1]);
-      if (pinchDist0) camDist = THREE.MathUtils.clamp(pinch0 * (pinchDist0 / (d || 1)), 9.5, 24);
-      return;
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) { updateJoy(t); continue; }
+      const p = camPts.get(t.identifier);
+      if (!p) continue;
+      if (!pinchDist0) {        // single-finger orbit
+        camYaw  -= (t.clientX - p.x) * 0.006;
+        camPitch = THREE.MathUtils.clamp(camPitch + (t.clientY - p.y) * 0.005, 0.32, 1.25);
+      }
+      p.x = t.clientX; p.y = t.clientY;
     }
-    for (const t of e.changedTouches) if (t.identifier === cam.id) {
-      camYaw  -= (t.clientX - cam.x) * 0.006;
-      camPitch = THREE.MathUtils.clamp(camPitch + (t.clientY - cam.y) * 0.005, 0.32, 1.25);
-      cam.x = t.clientX; cam.y = t.clientY;
+    if (pinchDist0) {           // two-finger pinch zoom
+      const ids = [...camPts.keys()];
+      const d = dist2(camPts.get(ids[0]), camPts.get(ids[1]));
+      camDist = THREE.MathUtils.clamp(pinchCam0 * (pinchDist0 / (d || 1)), 9.5, 24);
     }
   }, { passive: false });
-  const camEnd = e => {
-    for (const t of e.changedTouches) if (t.identifier === cam.id) cam.id = null;
-    if (e.touches.length < 2) pinchDist0 = 0;
+  const endTouch = e => {
+    for (const t of e.changedTouches) {
+      if (t.identifier === joyId) endJoy();
+      camPts.delete(t.identifier);
+    }
+    refreshPinch();
   };
-  renderer.domElement.addEventListener('touchend', camEnd);
-  renderer.domElement.addEventListener('touchcancel', camEnd);
+  el.addEventListener('touchend', endTouch);
+  el.addEventListener('touchcancel', endTouch);
 }
 
 /* ============================================================
