@@ -448,10 +448,10 @@
     const game = GAMES.find((g) => g.id === gameId);
     const profile = state.profiles.find((p) => p.id === profileId);
     if (!game || !profile) return false;
-    if (!game.ageGroups.includes(profile.ageGroup)) return false;
     ensureProfileBuckets(profileId);
     const s = state.settings[profileId][gameId];
-    return s ? s.enabled !== false : true;
+    if (s) return s.enabled !== false;
+    return game.ageGroups.includes(profile.ageGroup);
   }
 
   function setGameEnabled(profileId, gameId, enabled) {

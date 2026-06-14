@@ -1004,7 +1004,7 @@ body {
 
   // ── Hero banner ────────────────────────────────────────────────
   function renderHero(profile) {
-    const games = Hub.GAMES.filter(g => g.ageGroups.includes(profile.ageGroup));
+    const games = Hub.GAMES.filter(g => Hub.isGameEnabled(profile.id, g.id));
     const allProg = games.map(g => Hub.getProgress(profile.id, g.id));
 
     const totalPlays = allProg.reduce((s, p) => s + (p.plays || 0), 0);
@@ -1104,9 +1104,7 @@ body {
   }
 
   function renderGames(profile) {
-    const enabled = Hub.GAMES.filter(g =>
-      g.ageGroups.includes(profile.ageGroup) && Hub.isGameEnabled(profile.id, g.id)
-    );
+    const enabled = Hub.GAMES.filter(g => Hub.isGameEnabled(profile.id, g.id));
     const subjects = ['All', ...new Set(enabled.map(g => g.subject))];
     const tabsEl = $('games-tabs');
     tabsEl.innerHTML = '';
@@ -1211,7 +1209,7 @@ body {
     }
 
     // Badges: games where bestScore >= 60
-    const games = Hub.GAMES.filter(g => g.ageGroups.includes(profile.ageGroup));
+    const games = Hub.GAMES.filter(g => Hub.isGameEnabled(profile.id, g.id));
     const earned = games.filter(g => (Hub.getProgress(profile.id, g.id).bestScore || 0) >= 60);
     const badgesEl = $('rail-badges');
     if (earned.length > 0) {
