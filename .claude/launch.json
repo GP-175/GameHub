@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "GameHub static (local-server)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["local-server.mjs"],
+      "port": 8787
+    },
+    {
+      "name": "GP-hoot server (Express + Socket.io)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["start"],
+      "port": 3000
+    }
+  ]
+}

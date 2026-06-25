@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v24';
+const CACHE_VERSION = 'gamehub-v25';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -29,6 +29,7 @@ const CORE_ASSETS = [
   './games/cube-crash.html',
   './games/cube-basher.html',
   './games/snake.html',
+  './games/castle-rush.html',
 ];
 
 // ── Install: pre-cache the app shell ──────────────────────────

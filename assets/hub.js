@@ -190,6 +190,16 @@
       path: 'games/snake.html',
       accent: '#3ddc97',
     },
+    {
+      id: 'castle-rush',
+      title: 'Castle Rush Defense',
+      subject: 'Arcade',
+      icon: 'CR',
+      tagline: 'Build towers and hold the road',
+      ageGroups: ['toddler', 'early-elem', 'adult'],
+      path: 'games/castle-rush.html',
+      accent: '#4ec7ff',
+    },
   ];
 
   const AGE_GROUPS = {
