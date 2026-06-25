@@ -200,6 +200,16 @@
       path: 'games/castle-rush.html',
       accent: '#4ec7ff',
     },
+    {
+      id: 'crowd-brawl',
+      title: 'Crowd Brawl',
+      subject: 'Arcade',
+      icon: '👥',
+      tagline: 'Lead your crowd, crush the rest',
+      ageGroups: ['early-elem', 'adult'],
+      path: 'games/crowd-brawl.html',
+      accent: '#ff4b4b',
+    },
   ];
 
   const AGE_GROUPS = {
