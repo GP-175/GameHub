@@ -61,7 +61,47 @@
     height: 100vh;
     display: block;
     touch-action: none;
+    z-index: 2;
+    opacity: 0;
+    cursor: crosshair;
   }
+
+  #game3d {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+  }
+
+  body.three-fallback #game { opacity: 1; }
+  body.view-2d #game { opacity: 1; }
+  body.view-2d #game3d { opacity: 0; }
+  body.view-2d .three-loading { opacity: 0; }
+
+  .three-loading {
+    position: fixed;
+    z-index: 3;
+    left: 50%;
+    bottom: 92px;
+    transform: translateX(-50%);
+    padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 999px;
+    background: rgba(11,27,35,0.9);
+    color: #dff8ff;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.22);
+    font-size: 11px;
+    font-weight: 900;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+
+  body.three-ready .three-loading,
+  body.three-fallback .three-loading { opacity: 0; }
 
   .hud {
     position: fixed;
@@ -243,6 +283,12 @@
     border-color: rgba(255, 255, 255, 0.34);
   }
 
+  .action-button.strike {
+    background: linear-gradient(180deg, #ffd17a, #e0792f);
+    color: #2a1500;
+    border-color: rgba(255, 255, 255, 0.34);
+  }
+
   .action-button[disabled] {
     opacity: 0.45;
     cursor: default;
@@ -344,6 +390,168 @@
     background:
       linear-gradient(180deg, rgba(78,199,255,0.16), rgba(255,255,255,0.06));
   }
+
+  .tower-mode-row,
+  .tower-sell {
+    grid-column: 1 / -1;
+  }
+
+  .tower-mode-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tower-mode-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--cr-muted);
+    margin-right: 2px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    min-height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 7px;
+    background: rgba(255, 255, 255, 0.06);
+    color: var(--cr-ink);
+    font-weight: 800;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .mode-btn.active {
+    background: linear-gradient(180deg, rgba(78,199,255,0.32), rgba(78,199,255,0.12));
+    border-color: rgba(78, 199, 255, 0.6);
+    color: #dff4ff;
+  }
+
+  .tower-sell {
+    min-height: 40px;
+    border: 1px solid rgba(255, 120, 120, 0.42);
+    border-radius: 8px;
+    background: rgba(255, 80, 80, 0.14);
+    color: #ffd0d0;
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .tower-sell:hover {
+    background: rgba(255, 80, 80, 0.22);
+    border-color: rgba(255, 120, 120, 0.6);
+  }
+
+  .diff-select {
+    margin-bottom: 14px;
+  }
+
+  .diff-label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--cr-muted);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .diff-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .diff-btn {
+    flex: 1;
+    min-height: 40px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--cr-ink);
+    font-weight: 800;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .diff-btn:hover {
+    border-color: rgba(255, 255, 255, 0.32);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .diff-btn.active {
+    background: linear-gradient(180deg, #ffe58c, #f7a92b);
+    color: #3a2500;
+    border-color: rgba(255, 255, 255, 0.34);
+  }
+
+  .screen-button.endless {
+    background: linear-gradient(180deg, #c99cff, #8a52e0);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+  }
+
+  .screen-button.endless[hidden] { display: none; }
+
+  .meta-panel { text-align: left; max-height: 86vh; overflow-y: auto; }
+  .meta-panel .screen-kicker,
+  .meta-panel .screen-title { text-align: center; }
+  .meta-panel #metaCores { text-align: center; color: var(--cr-gold); font-weight: 900; }
+
+  .meta-list { display: grid; gap: 8px; }
+
+  .meta-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 8px;
+    padding: 9px 11px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .meta-row .meta-info { min-width: 0; }
+  .meta-row .meta-name { font-weight: 900; font-size: 13px; }
+  .meta-row .meta-desc { color: var(--cr-muted); font-size: 11px; }
+  .meta-row .meta-lv { color: var(--cr-blue); font-size: 11px; font-weight: 800; }
+
+  .meta-buy {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 211, 93, 0.4);
+    border-radius: 8px;
+    background: rgba(255, 211, 93, 0.16);
+    color: #ffe9ad;
+    font-weight: 900;
+    font-size: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .meta-buy:disabled { opacity: 0.4; cursor: default; }
+  .meta-buy.maxed { border-color: rgba(82,227,139,0.4); background: rgba(82,227,139,0.14); color: #b6ffd2; }
+
+  .ach-list { display: grid; gap: 6px; }
+
+  .ach-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 7px;
+    padding: 7px 9px;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+  }
+
+  .ach-row .ach-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; background: rgba(255,255,255,0.18); }
+  .ach-row.unlocked .ach-dot { background: #52e38b; box-shadow: 0 0 8px rgba(82,227,139,0.7); }
+  .ach-row .ach-name { font-weight: 800; }
+  .ach-row.unlocked .ach-name { color: #b6ffd2; }
+  .ach-row .ach-desc { color: var(--cr-muted); }
+  .ach-row.locked .ach-name { color: var(--cr-muted); }
 
   .phase-banner,
   .effect-strip {
@@ -594,22 +802,497 @@
     .tower-options { grid-template-columns: 1fr; }
     .screen-stats { grid-template-columns: 1fr; }
   }
+
+  /* Castle Rush UI refresh — presentation only. Gameplay remains canvas-owned. */
+  :root {
+    --cr-ink: #f8fbff;
+    --cr-muted: #b9c9d2;
+    --cr-panel: rgba(14, 30, 39, 0.92);
+    --cr-panel-strong: rgba(11, 27, 35, 0.97);
+    --cr-border: rgba(255, 255, 255, 0.14);
+    --cr-gold: #ffd45f;
+    --cr-blue: #60dcff;
+    --cr-red: #ff6b68;
+    --cr-green: #69e6a5;
+    --cr-shadow: rgba(5, 18, 24, 0.3);
+  }
+
+  .hub-back,
+  .hud-card,
+  .action-bar,
+  .screen-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .hud {
+    z-index: 22;
+    gap: 10px;
+    padding:
+      max(10px, env(safe-area-inset-top))
+      max(12px, env(safe-area-inset-right))
+      8px
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .hub-back {
+    gap: 7px;
+    min-height: 42px;
+    padding: 8px 12px 8px 8px;
+    border-radius: 13px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02)),
+      var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+    font-size: 13px;
+    font-weight: 900;
+  }
+
+  .hub-back:hover {
+    background-color: rgba(25, 49, 58, 0.96);
+  }
+
+  .brand-mark {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 8px;
+    background: linear-gradient(145deg, #57d4ff, #3175e5);
+    color: #062038;
+    font-size: 13px;
+    font-weight: 950;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.42);
+  }
+
+  .hud-card {
+    gap: 0;
+    flex-wrap: nowrap;
+    max-width: min(720px, calc(100vw - 238px));
+    padding: 6px;
+    border-radius: 15px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .game-name {
+    padding: 4px 14px 4px 8px;
+    border-right: 1px solid var(--cr-border);
+    font-size: 14px;
+    line-height: 1.05;
+  }
+
+  .game-name span {
+    display: block;
+    margin-top: 3px;
+    color: var(--cr-blue);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .stat {
+    display: block;
+    min-width: 68px;
+    min-height: 0;
+    padding: 3px 10px;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    text-align: center;
+  }
+
+  .stat + .stat { border-left: 1px solid rgba(255,255,255,0.08); }
+
+  .stat > span {
+    display: block;
+    color: var(--cr-muted);
+    font-size: 9px;
+    font-weight: 850;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .stat strong {
+    display: block;
+    margin-top: 2px;
+    font-size: 17px;
+    line-height: 1;
+    font-weight: 950;
+  }
+
+  .mini-map {
+    width: 144px;
+    height: 84px;
+    border-radius: 13px;
+    background: var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  .hud-tools {
+    pointer-events: auto;
+    justify-self: end;
+    display: flex;
+    align-items: stretch;
+    gap: 7px;
+  }
+
+  .view-toggle {
+    min-width: 58px;
+    height: 42px;
+    padding: 5px 9px;
+    border: 1px solid var(--cr-border);
+    border-radius: 13px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+    color: var(--cr-ink);
+    cursor: pointer;
+  }
+
+  .view-toggle span {
+    display: block;
+    color: var(--cr-muted);
+    font-size: 8px;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .view-toggle strong {
+    display: block;
+    margin-top: 1px;
+    color: var(--cr-blue);
+    font-size: 15px;
+    line-height: 1;
+    font-weight: 950;
+  }
+
+  .view-toggle:hover { border-color: rgba(96,220,255,0.5); }
+
+  .phase-banner {
+    z-index: 11;
+    top: max(82px, calc(env(safe-area-inset-top) + 72px));
+    width: min(92vw, 500px);
+    min-height: 58px;
+    padding: 9px 10px 9px 15px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .phase-title {
+    color: var(--cr-gold);
+    font-size: 14px;
+    font-weight: 950;
+  }
+
+  .phase-copy { color: var(--cr-muted); font-size: 11px; }
+
+  .phase-button {
+    min-height: 42px;
+    border-radius: 12px;
+    padding: 9px 16px;
+    background: linear-gradient(180deg, #ffe588, #ffb934);
+    box-shadow: 0 7px 18px rgba(255,179,38,0.22), inset 0 1px 0 rgba(255,255,255,0.65);
+    font-weight: 950;
+  }
+
+  .effect-strip {
+    z-index: 10;
+    top: max(148px, calc(env(safe-area-inset-top) + 138px));
+    border-radius: 13px;
+    background: var(--cr-panel);
+  }
+
+  .action-wrap {
+    z-index: 12;
+    padding:
+      10px
+      max(12px, env(safe-area-inset-right))
+      max(12px, env(safe-area-inset-bottom))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .action-bar {
+    gap: 7px;
+    width: min(100%, 620px);
+    padding: 6px;
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel);
+    box-shadow: 0 14px 36px var(--cr-shadow), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .action-button {
+    min-height: 48px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.065);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+    font-size: 12px;
+    font-weight: 950;
+  }
+
+  .action-button::before {
+    display: inline-grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
+    border-radius: 7px;
+    background: rgba(255,255,255,0.09);
+    font-size: 12px;
+  }
+
+  #pauseBtn::before { content: 'Ⅱ'; }
+  #strikeBtn::before { content: '⚔'; }
+  #shockBtn::before { content: 'ϟ'; }
+  #repairBtn::before { content: '+'; }
+
+  .action-button.primary {
+    background: linear-gradient(180deg, #67ddff, #238ee8);
+    color: #061a29;
+  }
+
+  .action-button.strike {
+    background: linear-gradient(180deg, #ffd17a, #e0792f);
+    color: #2a1500;
+  }
+
+  .action-button.gold {
+    background: linear-gradient(180deg, #ffe58c, #f7a92b);
+    color: #3a2500;
+  }
+
+  .tower-menu {
+    z-index: 14;
+    left: auto;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(78px, calc(78px + env(safe-area-inset-bottom)));
+    transform: none;
+    width: min(380px, calc(100vw - 24px));
+    padding: 14px;
+    border-radius: 20px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel-strong);
+    box-shadow: 0 20px 54px rgba(0,0,0,0.36), inset 0 1px 0 rgba(255,255,255,0.1);
+    animation: cr-panel-in 0.18s ease-out;
+  }
+
+  @keyframes cr-panel-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  }
+
+  .tower-menu-head { margin-bottom: 10px; }
+  .tower-menu-title { font-size: 19px; font-weight: 950; }
+  .tower-menu-copy { margin-top: 4px; color: var(--cr-muted); font-size: 11px; }
+  .tower-menu-close { width: 32px; height: 32px; border-radius: 10px; }
+
+  .tower-options { gap: 7px; }
+
+  .tower-option {
+    min-height: 68px;
+    padding: 10px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.055);
+  }
+
+  .tower-option strong { font-size: 12px; }
+  .tower-option span { color: var(--cr-muted); font-size: 10px; line-height: 1.3; }
+  .tower-option:not([disabled]):hover { border-color: rgba(96,220,255,0.65); background: rgba(96,220,255,0.1); }
+  .mode-btn, .tower-sell { border-radius: 11px; }
+
+  .screen {
+    z-index: 20;
+    background: radial-gradient(circle at 50% 40%, rgba(16,54,66,0.08), rgba(3,16,22,0.56));
+  }
+
+  .screen-panel {
+    width: min(94vw, 540px);
+    padding: clamp(22px, 5vw, 34px);
+    border-radius: 26px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.09), rgba(255,255,255,0.025)),
+      var(--cr-panel-strong);
+    box-shadow: 0 30px 88px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.1);
+  }
+
+  .screen-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 27px;
+    padding: 6px 10px;
+    border: 1px solid rgba(96,220,255,0.3);
+    border-radius: 999px;
+    background: rgba(96,220,255,0.08);
+    color: var(--cr-blue);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+  }
+
+  .screen-kicker::before { content: '◆'; font-size: 8px; }
+
+  .screen-title {
+    margin: 13px 0 8px;
+    font-size: clamp(38px, 6vw, 54px);
+    line-height: 0.96;
+    letter-spacing: -0.05em;
+    text-shadow: 0 5px 0 rgba(2,19,28,0.25);
+  }
+
+  .screen-copy {
+    max-width: 420px;
+    margin-bottom: 18px;
+    color: var(--cr-muted);
+    font-size: 14px;
+  }
+
+  .screen-stats {
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .screen-stat {
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 13px;
+    background: rgba(255,255,255,0.055);
+  }
+
+  .screen-stat span {
+    color: var(--cr-muted);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .screen-stat strong { color: var(--cr-gold); font-size: 21px; }
+
+  .diff-select {
+    padding: 12px;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.035);
+  }
+
+  .diff-label {
+    margin-bottom: 7px;
+    color: var(--cr-muted);
+    font-size: 9px;
+    letter-spacing: 0.12em;
+  }
+
+  .diff-row { gap: 7px; }
+
+  .diff-btn {
+    min-height: 40px;
+    border-radius: 11px;
+    background: rgba(255,255,255,0.055);
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .diff-btn.active {
+    background: linear-gradient(180deg, #ffe588, #ffb934);
+    color: #372300;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+
+  .screen-actions { gap: 8px; }
+
+  .screen-button {
+    min-height: 44px;
+    border-radius: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(180deg, #ffe588, #ffb934);
+    box-shadow: 0 7px 18px rgba(255,179,38,0.18), inset 0 1px 0 rgba(255,255,255,0.55);
+    font-weight: 950;
+  }
+
+  .screen-button.secondary {
+    background: rgba(255,255,255,0.07);
+  }
+
+  .meta-panel { width: min(94vw, 600px); }
+  .meta-row { border-radius: 13px; background: rgba(255,255,255,0.045); }
+  .meta-buy { border-radius: 10px; }
+  .ach-row { border-radius: 10px; background: rgba(255,255,255,0.035); }
+
+  @media (max-width: 760px) {
+    .hud { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+    .hub-back { width: 42px; min-height: 42px; padding: 8px; justify-content: center; }
+    .hub-text, .game-name, .mini-map { display: none; }
+    .hud-tools { gap: 0; }
+    .view-toggle { width: 42px; min-width: 42px; padding: 4px; }
+    .hud-card { max-width: none; justify-self: stretch; justify-content: center; padding: 6px; }
+    .stat { flex: 1; min-width: 52px; padding: 3px 6px; }
+    .stat strong { font-size: 15px; }
+    .phase-banner { top: max(64px, calc(env(safe-area-inset-top) + 54px)); grid-template-columns: minmax(0, 1fr) auto; }
+    .phase-copy { max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .phase-button { width: auto; }
+    .effect-strip { top: max(128px, calc(env(safe-area-inset-top) + 118px)); }
+    .tower-menu { left: 8px; right: 8px; bottom: max(74px, calc(74px + env(safe-area-inset-bottom))); width: auto; padding: 11px; }
+    .tower-options { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .screen-panel { max-height: 94vh; overflow-y: auto; padding: 22px 16px; }
+    .screen-title { font-size: clamp(34px, 10vw, 46px); }
+    .screen-stats { grid-template-columns: repeat(3, 1fr); }
+  }
+
+  @media (max-width: 430px) {
+    .hud { padding-left: 7px; padding-right: 7px; }
+    .hub-back { width: 38px; min-height: 38px; border-radius: 11px; }
+    .brand-mark { width: 22px; height: 22px; }
+    .view-toggle { width: 38px; min-width: 38px; height: 38px; border-radius: 11px; }
+    .view-toggle span { font-size: 7px; }
+    .view-toggle strong { font-size: 13px; }
+    .hud-card { padding: 5px; }
+    .stat { min-width: 45px; }
+    .stat > span { font-size: 8px; }
+    .stat strong { font-size: 14px; }
+    .action-wrap { padding-left: 7px; padding-right: 7px; padding-bottom: max(7px, env(safe-area-inset-bottom)); }
+    .action-bar { gap: 5px; padding: 5px; }
+    .action-button { min-height: 43px; padding: 5px; font-size: 10px; gap: 4px; }
+    .action-button::before { width: 18px; height: 18px; font-size: 10px; }
+    .tower-menu { bottom: max(66px, calc(66px + env(safe-area-inset-bottom))); }
+    .tower-option { min-height: 62px; padding: 8px; }
+    .screen-panel { padding: 20px 14px; }
+    .screen-copy { font-size: 12px; }
+    .diff-select { padding: 9px; }
+    .diff-btn { min-height: 37px; font-size: 11px; }
+    .screen-button { padding: 9px 13px; font-size: 12px; }
+  }
 </style>
 </head>
 <body>
+<canvas id="game3d" aria-hidden="true"></canvas>
 <canvas id="game" aria-label="Castle Rush Defense game board"></canvas>
+<div class="three-loading" id="threeLoading">Raising the 3D battlefield…</div>
 
 <header class="hud" aria-label="Game status">
-  <a class="hub-back" href="../index.html">GameHub</a>
+  <a class="hub-back" href="../index.html" aria-label="Back to GameHub">
+    <span class="brand-mark">G</span><span class="hub-text">GameHub</span>
+  </a>
   <div class="hud-card">
-    <div class="game-name">Castle Rush Defense</div>
+    <div class="game-name">Castle Rush <span id="viewModeLabel">True 3D defense</span></div>
     <div class="stat"><span>Wave</span><strong id="waveStat">1</strong></div>
     <div class="stat coins"><span>Coins</span><strong id="coinStat">0</strong></div>
     <div class="stat towers"><span>Towers</span><strong id="towerStat">0</strong></div>
     <div class="stat base" id="baseStatWrap"><span>Base</span><strong id="baseStat">100</strong></div>
     <div class="stat"><span>KOs</span><strong id="koStat">0</strong></div>
   </div>
-  <canvas class="mini-map" id="miniMap" width="264" height="156" aria-hidden="true"></canvas>
+  <div class="hud-tools">
+    <button class="view-toggle" id="viewModeBtn" type="button" aria-label="Switch to 2D view">
+      <span>View</span><strong id="viewModeValue">3D</strong>
+    </button>
+    <canvas class="mini-map" id="miniMap" width="264" height="156" aria-hidden="true"></canvas>
+  </div>
 </header>
 
 <section class="phase-banner" id="phaseBanner" hidden aria-live="polite">
@@ -625,6 +1308,10 @@
 <div class="action-wrap">
   <nav class="action-bar" aria-label="Game actions">
     <button class="action-button" id="pauseBtn" type="button">Pause</button>
+    <button class="action-button strike" id="strikeBtn" type="button">
+      Strike
+      <span class="meter" aria-hidden="true"><span id="strikeFill"></span></span>
+    </button>
     <button class="action-button primary" id="shockBtn" type="button">
       Shock
       <span class="meter" aria-hidden="true"><span id="shockFill"></span></span>
@@ -646,7 +1333,7 @@
 
 <section class="screen show" id="screen" aria-live="polite">
   <div class="screen-panel">
-    <div class="screen-kicker" id="screenKicker">Arcade defense</div>
+    <div class="screen-kicker" id="screenKicker">True 3D defense</div>
     <h1 class="screen-title" id="screenTitle">Castle Rush Defense</h1>
     <p class="screen-copy" id="screenCopy">Spend coins on defense towers, collect enemy coins, and hold the road.</p>
     <div class="screen-stats">
@@ -654,9 +1341,38 @@
       <div class="screen-stat"><span>Wave</span><strong id="screenWave">0</strong></div>
       <div class="screen-stat"><span>KOs</span><strong id="screenKos">0</strong></div>
     </div>
+    <div class="diff-select" id="diffSelect">
+      <span class="diff-label">Difficulty</span>
+      <div class="diff-row" id="diffRow">
+        <button class="diff-btn" type="button" data-diff="normal">Normal</button>
+        <button class="diff-btn" type="button" data-diff="hard">Hard</button>
+        <button class="diff-btn" type="button" data-diff="brutal">Brutal</button>
+      </div>
+      <span class="diff-label" style="margin-top:12px">Build Mode</span>
+      <div class="diff-row" id="modeRow">
+        <button class="diff-btn" type="button" data-mode="slots">Slot Build</button>
+        <button class="diff-btn" type="button" data-mode="free">Free Build</button>
+      </div>
+    </div>
     <div class="screen-actions">
       <button class="screen-button" id="primaryBtn" type="button">Start Run</button>
+      <button class="screen-button endless" id="endlessBtn" type="button" hidden>Endless Mode</button>
+      <button class="screen-button secondary" id="upgradesBtn" type="button">Upgrades</button>
       <a class="screen-button secondary" href="../index.html">Back to Hub</a>
+    </div>
+  </div>
+</section>
+
+<section class="screen" id="metaScreen" aria-live="polite">
+  <div class="screen-panel meta-panel">
+    <div class="screen-kicker">Permanent upgrades</div>
+    <h1 class="screen-title" style="font-size:26px">Command Upgrades</h1>
+    <p class="screen-copy" id="metaCores">Cores: 0</p>
+    <div class="meta-list" id="metaList"></div>
+    <h2 class="diff-label" style="margin:14px 0 8px">Achievements</h2>
+    <div class="ach-list" id="achList"></div>
+    <div class="screen-actions">
+      <button class="screen-button" id="metaCloseBtn" type="button">Back</button>
     </div>
   </div>
 </section>
@@ -667,11 +1383,13 @@
 
   const HUB_GAME_ID = 'castle-rush';
   const WORLD = { w: 1280, h: 760 };
-  const TOTAL_WAVES = 8;
+  const TOTAL_WAVES = 12;
   const STORAGE_KEY = 'gamehub.castleRush.best';
+  const VIEW_MODE_KEY = 'gamehub.castleRush.viewMode';
 
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+  const canvas3d = document.getElementById('game3d');
   const miniCanvas = document.getElementById('miniMap');
   const miniCtx = miniCanvas.getContext('2d');
 
@@ -683,6 +1401,8 @@
     baseWrap: document.getElementById('baseStatWrap'),
     kos: document.getElementById('koStat'),
     pause: document.getElementById('pauseBtn'),
+    strike: document.getElementById('strikeBtn'),
+    strikeFill: document.getElementById('strikeFill'),
     shock: document.getElementById('shockBtn'),
     shockFill: document.getElementById('shockFill'),
     repair: document.getElementById('repairBtn'),
@@ -704,6 +1424,19 @@
     screenWave: document.getElementById('screenWave'),
     screenKos: document.getElementById('screenKos'),
     primary: document.getElementById('primaryBtn'),
+    endless: document.getElementById('endlessBtn'),
+    diffSelect: document.getElementById('diffSelect'),
+    diffRow: document.getElementById('diffRow'),
+    modeRow: document.getElementById('modeRow'),
+    upgrades: document.getElementById('upgradesBtn'),
+    metaScreen: document.getElementById('metaScreen'),
+    metaCores: document.getElementById('metaCores'),
+    metaList: document.getElementById('metaList'),
+    achList: document.getElementById('achList'),
+    metaClose: document.getElementById('metaCloseBtn'),
+    viewMode: document.getElementById('viewModeBtn'),
+    viewModeValue: document.getElementById('viewModeValue'),
+    viewModeLabel: document.getElementById('viewModeLabel'),
   };
 
   const rawPaths = [
@@ -739,24 +1472,97 @@
   const paths = rawPaths.map(buildPath);
 
   const waveDefs = [
-    { count: 24, hp: 22, speed: 56, interval: 0.28, paths: [0], runners: 0.12, brutes: 0.00, shields: 0.00, splitters: 0.00 },
-    { count: 34, hp: 32, speed: 60, interval: 0.24, paths: [0, 1], runners: 0.16, brutes: 0.06, shields: 0.00, splitters: 0.00 },
-    { count: 42, hp: 42, speed: 63, interval: 0.22, paths: [0, 1], runners: 0.18, brutes: 0.08, shields: 0.10, splitters: 0.00 },
-    { count: 48, hp: 52, speed: 65, interval: 0.20, paths: [0, 1, 2], runners: 0.18, brutes: 0.10, shields: 0.10, splitters: 0.08, boss: { name: 'Gate Crusher', hp: 620, speed: 44, reward: 18, damage: 18 } },
-    { count: 58, hp: 64, speed: 68, interval: 0.18, paths: [0, 1, 2], runners: 0.22, brutes: 0.12, shields: 0.14, splitters: 0.08 },
-    { count: 68, hp: 78, speed: 71, interval: 0.16, paths: [0, 1, 2], runners: 0.24, brutes: 0.16, shields: 0.16, splitters: 0.10 },
-    { count: 76, hp: 96, speed: 74, interval: 0.15, paths: [0, 1, 2], runners: 0.26, brutes: 0.18, shields: 0.18, splitters: 0.12 },
-    { count: 84, hp: 118, speed: 78, interval: 0.14, paths: [0, 1, 2], runners: 0.28, brutes: 0.20, shields: 0.20, splitters: 0.14, boss: { name: 'Roadbreaker King', hp: 1250, speed: 42, reward: 34, damage: 28 } },
+    { count: 22, hp: 20, speed: 54, interval: 0.30, paths: [0], runners: 0.12, brutes: 0.00, shields: 0.00, splitters: 0.00, armored: 0.00, healers: 0.00 },
+    { count: 30, hp: 28, speed: 58, interval: 0.26, paths: [0, 1], runners: 0.16, brutes: 0.06, shields: 0.00, splitters: 0.00, armored: 0.00, healers: 0.00 },
+    { count: 38, hp: 38, speed: 61, interval: 0.23, paths: [0, 1], runners: 0.18, brutes: 0.08, shields: 0.10, splitters: 0.00, armored: 0.00, healers: 0.00 },
+    { count: 44, hp: 50, speed: 64, interval: 0.21, paths: [0, 1, 2], runners: 0.18, brutes: 0.10, shields: 0.10, splitters: 0.08, armored: 0.00, healers: 0.00, boss: { name: 'Gate Crusher', hp: 660, speed: 44, reward: 18, damage: 18, ability: 'rally', abilityCd: 6 } },
+    { count: 52, hp: 62, speed: 66, interval: 0.19, paths: [0, 1, 2], runners: 0.18, brutes: 0.12, shields: 0.12, splitters: 0.08, armored: 0.08, healers: 0.00 },
+    { count: 60, hp: 76, speed: 69, interval: 0.18, paths: [0, 1, 2], runners: 0.20, brutes: 0.13, shields: 0.13, splitters: 0.09, armored: 0.10, healers: 0.05 },
+    { count: 68, hp: 92, speed: 71, interval: 0.17, paths: [0, 1, 2], runners: 0.20, brutes: 0.14, shields: 0.14, splitters: 0.10, armored: 0.11, healers: 0.05 },
+    { count: 76, hp: 112, speed: 73, interval: 0.16, paths: [0, 1, 2], runners: 0.20, brutes: 0.15, shields: 0.14, splitters: 0.10, armored: 0.12, healers: 0.06, boss: { name: 'Iron Vanguard', hp: 1220, speed: 42, reward: 28, damage: 22, ability: 'rally', abilityCd: 5 } },
+    { count: 84, hp: 138, speed: 75, interval: 0.15, paths: [0, 1, 2], runners: 0.20, brutes: 0.16, shields: 0.15, splitters: 0.10, armored: 0.13, healers: 0.06 },
+    { count: 92, hp: 168, speed: 77, interval: 0.15, paths: [0, 1, 2], runners: 0.20, brutes: 0.16, shields: 0.15, splitters: 0.11, armored: 0.14, healers: 0.07 },
+    { count: 100, hp: 205, speed: 79, interval: 0.14, paths: [0, 1, 2], runners: 0.20, brutes: 0.17, shields: 0.16, splitters: 0.11, armored: 0.15, healers: 0.07 },
+    { count: 110, hp: 250, speed: 80, interval: 0.14, paths: [0, 1, 2], runners: 0.22, brutes: 0.18, shields: 0.16, splitters: 0.12, armored: 0.16, healers: 0.06, boss: { name: 'Roadbreaker King', hp: 2600, speed: 40, reward: 48, damage: 30, ability: 'summon', abilityCd: 6 } },
   ];
 
+  // Build slots are type-agnostic now — the player chooses which tower to place.
   const padTemplate = [
-    { id: 'south-bolt', x: 430, y: 394, kind: 'bolt', cost: 10, name: 'Bolt Tower', label: 'BOLT' },
-    { id: 'center-arc', x: 602, y: 558, kind: 'tesla', cost: 20, name: 'Arc Tower', label: 'ARC' },
-    { id: 'ridge-cannon', x: 678, y: 275, kind: 'cannon', cost: 25, name: 'Cannon Tower', label: 'CANNON' },
-    { id: 'base-ring', x: 914, y: 520, kind: 'ring', cost: 15, name: 'Guard Tower', label: 'GUARD' },
-    { id: 'north-bolt', x: 888, y: 304, kind: 'bolt', cost: 45, name: 'Bolt Tower', label: 'BOLT' },
-    { id: 'castle-laser', x: 1110, y: 285, kind: 'laser', cost: 60, name: 'Laser Tower', label: 'LASER' },
+    { id: 'slot-south', x: 430, y: 394 },
+    { id: 'slot-center', x: 602, y: 558 },
+    { id: 'slot-ridge', x: 678, y: 275 },
+    { id: 'slot-base', x: 914, y: 520 },
+    { id: 'slot-north', x: 888, y: 304 },
+    { id: 'slot-castle', x: 1110, y: 285 },
   ];
+
+  // Buildable tower catalogue: cost, damage type (for the counter system), and copy.
+  const TOWER_BUILD = [
+    { kind: 'bolt', name: 'Bolt Tower', cost: 12, dmgType: 'energy', blurb: 'Fast single-target energy bolts.' },
+    { kind: 'ring', name: 'Guard Tower', cost: 16, dmgType: 'frost', blurb: 'Slows & damages an aura field.' },
+    { kind: 'tesla', name: 'Arc Tower', cost: 22, dmgType: 'energy', blurb: 'Chain lightning across a cluster.' },
+    { kind: 'cannon', name: 'Cannon Tower', cost: 28, dmgType: 'physical', blurb: 'Splash shells — wrecks shields.' },
+    { kind: 'laser', name: 'Laser Tower', cost: 55, dmgType: 'energy', blurb: 'Heavy beam — melts armor & bosses.' },
+  ];
+  const TOWER_BUILD_BY_KIND = TOWER_BUILD.reduce((map, t) => (map[t.kind] = t, map), {});
+  const MIN_TOWER_COST = Math.min(...TOWER_BUILD.map((t) => t.cost));
+
+  // Damage-type lookup keyed by the firing source passed to damageEnemy().
+  const DAMAGE_TYPE = { bolt: 'energy', tesla: 'energy', laser: 'energy', cannon: 'physical', ring: 'frost', hero: 'energy', shock: 'energy' };
+
+  // Counter matrix: armour class -> multiplier per incoming damage type.
+  const ARMOR_RESIST = {
+    normal: { energy: 1, physical: 1, frost: 1 },
+    'energy-resist': { energy: 0.55, physical: 1.2, frost: 1 },     // shields: bring a cannon
+    'physical-resist': { energy: 1, physical: 0.5, frost: 1 },      // armoured: bring bolts/laser
+  };
+
+  // Difficulty tiers scale enemy HP/speed, payout, leak damage, and elite frequency.
+  const DIFFICULTIES = {
+    normal: { label: 'Normal', hp: 1, speed: 1, coin: 1, leak: 1, eliteMul: 0.6 },
+    hard: { label: 'Hard', hp: 1.35, speed: 1.08, coin: 0.85, leak: 1.3, eliteMul: 1 },
+    brutal: { label: 'Brutal', hp: 1.7, speed: 1.18, coin: 0.72, leak: 1.55, eliteMul: 1.5 },
+  };
+  const ELITE_TRAITS = ['enraged', 'regen', 'warded'];
+  let selectedDifficulty = 'normal';
+  let selectedMode = 'slots'; // 'slots' (fixed pads) or 'free' (place anywhere)
+  let selectedViewMode = readViewMode();
+
+  function readViewMode() {
+    try { return localStorage.getItem(VIEW_MODE_KEY) === '2d' ? '2d' : '3d'; }
+    catch { return '3d'; }
+  }
+
+  // ── Meta-progression: persistent cores + permanent upgrades + achievements ──
+  const META_KEY = 'gamehub.castleRush.meta';
+  const META_UPGRADES = [
+    { id: 'startCoins', name: 'War Chest', desc: '+15 starting coins', max: 5, per: 15, cost: (l) => 3 + l * 3 },
+    { id: 'baseHp', name: 'Reinforced Keep', desc: '+20 base HP', max: 5, per: 20, cost: (l) => 3 + l * 3 },
+    { id: 'heroDmg', name: 'Hero Training', desc: '+10% hero damage', max: 5, per: 0.1, cost: (l) => 4 + l * 3 },
+    { id: 'discount', name: 'Quartermaster', desc: '-4% tower cost', max: 4, per: 0.04, cost: (l) => 5 + l * 4 },
+    { id: 'magnet', name: 'Coin Magnet', desc: '+25 pickup range', max: 4, per: 25, cost: (l) => 3 + l * 3 },
+    { id: 'shock', name: 'Capacitor', desc: '+12 starting shock', max: 4, per: 12, cost: (l) => 3 + l * 3 },
+  ];
+  const ACHIEVEMENTS = [
+    { id: 'firstWin', name: 'Castle Saved', desc: 'Clear the 12-wave campaign.' },
+    { id: 'brutalWin', name: 'Unbreakable', desc: 'Clear the campaign on Brutal.' },
+    { id: 'flawless', name: 'Not a Scratch', desc: 'Finish a wave-5+ run at full base HP.' },
+    { id: 'endless20', name: 'Endless Warden', desc: 'Reach endless wave 20.' },
+    { id: 'maxTower', name: 'Overkill', desc: 'Unlock a tower ultimate (Lv 4).' },
+    { id: 'rich', name: 'Coin Hoarder', desc: 'Hold 500 coins at once.' },
+  ];
+
+  function loadMeta() {
+    try {
+      const m = JSON.parse(localStorage.getItem(META_KEY) || '{}');
+      return { cores: m.cores || 0, up: m.up || {}, ach: Array.isArray(m.ach) ? m.ach : [] };
+    } catch {
+      return { cores: 0, up: {}, ach: [] };
+    }
+  }
+  let meta = loadMeta();
+  function saveMeta() { try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch {} }
+  function metaLv(id) { return meta.up[id] || 0; }
 
   const TOWER_UPGRADES = {
     bolt: [
@@ -779,6 +1585,15 @@
       { id: 'focus', name: 'Focused Beam', copy: 'Melts tanks and bosses.', stats: { damage: 1.38, boss: 1.25 } },
       { id: 'sweep', name: 'Sweep Beam', copy: 'Wider target range.', stats: { range: 1.28, cooldown: 0.82 } },
     ],
+  };
+
+  // Level-4 signature abilities, unlocked on top of the chosen branch.
+  const TOWER_ULTIMATE = {
+    bolt: { name: 'Twin Bolt', copy: 'Strikes two targets at once.', stats: { damage: 1.25, multi: 2 } },
+    tesla: { name: 'Tempest Arc', copy: 'Chains far wider, hits harder.', stats: { damage: 1.3, chain: 3 } },
+    cannon: { name: 'Concussive Shells', copy: 'Blasts now stun & slow.', stats: { damage: 1.2, splash: 1.2, concussive: true } },
+    ring: { name: 'Cryo Nova', copy: 'Field nearly freezes foes.', stats: { range: 1.18, slow: 0.85, damage: 1.3 } },
+    laser: { name: 'Pierce Lance', copy: 'Beam pierces three enemies.', stats: { damage: 1.3, multi: 3 } },
   };
 
   const POWER_UPS = {
@@ -861,6 +1676,15 @@
     fireRate: 0.34,
   };
 
+  // Hero upgrade paths bought with coins during a run.
+  const HERO_UPGRADES = [
+    { id: 'dmg', name: 'Power', desc: '+18% damage', max: 5, base: 18 },
+    { id: 'rate', name: 'Fire Rate', desc: '+10% attack speed', max: 4, base: 16 },
+    { id: 'range', name: 'Range', desc: '+14% range', max: 4, base: 14 },
+    { id: 'speed', name: 'Move Speed', desc: '+12% move speed', max: 4, base: 14 },
+  ];
+  const HERO_STRIKE_CD = 7;
+
   const input = {
     keys: new Set(),
     target: null,
@@ -881,10 +1705,58 @@
   let lastTime = performance.now();
   let bestScore = readBest();
   let hudTimer = 0;
+  const threeBattlefield = {
+    ready: false,
+    failed: false,
+    T: null,
+    renderer: null,
+    scene: null,
+    camera: null,
+    raycaster: null,
+    pointer: null,
+    hitPlane: null,
+    worldRoot: null,
+    actorRoot: null,
+    enemyModels: new Map(),
+    padModels: new Map(),
+    dropModels: new Map(),
+    powerModels: new Map(),
+    particleModels: new Map(),
+    beamModels: new Map(),
+    biomeId: '',
+    elapsed: 0,
+    worldScale: 0.017,
+  };
+
+  function freshPad(pad) {
+    return {
+      ...pad,
+      built: false,
+      kind: null,
+      dmgType: null,
+      name: '',
+      level: 0,
+      branch: null,
+      branchName: '',
+      targetMode: 'first',
+      spent: 0,
+      cooldown: 0,
+      pulse: 0,
+    };
+  }
 
   function makeState() {
+    const diffKey = DIFFICULTIES[selectedDifficulty] ? selectedDifficulty : 'normal';
+    const freeBuild = selectedMode === 'free';
+    const startCoins = 30 + metaLv('startCoins') * 15;
+    const baseMax = 100 + metaLv('baseHp') * 20;
+    const shockStart = Math.min(100, 42 + metaLv('shock') * 12);
     return {
       status: 'menu',
+      diffKey,
+      diff: DIFFICULTIES[diffKey],
+      freeBuild,
+      endless: false,
       wave: 0,
       waveActive: false,
       buildPhase: false,
@@ -894,13 +1766,21 @@
       waveDef: null,
       bossSpawned: false,
       selectedPadId: null,
-      coins: 30,
+      heroMenuOpen: false,
+      coins: startCoins,
       score: 0,
       defeated: 0,
-      baseHp: 100,
-      baseMax: 100,
-      shockCharge: 42,
+      peakCoins: startCoins,
+      baseHp: baseMax,
+      baseMax,
+      shockCharge: shockStart,
       shockPulse: 0,
+      strikeCd: 0,
+      strikePulse: 0,
+      heroLv: { dmg: 0, rate: 0, range: 0, speed: 0 },
+      heroDmgMul: 1 + metaLv('heroDmg') * 0.1,
+      towerDiscount: 1 - metaLv('discount') * 0.04,
+      magnetRange: 140 + metaLv('magnet') * 25,
       runSeconds: 0,
       ended: false,
       enemies: [],
@@ -912,7 +1792,8 @@
       beams: [],
       particles: [],
       floaters: [],
-      pads: padTemplate.map((pad) => ({ ...pad, built: false, level: 0, branch: null, branchName: '', cooldown: 0, pulse: 0 })),
+      placedUltimate: false,
+      pads: freeBuild ? [] : padTemplate.map(freshPad),
     };
   }
 
@@ -1008,14 +1889,46 @@
     updateHud();
   }
 
+  function getWaveDef(n) {
+    if (n <= waveDefs.length) return waveDefs[n - 1];
+    return makeEndlessWave(n);
+  }
+
+  // Deterministic procedural waves for endless mode (so pre-wave intel stays stable).
+  function makeEndlessWave(n) {
+    const over = n - TOTAL_WAVES;
+    const def = {
+      count: Math.min(170, 110 + over * 6),
+      hp: Math.round(250 * Math.pow(1.16, over)),
+      speed: Math.min(98, 80 + over * 1.4),
+      interval: Math.max(0.10, 0.14 - over * 0.004),
+      paths: [0, 1, 2],
+      runners: 0.22, brutes: 0.18, shields: 0.16, splitters: 0.12, armored: 0.16, healers: 0.07,
+      endless: true,
+    };
+    if (over % 4 === 0) {
+      const tier = over / 4;
+      def.boss = {
+        name: `Warlord ${tier}`,
+        hp: Math.round(2600 * Math.pow(1.24, tier)),
+        speed: 42,
+        reward: 48 + over,
+        damage: 30 + over,
+        ability: over % 8 === 0 ? 'summon' : 'rally',
+        abilityCd: 6,
+      };
+    }
+    return def;
+  }
+
   function beginNextWave() {
-    if (state.wave >= TOTAL_WAVES) {
+    if (!state.endless && state.wave >= TOTAL_WAVES) {
       finishRun(true);
       return;
     }
     state.buildPhase = false;
     state.wave += 1;
-    state.waveDef = waveDefs[state.wave - 1];
+    state.waveDef = getWaveDef(state.wave);
     state.bossSpawned = false;
     state.spawnRemaining = state.waveDef.count;
     state.spawnTimer = 0.6;
@@ -1032,8 +1945,8 @@
     state.coins += bonus;
     state.score += bonus * 4;
     state.shockCharge = Math.min(100, state.shockCharge + 24);
-    addFloater(base.x - 30, base.y - 90, `+${bonus} coins`, '#ffd35d', 1.1);
-    if (state.wave >= TOTAL_WAVES) {
+    addFloater(base.x - 30, base.y - 90, `+${Math.round(bonus)} coins`, '#ffd35d', 1.1);
+    if (!state.endless && state.wave >= TOTAL_WAVES) {
       finishRun(true);
       return;
     }
@@ -1062,39 +1975,84 @@
     const finalScore = Math.round(state.score + state.baseHp * 6 + state.wave * 80 + (won ? 800 : 0));
     writeBest(finalScore);
     window.Hub?.endSession?.(progress);
-    renderScreen(won ? 'win' : 'lose', finalScore);
+    const reward = awardMeta(finalScore, won);
+    // Campaign cleared (not yet endless) → offer the endless continuation.
+    renderScreen(won && !state.endless ? 'win' : 'lose', finalScore, reward);
+  }
+
+  // Resume play after clearing the campaign — endless waves keep scaling.
+  function continueEndless() {
+    if (!state) return;
+    state.ended = false;
+    state.endless = true;
+    state.status = 'playing';
+    state.buildPhase = false;
+    state.waveActive = false;
+    hideTowerMenu();
+    ui.screen.classList.remove('show');
+    window.Hub?.startSession?.(HUB_GAME_ID);
+    beginNextWave();
+    updateHud();
+  }
+
+  const ENEMY_STATS = {
+    grunt: { hp: 1, speed: 1, reward: 2, damage: 3, radius: 14, color: '#e63737', armor: 'normal' },
+    runner: { hp: 0.72, speed: 1.34, reward: 2, damage: 2, radius: 12, color: '#ff5656', armor: 'normal' },
+    brute: { hp: 2.1, speed: 0.78, reward: 5, damage: 7, radius: 18, color: '#b92735', armor: 'normal' },
+    shield: { hp: 1.35, speed: 0.86, reward: 4, damage: 5, radius: 16, color: '#d94d70', armor: 'energy-resist' },
+    splitter: { hp: 0.9, speed: 1.05, reward: 3, damage: 3, radius: 15, color: '#f47a39', armor: 'normal' },
+    armored: { hp: 2.6, speed: 0.72, reward: 5, damage: 7, radius: 17, color: '#5a6b7d', armor: 'physical-resist' },
+    healer: { hp: 1.7, speed: 0.92, reward: 6, damage: 4, radius: 15, color: '#3fa86a', armor: 'normal', heal: true },
+  };
+
+  function rollEnemyType(def) {
+    const roll = Math.random();
+    let acc = 0;
+    const buckets = [
+      ['brute', def.brutes], ['shield', def.shields], ['armored', def.armored || 0],
+      ['healer', def.healers || 0], ['splitter', def.splitters], ['runner', def.runners],
+    ];
+    for (const [type, frac] of buckets) {
+      acc += frac || 0;
+      if (roll < acc) return type;
+    }
+    return 'grunt';
+  }
+
+  function eliteChance() {
+    const base = Math.max(0, (state.wave - 4) * 0.035 + (state.endless ? 0.12 : 0));
+    return Math.min(0.55, base * (state.diff.eliteMul || 1));
   }
 
   function spawnEnemy() {
     const def = state.waveDef;
     const pathIndex = def.paths[Math.floor(Math.random() * def.paths.length)];
-    const roll = Math.random();
-    let type = 'grunt';
-    if (roll < def.brutes) type = 'brute';
-    else if (roll < def.brutes + def.shields) type = 'shield';
-    else if (roll < def.brutes + def.shields + def.splitters) type = 'splitter';
-    else if (roll < def.brutes + def.shields + def.splitters + def.runners) type = 'runner';
+    const type = rollEnemyType(def);
+    const typeStats = ENEMY_STATS[type] || ENEMY_STATS.grunt;
 
-    const typeStats = {
-      grunt: { hp: 1, speed: 1, reward: 2, damage: 3, radius: 14, color: '#e63737' },
-      runner: { hp: 0.72, speed: 1.34, reward: 2, damage: 2, radius: 12, color: '#ff5656' },
-      brute: { hp: 2.1, speed: 0.78, reward: 5, damage: 7, radius: 18, color: '#b92735' },
-      shield: { hp: 1.35, speed: 0.86, reward: 4, damage: 5, radius: 16, color: '#d94d70' },
-      splitter: { hp: 0.9, speed: 1.05, reward: 3, damage: 3, radius: 15, color: '#f47a39' },
-    }[type];
+    let hp = def.hp * typeStats.hp * state.diff.hp;
+    const elite = type !== 'grunt' && type !== 'runner' && Math.random() < eliteChance();
+    const trait = elite ? ELITE_TRAITS[Math.floor(Math.random() * ELITE_TRAITS.length)] : null;
+    if (elite) hp *= 1.6;
+    hp = Math.round(hp);
 
-    const hp = Math.round(def.hp * typeStats.hp);
     const enemy = {
       id: Math.random().toString(36).slice(2),
       type,
+      armor: typeStats.armor || 'normal',
+      heal: !!typeStats.heal,
+      healTimer: 0,
+      elite,
+      trait,
+      rallyTimer: 0,
       pathIndex,
       dist: -Math.random() * 18,
       hp,
       maxHp: hp,
-      speed: def.speed * typeStats.speed,
-      reward: typeStats.reward,
+      speed: def.speed * typeStats.speed * state.diff.speed,
+      reward: typeStats.reward + (elite ? 3 : 0),
       damage: typeStats.damage,
-      radius: typeStats.radius,
+      radius: typeStats.radius + (elite ? 3 : 0),
       color: typeStats.color,
       slow: 0,
       dead: false,
@@ -1111,20 +2069,26 @@
     const boss = def.boss;
     if (!boss) return;
     const pathIndex = def.paths[Math.floor(Math.random() * def.paths.length)];
+    const hp = Math.round(boss.hp * state.diff.hp);
     const enemy = {
       id: Math.random().toString(36).slice(2),
       type: 'boss',
+      armor: 'normal',
       bossName: boss.name,
+      ability: boss.ability || null,
+      abilityCd: boss.abilityCd || 6,
+      abilityTimer: (boss.abilityCd || 6) * 0.7,
       pathIndex,
       dist: -70,
-      hp: boss.hp,
-      maxHp: boss.hp,
-      speed: boss.speed,
+      hp,
+      maxHp: hp,
+      speed: boss.speed * state.diff.speed,
       reward: boss.reward,
       damage: boss.damage,
       radius: 28,
       color: '#7c2940',
       slow: 0,
+      rallyTimer: 0,
       dead: false,
       x: -100,
       y: 0,
@@ -1135,10 +2099,43 @@
     addFloater(base.x - 30, base.y - 92, boss.name, '#ff739a', 1.05);
   }
 
+  // Boss "Summon": drops a few quick grunts at the boss's position.
+  function bossSummon(boss) {
+    for (let i = 0; i < 3; i += 1) {
+      const hp = Math.max(14, Math.round(state.waveDef.hp * 0.7 * state.diff.hp));
+      state.enemies.push({
+        id: Math.random().toString(36).slice(2),
+        type: 'grunt',
+        armor: 'normal',
+        heal: false,
+        healTimer: 0,
+        elite: false,
+        trait: null,
+        rallyTimer: 0,
+        pathIndex: boss.pathIndex,
+        dist: Math.max(0, boss.dist - 16 - i * 14),
+        hp,
+        maxHp: hp,
+        speed: state.waveDef.speed * 1.05 * state.diff.speed,
+        reward: 2,
+        damage: 3,
+        radius: 13,
+        color: '#e63737',
+        slow: 0,
+        dead: false,
+        x: boss.x,
+        y: boss.y,
+        angle: boss.angle,
+        wobble: Math.random() * Math.PI * 2,
+      });
+    }
+  }
+
   function update(dt) {
     if (!state || state.status !== 'playing') return;
     state.runSeconds += dt;
     state.shockCharge = Math.min(100, state.shockCharge + dt * 2.2);
+    if (state.coins > state.peakCoins) state.peakCoins = state.coins;
     updatePowerTimers(dt);
     updateHero(dt);
     updateSpawning(dt);
@@ -1188,7 +2185,33 @@
     }
   }
 
+  function heroDamageValue() {
+    return (13 + state.wave * 1.4) * (1 + 0.18 * state.heroLv.dmg) * (state.heroDmgMul || 1);
+  }
+  function heroRangeValue() { return hero.range * (1 + 0.14 * state.heroLv.range); }
+  function heroFireRateValue() { return hero.fireRate * (1 - 0.1 * state.heroLv.rate); }
+  function heroSpeedValue() { return hero.speed * (1 + 0.12 * state.heroLv.speed); }
+
+  function useHeroStrike() {
+    if (!state || state.status !== 'playing' || state.strikeCd > 0) return;
+    state.strikeCd = HERO_STRIKE_CD;
+    state.strikePulse = 0.5;
+    const radius = 150 + 16 * state.heroLv.range;
+    const dmg = heroDamageValue() * 3.2;
+    for (const enemy of state.enemies) {
+      if (distSq(hero.x, hero.y, enemy.x, enemy.y) <= radius * radius) {
+        damageEnemy(enemy, dmg, 'hero');
+        enemy.slow = Math.max(enemy.slow, enemy.type === 'boss' ? 0.5 : 1);
+      }
+    }
+    burst(hero.x, hero.y, '#ffe58c', 32, 160);
+    addFloater(hero.x - 28, hero.y - 42, 'STRIKE!', '#ffe58c', 1);
+    updateHud();
+  }
+
   function updateHero(dt) {
+    state.strikeCd = Math.max(0, state.strikeCd - dt);
+    const speed = heroSpeedValue();
     let dx = 0;
     let dy = 0;
     if (input.keys.has('arrowleft') || input.keys.has('a')) dx -= 1;
@@ -1198,15 +2221,15 @@
 
     if (dx || dy) {
       const len = Math.hypot(dx, dy) || 1;
-      hero.x += (dx / len) * hero.speed * dt;
-      hero.y += (dy / len) * hero.speed * dt;
+      hero.x += (dx / len) * speed * dt;
+      hero.y += (dy / len) * speed * dt;
       input.target = null;
     } else if (input.target) {
       const tx = input.target.x - hero.x;
       const ty = input.target.y - hero.y;
       const dist = Math.hypot(tx, ty);
       if (dist > 6) {
-        const step = Math.min(dist, hero.speed * dt);
+        const step = Math.min(dist, speed * dt);
         hero.x += (tx / dist) * step;
         hero.y += (ty / dist) * step;
       } else {
@@ -1219,11 +2242,11 @@
 
     hero.cooldown -= dt;
     if (hero.cooldown <= 0) {
-      const target = nearestEnemy(hero.x, hero.y, hero.range);
+      const target = nearestEnemy(hero.x, hero.y, heroRangeValue());
       if (target) {
-        damageEnemy(target, 13 + state.wave * 1.4, 'hero');
+        damageEnemy(target, heroDamageValue(), 'hero');
         addBeam(hero.x, hero.y - 10, target.x, target.y, '#4ec7ff', 0.14, 4);
-        hero.cooldown = hero.fireRate;
+        hero.cooldown = heroFireRateValue();
       }
     }
   }
@@ -1235,6 +2258,51 @@
       enemy.slow = Math.max(0, enemy.slow - dt);
       let speedScale = enemy.slow > 0 ? 0.42 : 1;
       if (state.freezeTimer > 0) speedScale = enemy.type === 'boss' ? Math.min(speedScale, 0.38) : Math.min(speedScale, 0.16);
+
+      // Elite traits.
+      if (enemy.trait === 'enraged' && enemy.hp < enemy.maxHp * 0.35) speedScale *= 1.4;
+      if (enemy.trait === 'regen' && enemy.hp < enemy.maxHp) enemy.hp = Math.min(enemy.maxHp, enemy.hp + enemy.maxHp * 0.02 * dt);
+
+      // Boss "Rally" buff carried by nearby enemies.
+      if (enemy.rallyTimer > 0) { enemy.rallyTimer -= dt; speedScale *= 1.45; }
+
+      // Healer aura: top up nearby allies on a timer.
+      if (enemy.heal) {
+        enemy.healTimer -= dt;
+        if (enemy.healTimer <= 0) {
+          enemy.healTimer = 0.9;
+          const hr = 100;
+          let healed = false;
+          for (const other of state.enemies) {
+            if (other === enemy || other.dead || other.hp >= other.maxHp) continue;
+            if (distSq(enemy.x, enemy.y, other.x, other.y) <= hr * hr) {
+              other.hp = Math.min(other.maxHp, other.hp + other.maxHp * 0.06);
+              healed = true;
+            }
+          }
+          if (healed) burst(enemy.x, enemy.y, '#7cffb0', 5, 36);
+        }
+      }
+
+      // Boss abilities.
+      if (enemy.type === 'boss' && enemy.ability && !enemy.dead) {
+        enemy.abilityTimer -= dt;
+        if (enemy.abilityTimer <= 0) {
+          enemy.abilityTimer = enemy.abilityCd;
+          if (enemy.ability === 'rally') {
+            let rallied = 0;
+            for (const other of state.enemies) {
+              if (other === enemy || other.dead || other.type === 'boss') continue;
+              if (distSq(enemy.x, enemy.y, other.x, other.y) <= 200 * 200) { other.rallyTimer = 2.4; rallied += 1; }
+            }
+            if (rallied) { addFloater(enemy.x - 30, enemy.y - 60, 'RALLY!', '#ffb16d', 1); burst(enemy.x, enemy.y, '#ffb16d', 18, 120); }
+          } else if (enemy.ability === 'summon') {
+            bossSummon(enemy);
+            addFloater(enemy.x - 36, enemy.y - 60, 'SUMMON!', '#ff95ec', 1); burst(enemy.x, enemy.y, '#ff95ec', 20, 130);
+          }
+        }
+      }
+
       enemy.dist += enemy.speed * speedScale * dt;
       const p = pointOnPath(path, enemy.dist);
       enemy.x = p.x;
@@ -1243,9 +2311,10 @@
 
       if (enemy.dist >= path.total) {
         enemy.dead = true;
-        state.baseHp = Math.max(0, state.baseHp - enemy.damage);
+        const leak = Math.round(enemy.damage * (state.diff.leak || 1));
+        state.baseHp = Math.max(0, state.baseHp - leak);
         shakeAt(base.x, base.y, '#ff4b4b', 16);
-        addFloater(base.x - 8, base.y - 72, `-${enemy.damage}`, '#ff6a6a', 1);
+        addFloater(base.x - 8, base.y - 72, `-${leak}`, '#ff6a6a', 1);
       }
     }
 
@@ -1274,11 +2343,13 @@
 
       if (pad.kind === 'bolt') {
         const range = towerRange(pad, 205 + pad.level * 28);
-        const target = nearestEnemy(pad.x, pad.y, range);
-        if (target) {
-          damageEnemy(target, towerDamage(pad, 22 + pad.level * 15, target), 'bolt');
-          target.slow = Math.max(target.slow, towerSlow(pad, 0.12));
-          addBeam(pad.x, pad.y - 28, target.x, target.y, '#5ddcff', 0.17, 5);
+        const targets = pickTargets(pad, range, towerMulti(pad));
+        if (targets.length) {
+          targets.forEach((target) => {
+            damageEnemy(target, towerDamage(pad, 22 + pad.level * 15, target), 'bolt');
+            target.slow = Math.max(target.slow, towerSlow(pad, 0.12));
+            addBeam(pad.x, pad.y - 28, target.x, target.y, '#5ddcff', 0.17, 5);
+          });
           pad.cooldown = towerCooldown(pad, Math.max(0.36, 0.78 - pad.level * 0.08));
         }
       } else if (pad.kind === 'tesla') {
@@ -1298,24 +2369,28 @@
         }
       } else if (pad.kind === 'cannon') {
         const range = towerRange(pad, 235 + pad.level * 24);
-        const target = nearestEnemy(pad.x, pad.y, range);
+        const target = selectTarget(pad, range);
         if (target) {
           const splash = towerSplash(pad, 64 + pad.level * 10);
+          const concussive = upgradeStats(pad).concussive;
           addBeam(pad.x, pad.y - 24, target.x, target.y, '#ffe28a', 0.12, 3);
           burst(target.x, target.y, '#ffcf6d', 22, 96);
           for (const enemy of state.enemies) {
             if (distSq(target.x, target.y, enemy.x, enemy.y) <= splash * splash) {
               damageEnemy(enemy, towerDamage(pad, 18 + pad.level * 14, enemy), 'cannon');
+              if (concussive) enemy.slow = Math.max(enemy.slow, enemy.type === 'boss' ? 0.6 : 1.1);
             }
           }
           pad.cooldown = towerCooldown(pad, Math.max(0.65, 1.32 - pad.level * 0.12));
         }
       } else if (pad.kind === 'laser') {
         const range = towerRange(pad, 310 + pad.level * 38);
-        const target = nearestEnemy(pad.x, pad.y, range);
-        if (target) {
-          damageEnemy(target, towerDamage(pad, 38 + pad.level * 24, target), 'laser');
-          addBeam(pad.x, pad.y - 38, target.x, target.y, '#ff739a', 0.22, 6);
+        const targets = pickTargets(pad, range, towerMulti(pad));
+        if (targets.length) {
+          targets.forEach((target) => {
+            damageEnemy(target, towerDamage(pad, 38 + pad.level * 24, target), 'laser');
+            addBeam(pad.x, pad.y - 38, target.x, target.y, '#ff739a', 0.22, 6);
+          });
           pad.cooldown = towerCooldown(pad, Math.max(0.5, 1.18 - pad.level * 0.1));
         }
       }
@@ -1334,7 +2409,8 @@
       drop.vy *= Math.pow(0.12, dt);
 
       const d2 = distSq(drop.x, drop.y, hero.x, hero.y);
-      const magnet = d2 < 140 * 140 || drop.age > 4.2;
+      const mr = state.magnetRange || 140;
+      const magnet = d2 < mr * mr || drop.age > 4.2;
       if (magnet) {
         const d = Math.sqrt(d2) || 1;
         drop.x += ((hero.x - drop.x) / d) * 420 * dt;
@@ -1388,6 +2464,7 @@
 
   function updateEffects(dt) {
     state.shockPulse = Math.max(0, state.shockPulse - dt);
+    state.strikePulse = Math.max(0, state.strikePulse - dt);
     for (const beam of state.beams) beam.life -= dt;
     state.beams = state.beams.filter((beam) => beam.life > 0);
 
@@ -1414,7 +2491,7 @@
     if (enemy.hp <= 0) {
       enemy.dead = true;
       const towerKill = ['bolt', 'tesla', 'cannon', 'ring', 'laser'].includes(source);
-      const towerBounty = towerKill ? Math.max(1, Math.floor(enemy.reward / 2)) * coinMultiplier() : 0;
+      const towerBounty = towerKill ? Math.max(1, Math.round(Math.max(1, Math.floor(enemy.reward / 2)) * coinMultiplier())) : 0;
       state.defeated += 1;
       state.coins += towerBounty;
       state.score += enemy.reward * 14 + state.wave;
@@ -1433,7 +2510,14 @@
 
   function effectiveDamage(enemy, amount, source) {
     let damage = amount;
-    if (enemy.type === 'shield' && ['hero', 'bolt', 'tesla', 'laser'].includes(source)) damage *= 0.58;
+    const dtype = DAMAGE_TYPE[source] || 'energy';
+    const table = ARMOR_RESIST[enemy.armor] || ARMOR_RESIST.normal;
+    let mult = table[dtype] ?? 1;
+    // Laser is the premium anti-armour weapon — punches through plating.
+    if (enemy.armor === 'physical-resist' && source === 'laser') mult = Math.max(mult, 1.3);
+    // Warded elite shrugs off a flat slice of all damage.
+    if (enemy.trait === 'warded') mult *= 0.75;
+    damage *= mult;
     if (enemy.type === 'boss' && source === 'shock') damage *= 0.42;
     return damage;
   }
@@ -1444,6 +2528,12 @@
       state.enemies.push({
         id: Math.random().toString(36).slice(2),
         type: 'runner',
+        armor: 'normal',
+        heal: false,
+        healTimer: 0,
+        elite: false,
+        trait: null,
+        rallyTimer: 0,
         pathIndex: parent.pathIndex,
         dist: Math.max(0, parent.dist - 22 - i * 16),
         hp,
@@ -1535,35 +2625,112 @@
   }
 
   function coinMultiplier() {
-    return state.coinBoostTimer > 0 ? 2 : 1;
+    return (state.coinBoostTimer > 0 ? 2 : 1) * (state.diff?.coin || 1);
   }
 
-  function buyOrUpgradePad(pad) {
-    if (!pad) return false;
-    if (pad.built) {
-      showTowerMenu(pad);
-      return true;
-    }
-    const cost = padCost(pad);
-    if (pad.level >= 3 || state.coins < cost) {
-      addFloater(pad.x - 24, pad.y - 46, pad.level >= 3 ? 'Max' : `${cost}`, pad.level >= 3 ? '#c7f7ff' : '#ffd35d', 0.9);
-      return true;
+  function towerBuildCost(kind) {
+    const def = TOWER_BUILD_BY_KIND[kind];
+    return def ? Math.round(def.cost * (state.towerDiscount || 1)) : 0;
+  }
+
+  function buildTowerOnPad(padId, kind) {
+    const pad = state.pads.find((p) => p.id === padId);
+    if (!pad || pad.built || state.status !== 'playing') return;
+    const def = TOWER_BUILD_BY_KIND[kind];
+    if (!def) return;
+    const cost = towerBuildCost(kind);
+    if (state.coins < cost) {
+      addFloater(pad.x - 24, pad.y - 46, `${cost}`, '#ffd35d', 0.9);
+      return;
     }
     state.coins -= cost;
     pad.built = true;
-    pad.level += 1;
+    pad.kind = kind;
+    pad.dmgType = def.dmgType;
+    pad.name = def.name;
+    pad.level = 1;
+    pad.branch = null;
+    pad.branchName = '';
+    pad.spent = cost;
+    pad.targetMode = (kind === 'tesla' || kind === 'ring') ? 'near' : 'first';
     pad.cooldown = 0.12;
     state.score += cost * 2;
-    burst(pad.x, pad.y, pad.kind === 'cannon' ? '#ffd35d' : '#5ddcff', 18, 96);
-    addFloater(pad.x - 36, pad.y - 48, pad.level === 1 ? pad.name : `Level ${pad.level}`, '#ffffff', 0.95);
+    burst(pad.x, pad.y, def.dmgType === 'physical' ? '#ffd35d' : '#5ddcff', 18, 96);
+    addFloater(pad.x - 36, pad.y - 48, def.name, '#ffffff', 0.95);
     updateHud();
-    return true;
+    showTowerMenu(pad);
+  }
+
+  function sellTower(padId) {
+    const pad = state.pads.find((p) => p.id === padId);
+    if (!pad || !pad.built) return;
+    const refund = Math.max(1, Math.floor((pad.spent || 0) * 0.6));
+    state.coins += refund;
+    burst(pad.x, pad.y, '#ff9d9d', 16, 90);
+    addFloater(pad.x - 24, pad.y - 46, `+${refund}`, '#ffd35d', 0.95);
+    if (state.freeBuild) {
+      // Free-placed towers vanish entirely when sold.
+      state.pads = state.pads.filter((p) => p.id !== pad.id);
+    } else {
+      pad.built = false;
+      pad.kind = null;
+      pad.dmgType = null;
+      pad.name = '';
+      pad.level = 0;
+      pad.branch = null;
+      pad.branchName = '';
+      pad.spent = 0;
+      pad.cooldown = 0;
+      pad.targetMode = 'first';
+    }
+    hideTowerMenu();
+    updateHud();
   }
 
   function padCost(pad) {
-    if (pad.level <= 0) return pad.cost;
-    if (pad.level >= 3) return 0;
-    return Math.round(pad.cost * (1.55 + pad.level * 0.55));
+    if (!pad.built || pad.level >= 4) return 0;
+    const base = TOWER_BUILD_BY_KIND[pad.kind]?.cost || MIN_TOWER_COST;
+    return Math.round(base * (1.55 + pad.level * 0.55) * (state.towerDiscount || 1));
+  }
+
+  // Targeting priority used by single-target towers.
+  const TARGET_MODES = [
+    { id: 'first', label: 'First' },
+    { id: 'strong', label: 'Strong' },
+    { id: 'near', label: 'Near' },
+  ];
+
+  function selectTarget(pad, range) {
+    const mode = pad.targetMode || 'first';
+    const r2 = range * range;
+    let best = null;
+    let bestScore = -Infinity;
+    for (const enemy of state.enemies) {
+      if (enemy.dead) continue;
+      const d2 = distSq(pad.x, pad.y, enemy.x, enemy.y);
+      if (d2 > r2) continue;
+      let score;
+      if (mode === 'near') score = -d2;
+      else if (mode === 'strong') score = enemy.hp + (enemy.type === 'boss' ? 1e7 : 0);
+      else score = enemy.dist; // 'first' = furthest along the path (nearest the base)
+      if (score > bestScore) { bestScore = score; best = enemy; }
+    }
+    return best;
+  }
+
+  // Primary target (honours target mode) plus extra nearby targets for multi-shot ultimates.
+  function pickTargets(pad, range, count) {
+    const primary = selectTarget(pad, range);
+    if (!primary || count <= 1) return primary ? [primary] : [];
+    const extra = nearestEnemies(pad.x, pad.y, range, count + 2).filter((e) => e !== primary);
+    return [primary, ...extra].slice(0, count);
+  }
+
+  function setTargetMode(padId, mode) {
+    const pad = state.pads.find((p) => p.id === padId);
+    if (!pad || !pad.built) return;
+    pad.targetMode = mode;
+    showTowerMenu(pad);
   }
 
   function upgradeChoices(pad) {
@@ -1574,8 +2741,29 @@
     return upgradeChoices(pad).find((choice) => choice.id === pad.branch) || null;
   }
 
+  function ultimateStats(pad) {
+    return pad.level >= 4 ? (TOWER_ULTIMATE[pad.kind]?.stats || {}) : {};
+  }
+
+  // Branch stats merged with the level-4 ultimate (multipliers multiply, chain adds, slow takes max).
   function upgradeStats(pad) {
-    return activeUpgrade(pad)?.stats || {};
+    const b = activeUpgrade(pad)?.stats || {};
+    if (pad.level < 4) return b;
+    const u = ultimateStats(pad);
+    const merged = { ...b };
+    for (const key of ['damage', 'range', 'cooldown', 'splash', 'boss']) {
+      if (u[key] != null) merged[key] = (b[key] != null ? b[key] : 1) * u[key];
+    }
+    if (u.chain != null) merged.chain = (b.chain || 0) + u.chain;
+    if (u.slow != null) merged.slow = Math.max(b.slow || 0, u.slow);
+    if (b.shieldPierce || u.shieldPierce) merged.shieldPierce = true;
+    if (u.multi != null) merged.multi = u.multi;
+    if (u.concussive) merged.concussive = true;
+    return merged;
+  }
+
+  function towerMulti(pad) {
+    return upgradeStats(pad).multi || 1;
   }
 
   function towerDamage(pad, baseDamage, enemy) {
@@ -1613,11 +2801,130 @@
   }
 
   function showTowerMenu(pad) {
-    if (!pad || !pad.built || state.status !== 'playing') {
+    if (!pad || state.status !== 'playing') {
       hideTowerMenu();
       return;
     }
+    state.heroMenuOpen = false;
     state.selectedPadId = pad.id;
+    if (!pad.built) renderBuildMenu(pad);
+    else renderManageMenu(pad);
+    ui.towerMenu.hidden = false;
+  }
+
+  function showHeroMenu() {
+    if (!state || state.status !== 'playing') { hideTowerMenu(); return; }
+    state.selectedPadId = null;
+    state.heroMenuOpen = true;
+    ui.towerMenuTitle.textContent = 'Hero Commander';
+    ui.towerMenuCopy.textContent = 'Spend coins to strengthen your hero.';
+    ui.towerOptions.innerHTML = '';
+    HERO_UPGRADES.forEach((u) => {
+      const lv = state.heroLv[u.id] || 0;
+      if (lv >= u.max) {
+        ui.towerOptions.appendChild(towerOptionButton(`${u.name} · MAX`, u.desc, true, null));
+      } else {
+        const cost = Math.round(u.base * (1 + lv * 0.85));
+        ui.towerOptions.appendChild(
+          towerOptionButton(`${u.name} · Lv ${lv}`, `${u.desc} · ${cost} coins`, state.coins < cost, () => upgradeHero(u.id)),
+        );
+      }
+    });
+    ui.towerMenu.hidden = false;
+  }
+
+  function upgradeHero(id) {
+    const u = HERO_UPGRADES.find((h) => h.id === id);
+    if (!u) return;
+    const lv = state.heroLv[id] || 0;
+    if (lv >= u.max) return;
+    const cost = Math.round(u.base * (1 + lv * 0.85));
+    if (state.coins < cost) {
+      addFloater(hero.x - 18, hero.y - 40, `${cost}`, '#ffd35d', 0.9);
+      showHeroMenu();
+      return;
+    }
+    state.coins -= cost;
+    state.heroLv[id] = lv + 1;
+    state.score += cost * 2;
+    burst(hero.x, hero.y, '#5ddcff', 16, 92);
+    addFloater(hero.x - 24, hero.y - 44, `${u.name} ${lv + 1}`, '#ffffff', 0.9);
+    updateHud();
+    showHeroMenu();
+  }
+
+  function renderBuildMenu(pad) {
+    ui.towerMenuTitle.textContent = 'Build Tower';
+    ui.towerMenuCopy.textContent = 'Pick a tower for this slot — match types to enemy armour.';
+    ui.towerOptions.innerHTML = '';
+    TOWER_BUILD.forEach((def) => {
+      const cost = towerBuildCost(def.kind);
+      const disabled = state.coins < cost;
+      ui.towerOptions.appendChild(
+        towerOptionButton(def.name, `${def.blurb} · ${cost} coins`, disabled, () => buildTowerOnPad(pad.id, def.kind)),
+      );
+    });
+  }
+
+  // ── Free Build mode: place a tower at an arbitrary valid spot ──
+  function pointSegDistSq(px, py, seg) {
+    const t = Math.max(0, Math.min(1, ((px - seg.a.x) * seg.dx + (py - seg.a.y) * seg.dy) / (seg.len * seg.len || 1)));
+    const cx = seg.a.x + seg.dx * t;
+    const cy = seg.a.y + seg.dy * t;
+    return distSq(px, py, cx, cy);
+  }
+
+  function canPlaceAt(x, y) {
+    if (x < 40 || x > WORLD.w - 40 || y < 60 || y > WORLD.h - 30) return false;
+    if (distSq(x, y, base.x, base.y) < 120 * 120) return false;
+    for (const p of state.pads) {
+      if (distSq(x, y, p.x, p.y) < 84 * 84) return false;
+    }
+    for (const path of paths) {
+      for (const seg of path.segments) {
+        if (pointSegDistSq(x, y, seg) < 46 * 46) return false;
+      }
+    }
+    return true;
+  }
+
+  function showPlaceMenu(x, y) {
+    state.pendingPlace = { x, y };
+    state.selectedPadId = null;
+    state.heroMenuOpen = false;
+    ui.towerMenuTitle.textContent = 'Build Tower';
+    ui.towerMenuCopy.textContent = 'Place a tower here — match types to enemy armour.';
+    ui.towerOptions.innerHTML = '';
+    TOWER_BUILD.forEach((def) => {
+      const cost = towerBuildCost(def.kind);
+      const disabled = state.coins < cost;
+      ui.towerOptions.appendChild(
+        towerOptionButton(def.name, `${def.blurb} · ${cost} coins`, disabled, () => placeTowerAt(def.kind)),
+      );
+    });
+    ui.towerMenu.hidden = false;
+  }
+
+  function placeTowerAt(kind) {
+    const p = state.pendingPlace;
+    if (!p) return;
+    const cost = towerBuildCost(kind);
+    if (state.coins < cost) {
+      addFloater(p.x - 24, p.y - 46, `${cost}`, '#ffd35d', 0.9);
+      return;
+    }
+    if (!canPlaceAt(p.x, p.y)) {
+      addFloater(p.x - 24, p.y - 46, 'Blocked', '#ff6a6a', 0.9);
+      hideTowerMenu();
+      return;
+    }
+    const pad = freshPad({ id: 'free-' + Math.random().toString(36).slice(2), x: p.x, y: p.y });
+    state.pads.push(pad);
+    state.pendingPlace = null;
+    buildTowerOnPad(pad.id, kind);
+  }
+
+  function renderManageMenu(pad) {
     const choices = upgradeChoices(pad);
     const current = activeUpgrade(pad);
     const cost = padCost(pad);
@@ -1627,51 +2934,110 @@
       : 'Pick an upgrade path for this defense tower.';
     ui.towerOptions.innerHTML = '';
 
-    if (pad.level >= 3) {
-      ui.towerOptions.appendChild(towerOptionButton('Max Level', 'This tower is fully upgraded.', null, true));
+    const ult = TOWER_ULTIMATE[pad.kind];
+    if (pad.level >= 4) {
+      ui.towerOptions.appendChild(towerOptionButton('Ultimate Unlocked', `${ult ? ult.name + ': ' + ult.copy : 'Fully upgraded.'}`, true, null));
+    } else if (pad.level === 3) {
+      // Level 3 → 4 unlocks the signature ultimate.
+      const label = ult ? `Ultimate: ${ult.name}` : 'Ultimate';
+      const copy = ult ? `${ult.copy} · ${cost} coins` : `${cost} coins`;
+      ui.towerOptions.appendChild(
+        towerOptionButton(label, copy, state.coins < cost, () => applyTowerUpgrade(pad.id, 'ultimate')),
+      );
     } else if (pad.level === 1) {
       choices.forEach((choice) => {
         const disabled = state.coins < cost;
-        ui.towerOptions.appendChild(towerOptionButton(choice.name, `${choice.copy} · ${cost} coins`, choice.id, disabled));
+        ui.towerOptions.appendChild(
+          towerOptionButton(choice.name, `${choice.copy} · ${cost} coins`, disabled, () => applyTowerUpgrade(pad.id, choice.id)),
+        );
       });
     } else {
       const label = current ? `Upgrade ${current.name}` : 'Upgrade Tower';
       const copy = current ? `${current.copy} · ${cost} coins` : `${cost} coins`;
-      ui.towerOptions.appendChild(towerOptionButton(label, copy, pad.branch || choices[0]?.id || '', state.coins < cost));
+      const choiceId = pad.branch || choices[0]?.id || '';
+      ui.towerOptions.appendChild(
+        towerOptionButton(label, copy, state.coins < cost, () => applyTowerUpgrade(pad.id, choiceId)),
+      );
     }
-    ui.towerMenu.hidden = false;
+
+    // Targeting priority (single-target towers only).
+    if (pad.kind === 'bolt' || pad.kind === 'cannon' || pad.kind === 'laser') {
+      ui.towerOptions.appendChild(buildTargetRow(pad));
+    }
+
+    const refund = Math.max(1, Math.floor((pad.spent || 0) * 0.6));
+    const sell = document.createElement('button');
+    sell.type = 'button';
+    sell.className = 'tower-sell';
+    sell.textContent = `Sell tower · +${refund} coins`;
+    sell.addEventListener('click', () => sellTower(pad.id));
+    ui.towerOptions.appendChild(sell);
   }
 
-  function towerOptionButton(title, copy, choiceId, disabled) {
+  function buildTargetRow(pad) {
+    const row = document.createElement('div');
+    row.className = 'tower-mode-row';
+    const label = document.createElement('span');
+    label.className = 'tower-mode-label';
+    label.textContent = 'Target';
+    row.appendChild(label);
+    TARGET_MODES.forEach((mode) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mode-btn' + (pad.targetMode === mode.id ? ' active' : '');
+      btn.textContent = mode.label;
+      btn.addEventListener('click', () => setTargetMode(pad.id, mode.id));
+      row.appendChild(btn);
+    });
+    return row;
+  }
+
+  function towerOptionButton(title, copy, disabled, onClick) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'tower-option';
     button.disabled = !!disabled;
     button.innerHTML = `<strong>${title}</strong><span>${copy}</span>`;
-    if (choiceId && !disabled) {
-      button.addEventListener('click', () => applyTowerUpgrade(state.selectedPadId, choiceId));
-    }
+    if (onClick && !disabled) button.addEventListener('click', onClick);
     return button;
   }
 
   function hideTowerMenu() {
     if (!ui.towerMenu) return;
     ui.towerMenu.hidden = true;
-    if (state) state.selectedPadId = null;
+    if (state) { state.selectedPadId = null; state.heroMenuOpen = false; state.pendingPlace = null; }
   }
 
   function applyTowerUpgrade(padId, choiceId) {
     const pad = state.pads.find((candidate) => candidate.id === padId);
-    if (!pad || !pad.built || pad.level >= 3) return;
+    if (!pad || !pad.built || pad.level >= 4) return;
     const cost = padCost(pad);
     if (state.coins < cost) {
       addFloater(pad.x - 20, pad.y - 48, `${cost}`, '#ffd35d', 0.9);
       showTowerMenu(pad);
       return;
     }
+
+    // Level 3 → 4: unlock the signature ultimate (no branch change).
+    if (choiceId === 'ultimate' || pad.level === 3) {
+      const ult = TOWER_ULTIMATE[pad.kind];
+      state.coins -= cost;
+      pad.spent = (pad.spent || 0) + cost;
+      pad.level = 4;
+      pad.cooldown = 0.08;
+      state.score += cost * 3;
+      state.placedUltimate = true;
+      burst(pad.x, pad.y, '#ffd35d', 30, 140);
+      addFloater(pad.x - 30, pad.y - 54, ult ? ult.name : 'Ultimate', '#ffe58c', 1);
+      updateHud();
+      showTowerMenu(pad);
+      return;
+    }
+
     const choice = upgradeChoices(pad).find((candidate) => candidate.id === choiceId) || activeUpgrade(pad);
     if (!choice) return;
     state.coins -= cost;
+    pad.spent = (pad.spent || 0) + cost;
     pad.branch = choice.id;
     pad.branchName = choice.name;
     pad.level += 1;
@@ -1822,6 +3188,12 @@
 
   function render() {
     resizeCanvas();
+    if (threeBattlefield.ready && selectedViewMode === '3d') {
+      ctx.clearRect(0, 0, view.cssW, view.cssH);
+      drawMiniMap();
+      renderThreeBattlefield();
+      return;
+    }
     ctx.clearRect(0, 0, view.cssW, view.cssH);
     ctx.save();
     ctx.scale(view.scale, view.scale);
@@ -1847,7 +3219,21 @@
     drawBeams();
     drawParticles();
     drawFloaters();
+    if (state.pendingPlace) drawPlaceMarker(state.pendingPlace.x, state.pendingPlace.y);
     if (input.target && state.status === 'playing') drawTarget(input.target.x, input.target.y);
+  }
+
+  function drawPlaceMarker(x, y) {
+    const ok = canPlaceAt(x, y);
+    ctx.save();
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = ok ? '#4ec7ff' : '#ff6a6a';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.arc(x, y, 30, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawBackground(biome) {
@@ -2003,28 +3389,12 @@
   function drawRangeHints() {
     if (!state) return;
     for (const pad of state.pads) {
-      if (!pad.built) {
-        if (state.buildPhase && state.coins >= pad.cost) drawBuildRange(pad);
-        continue;
-      }
+      if (!pad.built) continue;
       const selected = state.selectedPadId === pad.id;
-      const activePhase = state.buildPhase && pad.level < 3;
+      const activePhase = state.buildPhase && pad.level < 4;
       if (!selected && !activePhase) continue;
       drawTowerRange(pad, selected ? 1 : 0.42);
     }
-  }
-
-  function drawBuildRange(pad) {
-    const visual = towerVisual(pad);
-    ctx.save();
-    ctx.globalAlpha = 0.12 + Math.sin(pad.pulse * 3) * 0.025;
-    ctx.strokeStyle = visual.accent;
-    ctx.lineWidth = 3;
-    ctx.setLineDash([12, 12]);
-    ctx.beginPath();
-    ctx.arc(pad.x, pad.y, baseTowerRange(pad) * 0.72, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
   }
 
   function drawTowerRange(pad, alpha) {
@@ -2130,76 +3500,35 @@
   }
 
   function drawPad(pad) {
-    const canBuy = state.coins >= pad.cost;
+    const canBuy = state.coins >= MIN_TOWER_COST;
     const pulse = Math.sin(pad.pulse * 3.2) * 0.08 + 1;
-    const visual = towerVisual(pad);
+    const accent = '#4ec7ff';
     ctx.save();
     ctx.translate(pad.x, pad.y);
     ctx.rotate(-0.08);
     ctx.scale(pulse, pulse);
-    ctx.shadowColor = canBuy ? visual.accent : 'rgba(0,0,0,0)';
+    ctx.shadowColor = canBuy ? accent : 'rgba(0,0,0,0)';
     ctx.shadowBlur = canBuy ? 18 : 0;
     ctx.fillStyle = canBuy ? 'rgba(17, 30, 43, 0.58)' : 'rgba(22, 34, 49, 0.32)';
-    ctx.strokeStyle = canBuy ? visual.accent : 'rgba(255,255,255,0.42)';
+    ctx.strokeStyle = canBuy ? accent : 'rgba(255,255,255,0.42)';
     ctx.lineWidth = 4;
     ctx.setLineDash([10, 8]);
-    roundRect(-48, -37, 96, 74, 9);
+    roundRect(-46, -36, 92, 72, 9);
     ctx.fill();
     ctx.stroke();
     ctx.setLineDash([]);
     ctx.shadowBlur = 0;
-    drawBuildIcon(pad.kind, visual);
-    drawPadLabel(0, -33, pad.label, canBuy);
-    drawCostTag(0, 27, pad.cost, canBuy);
-    ctx.restore();
-  }
-
-  function drawBuildIcon(kind, visual) {
-    ctx.save();
-    ctx.globalAlpha = 0.92;
-    ctx.fillStyle = 'rgba(255,255,255,0.12)';
-    ctx.beginPath();
-    ctx.arc(0, -4, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = visual.accent;
-    ctx.lineWidth = 4;
+    // Plus icon — generic "build here" marker.
+    ctx.strokeStyle = canBuy ? accent : 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
-    if (kind === 'cannon') {
-      ctx.beginPath();
-      ctx.moveTo(-17, -5);
-      ctx.lineTo(17, -5);
-      ctx.lineTo(25, -12);
-      ctx.stroke();
-    } else if (kind === 'laser') {
-      ctx.beginPath();
-      ctx.moveTo(-12, 8);
-      ctx.lineTo(15, -16);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(18, -18, 5, 0, Math.PI * 2);
-      ctx.fillStyle = visual.accent;
-      ctx.fill();
-    } else if (kind === 'tesla') {
-      ctx.beginPath();
-      ctx.moveTo(-8, 12);
-      ctx.lineTo(2, -5);
-      ctx.lineTo(-4, -5);
-      ctx.lineTo(8, -22);
-      ctx.stroke();
-    } else if (kind === 'ring') {
-      ctx.beginPath();
-      ctx.arc(0, -4, 15, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(0, -4, 5, 0, Math.PI * 2);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(-14, 4);
-      ctx.lineTo(0, -18);
-      ctx.lineTo(14, 4);
-      ctx.stroke();
-    }
+    ctx.beginPath();
+    ctx.moveTo(-15, 0);
+    ctx.lineTo(15, 0);
+    ctx.moveTo(0, -15);
+    ctx.lineTo(0, 15);
+    ctx.stroke();
+    drawPadLabel(0, -30, 'BUILD', canBuy);
     ctx.restore();
   }
 
@@ -2295,8 +3624,8 @@
     }
 
     drawLevelPips(pad.level);
-    if (pad.branchName) drawTowerBranch(pad.branchName, pad.level < 3 ? 82 : 58);
-    if (pad.level < 3) drawCostTag(0, 54, padCost(pad), state.coins >= padCost(pad));
+    if (pad.branchName) drawTowerBranch(pad.branchName, pad.level < 4 ? 82 : 58);
+    if (pad.level < 4) drawCostTag(0, 54, padCost(pad), state.coins >= padCost(pad));
     ctx.restore();
   }
 
@@ -2330,10 +3659,11 @@
   }
 
   function drawLevelPips(level) {
-    for (let i = 0; i < 3; i += 1) {
-      ctx.fillStyle = i < level ? '#ffd35d' : 'rgba(255,255,255,0.25)';
+    for (let i = 0; i < 4; i += 1) {
+      const ultimate = i === 3;
+      ctx.fillStyle = i < level ? (ultimate ? '#ff95ec' : '#ffd35d') : 'rgba(255,255,255,0.25)';
       ctx.beginPath();
-      ctx.arc(-14 + i * 14, 41, 4, 0, Math.PI * 2);
+      ctx.arc(-18 + i * 12, 41, 3.6, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -2541,6 +3871,45 @@
         ctx.lineTo(enemy.radius * 0.5, enemy.radius * 0.9);
         ctx.closePath();
         ctx.fill();
+      } else if (enemy.type === 'armored') {
+        // Metallic plating — rivets and a bolt across the body.
+        ctx.fillStyle = '#cdd6e2';
+        roundRect(-enemy.radius * 0.7, -enemy.radius * 0.2, enemy.radius * 1.4, enemy.radius * 0.34, 3);
+        ctx.fill();
+        ctx.fillStyle = '#8794a4';
+        for (let i = -1; i <= 1; i += 1) {
+          ctx.beginPath();
+          ctx.arc(enemy.radius * 0.5 * i, enemy.radius * 0.55, enemy.radius * 0.12, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (enemy.type === 'healer') {
+        // Pulsing green aura + white cross.
+        ctx.save();
+        ctx.globalAlpha = 0.35 + Math.sin(state.runSeconds * 5 + enemy.wobble) * 0.12;
+        ctx.strokeStyle = '#7cffb0';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, enemy.radius * 1.7, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = '#eafff2';
+        const cw = enemy.radius * 0.26;
+        ctx.fillRect(-cw / 2, -enemy.radius * 0.5, cw, enemy.radius);
+        ctx.fillRect(-enemy.radius * 0.5, -cw / 2, enemy.radius, cw);
+      }
+
+      // Elite marker: rotating gold ring.
+      if (enemy.elite) {
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = '#ffd35d';
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([6, 5]);
+        ctx.lineDashOffset = -state.runSeconds * 18;
+        ctx.beginPath();
+        ctx.arc(0, 0, enemy.radius * 1.32, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
 
       ctx.restore();
@@ -2646,9 +4015,22 @@
     ctx.lineWidth = 3;
     ctx.setLineDash([15, 13]);
     ctx.beginPath();
-    ctx.arc(0, -2, hero.range, 0, Math.PI * 2);
+    ctx.arc(0, -2, heroRangeValue(), 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
+
+    // Hero Strike shockwave.
+    if (state.strikePulse > 0) {
+      const k = 1 - state.strikePulse / 0.5;
+      ctx.save();
+      ctx.globalAlpha = state.strikePulse / 0.5;
+      ctx.strokeStyle = '#ffe58c';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, 0, 40 + k * 130, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
     ctx.fillStyle = 'rgba(0,0,0,0.22)';
     ctx.beginPath();
     ctx.ellipse(4, 20, 28, 10, 0, 0, Math.PI * 2);
@@ -2806,8 +4188,9 @@
     miniCtx.beginPath();
     miniCtx.arc(hero.x, hero.y, 18, 0, Math.PI * 2);
     miniCtx.fill();
+    const miniColor = { boss: '#ffd35d', shield: '#ff7da2', armored: '#9fb0c2', healer: '#52e38b' };
     for (const enemy of state.enemies) {
-      miniCtx.fillStyle = enemy.type === 'boss' ? '#ffd35d' : enemy.type === 'shield' ? '#ff7da2' : '#ff4b4b';
+      miniCtx.fillStyle = miniColor[enemy.type] || '#ff4b4b';
       miniCtx.beginPath();
       miniCtx.arc(enemy.x, enemy.y, enemy.type === 'boss' ? 18 : 10, 0, Math.PI * 2);
       miniCtx.fill();
@@ -2824,17 +4207,115 @@
 
   function getBiome() {
     if (!state) return biomes[0];
-    if (state.wave >= 7) return biomes[2];
-    if (state.wave >= 4) return biomes[1];
+    if (state.endless || state.wave >= 9) return biomes[2];
+    if (state.wave >= 5) return biomes[1];
     return biomes[0];
   }
 
-  function renderScreen(mode, finalScore = 0) {
+  function syncDifficultyButtons() {
+    if (ui.diffRow) {
+      ui.diffRow.querySelectorAll('.diff-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.diff === selectedDifficulty);
+      });
+    }
+    if (ui.modeRow) {
+      ui.modeRow.querySelectorAll('.diff-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.mode === selectedMode);
+      });
+    }
+  }
+
+  // ── Meta-progression panel ──
+  function openMetaPanel() {
+    renderMetaPanel();
+    ui.metaScreen.classList.add('show');
+  }
+  function closeMetaPanel() {
+    ui.metaScreen.classList.remove('show');
+  }
+
+  function renderMetaPanel() {
+    ui.metaCores.textContent = `Cores: ${meta.cores}`;
+    ui.metaList.innerHTML = '';
+    META_UPGRADES.forEach((u) => {
+      const lv = metaLv(u.id);
+      const cost = u.cost(lv);
+      const maxed = lv >= u.max;
+      const row = document.createElement('div');
+      row.className = 'meta-row';
+      row.innerHTML = `<div class="meta-info"><div class="meta-name">${u.name}</div>` +
+        `<div class="meta-desc">${u.desc}</div>` +
+        `<div class="meta-lv">Lv ${lv}/${u.max}</div></div>`;
+      const buy = document.createElement('button');
+      buy.type = 'button';
+      buy.className = 'meta-buy' + (maxed ? ' maxed' : '');
+      buy.textContent = maxed ? 'MAX' : `${cost} ◆`;
+      buy.disabled = maxed || meta.cores < cost;
+      if (!maxed) buy.addEventListener('click', () => buyMetaUpgrade(u.id));
+      row.appendChild(buy);
+      ui.metaList.appendChild(row);
+    });
+    ui.achList.innerHTML = '';
+    ACHIEVEMENTS.forEach((a) => {
+      const got = meta.ach.includes(a.id);
+      const row = document.createElement('div');
+      row.className = 'ach-row ' + (got ? 'unlocked' : 'locked');
+      row.innerHTML = `<span class="ach-dot"></span><span><span class="ach-name">${a.name}</span> — <span class="ach-desc">${a.desc}</span></span>`;
+      ui.achList.appendChild(row);
+    });
+  }
+
+  function buyMetaUpgrade(id) {
+    const u = META_UPGRADES.find((m) => m.id === id);
+    if (!u) return;
+    const lv = metaLv(id);
+    if (lv >= u.max) return;
+    const cost = u.cost(lv);
+    if (meta.cores < cost) return;
+    meta.cores -= cost;
+    meta.up[id] = lv + 1;
+    saveMeta();
+    renderMetaPanel();
+  }
+
+  // Award cores + unlock achievements at the end of a run.
+  function awardMeta(finalScore, won) {
+    const earned = Math.floor(finalScore / 1500) + state.wave * 2 + (won ? 20 : 0);
+    meta.cores += earned;
+    const unlocked = [];
+    const give = (id) => { if (!meta.ach.includes(id)) { meta.ach.push(id); unlocked.push(id); } };
+    if (won) give('firstWin');
+    if (won && state.diffKey === 'brutal') give('brutalWin');
+    if (state.wave >= 5 && state.baseHp >= state.baseMax) give('flawless');
+    if (state.wave >= 20) give('endless20');
+    if (state.placedUltimate) give('maxTower');
+    if (state.peakCoins >= 500) give('rich');
+    saveMeta();
+    return { earned, unlocked };
+  }
+
+  function rewardText(reward) {
+    if (!reward) return '';
+    let t = ` +${reward.earned} ◆ cores.`;
+    if (reward.unlocked && reward.unlocked.length) {
+      const names = reward.unlocked.map((id) => ACHIEVEMENTS.find((a) => a.id === id)?.name).filter(Boolean);
+      if (names.length) t += ` 🏆 ${names.join(', ')}!`;
+    }
+    return t;
+  }
+
+  function renderScreen(mode, finalScore = 0, reward = null) {
     const completedWave = state ? Math.max(0, state.wave - (state.waveActive ? 1 : 0)) : 0;
     ui.best.textContent = bestScore;
     ui.screenWave.textContent = String(completedWave);
     ui.screenKos.textContent = String(state?.defeated || 0);
     ui.primary.onclick = startRun;
+    ui.endless.hidden = true;
+    // Difficulty can be chosen before a fresh run (menu / after a finished run).
+    const showDiff = mode === 'menu' || mode === 'win' || mode === 'lose';
+    if (ui.diffSelect) ui.diffSelect.style.display = showDiff ? '' : 'none';
+    if (ui.upgrades) ui.upgrades.style.display = showDiff ? '' : 'none';
+    syncDifficultyButtons();
 
     if (mode === 'paused') {
       ui.screenKicker.textContent = 'Paused';
@@ -2844,20 +4325,22 @@
       ui.primary.onclick = togglePause;
     } else if (mode === 'win') {
       ui.screenKicker.textContent = 'Castle saved';
-      ui.screenTitle.textContent = 'Victory';
-      ui.screenCopy.textContent = `Final score: ${finalScore}.`;
+      ui.screenTitle.textContent = 'Campaign Cleared';
+      ui.screenCopy.textContent = `Final score: ${finalScore}.${rewardText(reward)} Push your luck in Endless Mode?`;
       ui.primary.textContent = 'Play Again';
       ui.primary.onclick = startRun;
+      ui.endless.hidden = false;
+      ui.endless.onclick = continueEndless;
     } else if (mode === 'lose') {
       ui.screenKicker.textContent = 'Castle fallen';
       ui.screenTitle.textContent = 'Game Over';
-      ui.screenCopy.textContent = `Final score: ${finalScore}.`;
+      ui.screenCopy.textContent = `Final score: ${finalScore}.${rewardText(reward)}`;
       ui.primary.textContent = 'Try Again';
       ui.primary.onclick = startRun;
     } else {
-      ui.screenKicker.textContent = 'Arcade defense';
+      ui.screenKicker.textContent = selectedViewMode === '3d' ? 'True 3D defense' : 'Classic 2D defense';
       ui.screenTitle.textContent = 'Castle Rush Defense';
-      ui.screenCopy.textContent = 'Spend coins on defense towers, collect enemy coins, and hold the road.';
+      ui.screenCopy.textContent = 'Choose a tower for each slot, counter enemy armour, and hold the road.';
       ui.primary.textContent = 'Start Run';
       ui.primary.onclick = startRun;
     }
@@ -2866,15 +4349,37 @@
     updateHud();
   }
 
+  // Pre-wave intel: rough enemy composition for the upcoming wave.
+  function describeWave(def) {
+    if (!def) return '';
+    const c = def.count;
+    const parts = [];
+    const add = (frac, label) => { const n = Math.round(c * (frac || 0)); if (n > 0) parts.push(`${n} ${label}`); };
+    add(def.brutes, 'brute');
+    add(def.armored, 'armored');
+    add(def.shields, 'shield');
+    add(def.healers, 'healer');
+    add(def.splitters, 'splitter');
+    return parts.join(' · ');
+  }
+
   function updatePhaseBanner() {
     if (!state || state.status !== 'playing' || !state.buildPhase || state.waveActive) {
       ui.phaseBanner.hidden = true;
       return;
     }
-    const nextWave = Math.min(TOTAL_WAVES, state.wave + 1);
+    const nextWave = state.wave + 1;
     const seconds = Math.max(0, Math.ceil(state.nextWaveTimer));
-    ui.phaseTitle.textContent = `Wave ${state.wave} Cleared`;
-    ui.phaseCopy.textContent = `Build, upgrade, or repair. Wave ${nextWave} starts in ${seconds}s.`;
+    const def = getWaveDef(nextWave);
+    ui.phaseTitle.textContent = `${state.endless ? 'Endless ' : ''}Wave ${state.wave} Cleared`;
+    let copy = `Next — Wave ${nextWave}: ${def.count} foes`;
+    const comp = describeWave(def);
+    if (comp) copy += ` · ${comp}`;
+    if (def.boss) copy += ` · ⚠ BOSS: ${def.boss.name}`;
+    const eliteSoon = Math.max(0, (nextWave - 4) * 0.035 + (state.endless ? 0.12 : 0)) * (state.diff.eliteMul || 1);
+    if (eliteSoon > 0.06) copy += ' · elites';
+    copy += ` · ${seconds}s`;
+    ui.phaseCopy.textContent = copy;
     ui.startNext.textContent = `Start Wave ${nextWave}`;
     ui.phaseBanner.hidden = false;
   }
@@ -2896,7 +4401,7 @@
 
   function updateHud() {
     if (!state) return;
-    ui.wave.textContent = state.wave ? `${state.wave}/${TOTAL_WAVES}` : `1/${TOTAL_WAVES}`;
+    ui.wave.textContent = state.endless ? `${state.wave}∞` : `${state.wave || 1}/${TOTAL_WAVES}`;
     ui.coins.textContent = String(Math.floor(state.coins));
     ui.towers.textContent = String(towerCount());
     ui.base.textContent = String(Math.ceil(state.baseHp));
@@ -2910,23 +4415,62 @@
     ui.pause.disabled = state.status === 'menu' || state.status === 'over';
     ui.shock.disabled = state.status !== 'playing' || state.shockCharge < 100;
     ui.shockFill.style.width = `${Math.round(state.shockCharge)}%`;
+    ui.strike.disabled = state.status !== 'playing' || state.strikeCd > 0;
+    ui.strikeFill.style.width = `${Math.round((1 - state.strikeCd / HERO_STRIKE_CD) * 100)}%`;
     ui.repair.disabled = state.status !== 'playing' || state.coins < 25 || state.baseHp >= state.baseMax;
   }
 
   function screenToWorld(clientX, clientY) {
+    if (threeBattlefield.ready && selectedViewMode === '3d') return screenToWorldThree(clientX, clientY);
     const rect = canvas.getBoundingClientRect();
     const x = (clientX - rect.left) / view.scale + view.x;
     const y = (clientY - rect.top) / view.scale + view.y;
     return { x, y };
   }
 
+  function setViewMode(mode, persist = true) {
+    selectedViewMode = mode === '2d' ? '2d' : '3d';
+    document.body.classList.toggle('view-2d', selectedViewMode === '2d');
+    ui.viewModeValue.textContent = selectedViewMode.toUpperCase();
+    ui.viewModeLabel.textContent = selectedViewMode === '3d' ? 'True 3D defense' : 'Classic 2D defense';
+    ui.viewMode.setAttribute('aria-label', selectedViewMode === '3d' ? 'Switch to 2D view' : 'Switch to 3D view');
+    ui.viewMode.title = selectedViewMode === '3d' ? 'Switch to classic 2D' : 'Switch to true 3D';
+    if (state?.status === 'menu' && ui.screen.classList.contains('show')) {
+      ui.screenKicker.textContent = selectedViewMode === '3d' ? 'True 3D defense' : 'Classic 2D defense';
+    }
+    if (persist) {
+      try { localStorage.setItem(VIEW_MODE_KEY, selectedViewMode); } catch {}
+    }
+    render();
+  }
+
+  function toggleViewMode() {
+    setViewMode(selectedViewMode === '3d' ? '2d' : '3d');
+  }
+
   function handleWorldTap(point) {
     if (!state || state.status !== 'playing') return;
-    const pad = state.pads.find((candidate) => distSq(point.x, point.y, candidate.x, candidate.y) < 58 * 58);
+    const pad = state.pads.find((candidate) => distSq(point.x, point.y, candidate.x, candidate.y) < 50 * 50);
     if (pad) {
-      if (pad.built) showTowerMenu(pad);
-      else buyOrUpgradePad(pad);
+      showTowerMenu(pad);
       input.target = null;
+      return;
+    }
+    // Tap the hero to open its upgrade menu.
+    if (distSq(point.x, point.y, hero.x, hero.y) < (hero.r + 26) * (hero.r + 26)) {
+      showHeroMenu();
+      input.target = null;
+      return;
+    }
+    // Free Build: tap valid ground to place a tower.
+    if (state.freeBuild) {
+      hideTowerMenu();
+      if (canPlaceAt(point.x, point.y)) {
+        showPlaceMenu(point.x, point.y);
+        input.target = null;
+      } else {
+        addFloater(point.x - 20, point.y - 18, 'Blocked', '#ff8a8a', 0.7);
+      }
       return;
     }
     hideTowerMenu();
@@ -2974,6 +4518,7 @@
         return;
       }
       if (key === 'e') useShock();
+      if (key === 'q') useHeroStrike();
       if (key === 'r') repairBase();
       input.keys.add(key);
     }, { passive: false });
@@ -2983,10 +4528,29 @@
     });
 
     ui.pause.addEventListener('click', togglePause);
+    ui.strike.addEventListener('click', useHeroStrike);
     ui.shock.addEventListener('click', useShock);
     ui.repair.addEventListener('click', repairBase);
     ui.startNext.addEventListener('click', startNextWaveNow);
     ui.towerMenuClose.addEventListener('click', hideTowerMenu);
+
+    ui.diffRow?.addEventListener('click', (event) => {
+      const btn = event.target.closest('.diff-btn');
+      if (!btn || !DIFFICULTIES[btn.dataset.diff]) return;
+      selectedDifficulty = btn.dataset.diff;
+      syncDifficultyButtons();
+    });
+
+    ui.modeRow?.addEventListener('click', (event) => {
+      const btn = event.target.closest('.diff-btn');
+      if (!btn || !btn.dataset.mode) return;
+      selectedMode = btn.dataset.mode;
+      syncDifficultyButtons();
+    });
+
+    ui.upgrades?.addEventListener('click', openMetaPanel);
+    ui.metaClose?.addEventListener('click', closeMetaPanel);
+    ui.viewMode?.addEventListener('click', toggleViewMode);
   }
 
   function frame(now) {
@@ -3027,11 +4591,993 @@
     return `rgb(${r}, ${g}, ${b})`;
   }
 
+  // ── True 3D battlefield renderer ─────────────────────────────
+  // The simulation above remains the source of truth. This layer mirrors that
+  // state in Three.js and maps pointer hits back into the same WORLD coordinates.
+  function initThreeBattlefield() {
+    import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js')
+      .then((T) => {
+        threeBattlefield.T = T;
+        const renderer = new T.WebGLRenderer({
+          canvas: canvas3d,
+          antialias: true,
+          alpha: false,
+          powerPreference: 'high-performance',
+          preserveDrawingBuffer: true,
+        });
+        renderer.setPixelRatio(Math.min(1.6, window.devicePixelRatio || 1));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = T.PCFSoftShadowMap;
+        renderer.outputColorSpace = T.SRGBColorSpace;
+        renderer.toneMapping = T.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.05;
+        threeBattlefield.renderer = renderer;
+
+        const scene3 = new T.Scene();
+        threeBattlefield.scene = scene3;
+        const camera3 = new T.OrthographicCamera(-10, 10, 10, -10, 0.1, 100);
+        threeBattlefield.camera = camera3;
+        threeBattlefield.raycaster = new T.Raycaster();
+        threeBattlefield.pointer = new T.Vector2();
+
+        scene3.add(new T.HemisphereLight(0xd8f4ff, 0x6b7e50, 2.35));
+        const sun3 = new T.DirectionalLight(0xffefd0, 4.1);
+        sun3.position.set(-10, 24, 12);
+        sun3.castShadow = true;
+        sun3.shadow.mapSize.set(2048, 2048);
+        sun3.shadow.camera.left = -24;
+        sun3.shadow.camera.right = 24;
+        sun3.shadow.camera.top = 20;
+        sun3.shadow.camera.bottom = -20;
+        sun3.shadow.camera.near = 1;
+        sun3.shadow.camera.far = 60;
+        sun3.shadow.bias = -0.00025;
+        scene3.add(sun3);
+        const fill3 = new T.DirectionalLight(0x8fdcff, 0.9);
+        fill3.position.set(18, 11, -16);
+        scene3.add(fill3);
+
+        const worldRoot = new T.Group();
+        const actorRoot = new T.Group();
+        scene3.add(worldRoot, actorRoot);
+        threeBattlefield.worldRoot = worldRoot;
+        threeBattlefield.actorRoot = actorRoot;
+
+        buildStaticThreeWorld();
+        buildThreeHero();
+        buildThreeTargetMarkers();
+
+        const hitMaterial = new T.MeshBasicMaterial({
+          color: 0xffffff,
+          transparent: true,
+          opacity: 0,
+          depthWrite: false,
+        });
+        const hitPlane = new T.Mesh(new T.PlaneGeometry(80, 80), hitMaterial);
+        hitPlane.rotation.x = -Math.PI / 2;
+        hitPlane.position.y = 0.015;
+        scene3.add(hitPlane);
+        threeBattlefield.hitPlane = hitPlane;
+
+        resizeThreeBattlefield();
+        syncThreeBiome(true);
+        threeBattlefield.ready = true;
+        document.body.classList.add('three-ready');
+        window.addEventListener('resize', resizeThreeBattlefield);
+      })
+      .catch((error) => {
+        threeBattlefield.failed = true;
+        document.body.classList.add('three-fallback');
+        console.error('Castle Rush: Three.js battlefield failed to load.', error);
+      });
+  }
+
+  function threeWorldPoint(x, y, height = 0) {
+    const T = threeBattlefield.T;
+    const s = threeBattlefield.worldScale;
+    return new T.Vector3((x - WORLD.w / 2) * s, height, (y - WORLD.h / 2) * s);
+  }
+
+  function threeToWorld(point) {
+    const s = threeBattlefield.worldScale;
+    return {
+      x: point.x / s + WORLD.w / 2,
+      y: point.z / s + WORLD.h / 2,
+    };
+  }
+
+  function threeToon(color, options = {}) {
+    const T = threeBattlefield.T;
+    return new T.MeshToonMaterial({ color, ...options });
+  }
+
+  function threeStandard(color, options = {}) {
+    const T = threeBattlefield.T;
+    return new T.MeshStandardMaterial({
+      color,
+      roughness: 0.76,
+      metalness: 0,
+      ...options,
+    });
+  }
+
+  function roleMaterialThree(role, color, options = {}) {
+    const material = threeToon(color, options);
+    material.userData.biomeRole = role;
+    return material;
+  }
+
+  function meshThree(geometry, material, position = null, cast = true) {
+    const T = threeBattlefield.T;
+    const item = new T.Mesh(geometry, material);
+    if (position) item.position.set(position[0], position[1], position[2]);
+    item.castShadow = cast;
+    item.receiveShadow = true;
+    return item;
+  }
+
+  function boxThree(w, h, d, material, position, cast = true) {
+    const T = threeBattlefield.T;
+    return meshThree(new T.BoxGeometry(w, h, d), material, position, cast);
+  }
+
+  function cylinderThree(top, bottom, h, sides, material, position, cast = true) {
+    const T = threeBattlefield.T;
+    return meshThree(new T.CylinderGeometry(top, bottom, h, sides), material, position, cast);
+  }
+
+  function buildStaticThreeWorld() {
+    const T = threeBattlefield.T;
+    const root = threeBattlefield.worldRoot;
+    const s = threeBattlefield.worldScale;
+    const groundMat = roleMaterialThree('ground', biomes[0].ground);
+    const ground = boxThree(WORLD.w * s + 1.2, 0.72, WORLD.h * s + 1.2, groundMat, [0, -0.41, 0], false);
+    root.add(ground);
+    root.add(boxThree(
+      WORLD.w * s + 1.7,
+      1.5,
+      WORLD.h * s + 1.7,
+      roleMaterialThree('ground2', biomes[0].ground2),
+      [0, -1.48, 0],
+      false,
+    ));
+
+    const water = boxThree(8.6, 0.12, 1.35, roleMaterialThree('water', biomes[0].water, {
+      transparent: true,
+      opacity: 0.9,
+    }), [-7.7, 0.02, -5.58], false);
+    water.rotation.y = -0.08;
+    root.add(water);
+
+    for (const path of paths) {
+      root.add(buildThreeRoadStrip(path.points, 96, roleMaterialThree('pathShadow', shade(biomes[0].path, -40)), 0.015));
+      root.add(buildThreeRoadStrip(path.points, 76, roleMaterialThree('path', biomes[0].path), 0.045));
+      root.add(buildThreeRoadStrip(path.points, 48, roleMaterialThree('pathLight', biomes[0].pathLight), 0.068));
+      for (const seg of path.segments) {
+        const steps = Math.max(1, Math.floor(seg.len / 92));
+        for (let i = 1; i <= steps; i += 1) {
+          const t = i / (steps + 1);
+          const len = Math.max(1, seg.len);
+          const side = i % 2 === 0 ? 1 : -1;
+          const offset = side * (30 + (i % 3) * 4);
+          const x = seg.a.x + seg.dx * t + (-seg.dy / len) * offset;
+          const y = seg.a.y + seg.dy * t + (seg.dx / len) * offset;
+          const p = threeWorldPoint(x, y, 0.12);
+          const stone = boxThree(
+            0.22 + (i % 3) * 0.04,
+            0.09,
+            0.13,
+            roleMaterialThree('pathStone', shade(biomes[0].path, -42)),
+            [p.x, p.y, p.z],
+          );
+          stone.rotation.y = Math.atan2(seg.dx, seg.dy) + (i % 2 ? 0.18 : -0.13);
+          root.add(stone);
+        }
+      }
+    }
+
+    decorations.forEach((item, index) => {
+      const model = item.type === 'tree'
+        ? makeThreeTree(item.s)
+        : item.type === 'crate'
+          ? makeThreeCrate(item.s)
+          : makeThreeRock(item.s, index);
+      const p = threeWorldPoint(item.x, item.y, 0);
+      model.position.set(p.x, 0, p.z);
+      model.rotation.y = item.r;
+      root.add(model);
+    });
+
+    for (let i = 0; i < 38; i += 1) {
+      const x = 45 + ((i * 137 + 41) % (WORLD.w - 90));
+      const y = 120 + ((i * 73 + 29) % (WORLD.h - 170));
+      if (distanceToThreePaths(x, y) < 70) continue;
+      const p = threeWorldPoint(x, y, 0.05);
+      const tuft = new T.Group();
+      tuft.position.set(p.x, p.y, p.z);
+      for (let b = 0; b < 3; b += 1) {
+        const blade = boxThree(0.025, 0.16 + b * 0.035, 0.025, roleMaterialThree('ground2', biomes[0].ground2), [(b - 1) * 0.07, 0.08, 0], false);
+        blade.rotation.z = (b - 1) * -0.25;
+        tuft.add(blade);
+      }
+      root.add(tuft);
+    }
+
+    threeBattlefield.baseModel = makeThreeCastle();
+    const bp = threeWorldPoint(base.x, base.y, 0);
+    threeBattlefield.baseModel.position.set(bp.x, 0, bp.z);
+    root.add(threeBattlefield.baseModel);
+
+    const clouds = new T.Group();
+    for (let i = 0; i < 5; i += 1) {
+      const cloud = new T.Group();
+      cloud.position.set(-14 + i * 7, 8.5 + (i % 2), -8 + (i % 3) * 6);
+      cloud.userData.cloudSpeed = 0.06 + i * 0.01;
+      for (let p = 0; p < 4; p += 1) {
+        const puff = meshThree(
+          new T.SphereGeometry(0.62 + (p % 2) * 0.18, 9, 6),
+          threeStandard(0xffffff, { transparent: true, opacity: 0.46 }),
+          [(p - 1.5) * 0.7, Math.abs(p - 1.5) * -0.08, (p % 2) * 0.15],
+          false,
+        );
+        puff.scale.y = 0.58;
+        cloud.add(puff);
+      }
+      clouds.add(cloud);
+    }
+    threeBattlefield.clouds = clouds;
+    threeBattlefield.scene.add(clouds);
+  }
+
+  function buildThreeRoadStrip(points, width, material, height) {
+    const T = threeBattlefield.T;
+    const s = threeBattlefield.worldScale;
+    const vertices = [];
+    const indices = [];
+    for (let i = 0; i < points.length; i += 1) {
+      const prev = points[Math.max(0, i - 1)];
+      const next = points[Math.min(points.length - 1, i + 1)];
+      const dx = next.x - prev.x;
+      const dy = next.y - prev.y;
+      const len = Math.max(1, Math.hypot(dx, dy));
+      const nx = -dy / len;
+      const ny = dx / len;
+      const center = threeWorldPoint(points[i].x, points[i].y, height);
+      const half = width * s * 0.5;
+      vertices.push(center.x + nx * half, height, center.z + ny * half);
+      vertices.push(center.x - nx * half, height, center.z - ny * half);
+      if (i < points.length - 1) {
+        const a = i * 2;
+        indices.push(a, a + 2, a + 1, a + 2, a + 3, a + 1);
+      }
+    }
+    const geometry = new T.BufferGeometry();
+    geometry.setAttribute('position', new T.Float32BufferAttribute(vertices, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    return meshThree(geometry, material, null, false);
+  }
+
+  function distanceToThreePaths(x, y) {
+    let best = Infinity;
+    for (const path of paths) {
+      for (const seg of path.segments) {
+        const denom = seg.len * seg.len || 1;
+        const t = clamp(((x - seg.a.x) * seg.dx + (y - seg.a.y) * seg.dy) / denom, 0, 1);
+        const px = seg.a.x + seg.dx * t;
+        const py = seg.a.y + seg.dy * t;
+        best = Math.min(best, Math.hypot(x - px, y - py));
+      }
+    }
+    return best;
+  }
+
+  function makeThreeTree(scale = 1) {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    group.scale.setScalar(scale);
+    group.add(cylinderThree(0.09, 0.13, 0.78, 7, threeToon(0x7b5a3d), [0, 0.39, 0]));
+    group.add(cylinderThree(0, 0.52, 0.92, 7, roleMaterialThree('tree', biomes[0].tree), [-0.12, 1.02, 0]));
+    group.add(cylinderThree(0, 0.56, 1.0, 7, roleMaterialThree('treeLight', shade(biomes[0].tree, 22)), [0.18, 1.18, 0.04]));
+    return group;
+  }
+
+  function makeThreeRock(scale = 1, variant = 0) {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    group.scale.setScalar(scale);
+    const rock = meshThree(
+      new T.DodecahedronGeometry(0.42, 0),
+      roleMaterialThree('rock', biomes[0].rock),
+      [0, 0.31, 0],
+    );
+    rock.scale.y = 0.72;
+    rock.rotation.set(variant * 0.16, variant * 0.73, -0.16);
+    group.add(rock);
+    return group;
+  }
+
+  function makeThreeCrate(scale = 1) {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    group.scale.setScalar(scale);
+    group.add(boxThree(0.68, 0.68, 0.68, threeToon(0x8f5b3d), [0, 0.34, 0]));
+    const brace = threeToon(0x593725);
+    const a = boxThree(0.08, 0.82, 0.72, brace, [0, 0.34, 0.02]);
+    a.rotation.z = Math.PI / 4;
+    const b = boxThree(0.08, 0.82, 0.72, brace, [0, 0.34, 0.03]);
+    b.rotation.z = -Math.PI / 4;
+    group.add(a, b);
+    return group;
+  }
+
+  function makeThreeCastle() {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    const wall = roleMaterialThree('castleWall', 0xad8268);
+    const wallDark = threeToon(0x6d4839);
+    const roof = roleMaterialThree('roof', biomes[0].roof);
+    group.add(boxThree(2.65, 1.55, 1.8, wall, [0, 0.82, 0]));
+    group.add(boxThree(1.8, 1.2, 1.35, wallDark, [0, 0.65, 0.25]));
+    group.add(boxThree(0.64, 0.95, 0.12, threeToon(0x664032), [0, 0.58, 0.96]));
+    group.add(boxThree(0.28, 0.62, 0.13, threeToon(0xffd35d), [0, 0.38, 1.04]));
+    const keepRoof = cylinderThree(0, 1.78, 1.12, 4, roof, [0, 2.05, 0]);
+    keepRoof.rotation.y = Math.PI / 4;
+    group.add(keepRoof);
+    for (const x of [-1.05, 1.05]) {
+      const tower = cylinderThree(0.52, 0.62, 2.0, 8, wall, [x, 1.0, 0.2]);
+      const towerRoof = cylinderThree(0, 0.78, 0.78, 8, roof, [x, 2.35, 0.2]);
+      group.add(tower, towerRoof);
+    }
+    for (const x of [-0.82, 0, 0.82]) {
+      group.add(boxThree(0.34, 0.36, 0.38, wall, [x, 1.78, 0.77]));
+    }
+    const pole = cylinderThree(0.025, 0.025, 1.45, 6, threeToon(0x31506d), [1.34, 2.75, 0]);
+    group.add(pole);
+    const flag = meshThree(new T.PlaneGeometry(0.8, 0.42), threeStandard(0x4ec7ff, {
+      side: T.DoubleSide,
+    }), [1.72, 3.14, 0], false);
+    flag.rotation.y = Math.PI / 2;
+    group.add(flag);
+
+    const hpBar = new T.Group();
+    hpBar.position.set(0, 3.2, 0.45);
+    const back = boxThree(2.0, 0.12, 0.08, threeStandard(0x26333a), [0, 0, 0], false);
+    const fill = boxThree(1.92, 0.075, 0.09, threeStandard(0x52e38b, {
+      emissive: 0x185f39,
+      emissiveIntensity: 0.45,
+    }), [0, 0, -0.05], false);
+    hpBar.add(back, fill);
+    hpBar.userData.fill = fill;
+    group.add(hpBar);
+    group.userData.hpBar = hpBar;
+    return group;
+  }
+
+  function buildThreeHero() {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    group.add(boxThree(0.55, 0.72, 0.42, threeToon(0x2f7df1), [0, 0.78, 0]));
+    group.add(meshThree(new T.SphereGeometry(0.24, 10, 7), threeToon(0xf2c480), [0, 1.35, 0]));
+    group.add(boxThree(0.17, 0.55, 0.17, threeToon(0x174a96), [-0.18, 0.26, 0]));
+    group.add(boxThree(0.17, 0.55, 0.17, threeToon(0x174a96), [0.18, 0.26, 0]));
+    const staff = cylinderThree(0.035, 0.035, 1.3, 6, threeToon(0xffe28a), [0.48, 0.92, 0]);
+    staff.rotation.z = -0.42;
+    group.add(staff);
+    const orb = meshThree(new T.SphereGeometry(0.14, 10, 7), threeStandard(0x5ddcff, {
+      emissive: 0x238cb6,
+      emissiveIntensity: 1.5,
+    }), [0.74, 1.48, 0]);
+    group.add(orb);
+
+    const rangeMat = new T.MeshBasicMaterial({
+      color: 0x4ec7ff,
+      transparent: true,
+      opacity: 0.18,
+      side: T.DoubleSide,
+      depthWrite: false,
+    });
+    const range = new T.Mesh(new T.RingGeometry(0.98, 1, 64), rangeMat);
+    range.rotation.x = -Math.PI / 2;
+    range.position.y = 0.035;
+    group.add(range);
+    group.userData.range = range;
+
+    const strike = new T.Mesh(
+      new T.RingGeometry(0.86, 1, 48),
+      new T.MeshBasicMaterial({
+        color: 0xffe58c,
+        transparent: true,
+        opacity: 0.7,
+        side: T.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    strike.rotation.x = -Math.PI / 2;
+    strike.position.y = 0.08;
+    strike.visible = false;
+    group.add(strike);
+    group.userData.strike = strike;
+    threeBattlefield.heroModel = group;
+    threeBattlefield.actorRoot.add(group);
+  }
+
+  function buildThreeTargetMarkers() {
+    const T = threeBattlefield.T;
+    const target = new T.Mesh(
+      new T.RingGeometry(0.32, 0.4, 32),
+      new T.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.72,
+        side: T.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    target.rotation.x = -Math.PI / 2;
+    target.position.y = 0.09;
+    target.visible = false;
+    threeBattlefield.actorRoot.add(target);
+    threeBattlefield.targetMarker = target;
+
+    const place = new T.Mesh(
+      new T.RingGeometry(0.55, 0.68, 36),
+      new T.MeshBasicMaterial({
+        color: 0x60dcff,
+        transparent: true,
+        opacity: 0.8,
+        side: T.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    place.rotation.x = -Math.PI / 2;
+    place.position.y = 0.1;
+    place.visible = false;
+    threeBattlefield.actorRoot.add(place);
+    threeBattlefield.placeMarker = place;
+
+    const shock = new T.Mesh(
+      new T.RingGeometry(0.86, 1, 64),
+      new T.MeshBasicMaterial({
+        color: 0x8ff3ff,
+        transparent: true,
+        opacity: 0.6,
+        side: T.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    shock.rotation.x = -Math.PI / 2;
+    shock.position.y = 0.12;
+    shock.visible = false;
+    threeBattlefield.actorRoot.add(shock);
+    threeBattlefield.shockRing = shock;
+  }
+
+  function resizeThreeBattlefield() {
+    if (!threeBattlefield.renderer) return;
+    const rect = canvas3d.getBoundingClientRect();
+    const width = Math.max(1, rect.width);
+    const height = Math.max(1, rect.height);
+    threeBattlefield.renderer.setSize(width, height, false);
+    const aspect = width / height;
+    const portrait = aspect < 0.78;
+    const viewHeight = portrait ? 27 : aspect < 1.15 ? 21 : 16.8;
+    const camera3 = threeBattlefield.camera;
+    camera3.left = -viewHeight * aspect / 2;
+    camera3.right = viewHeight * aspect / 2;
+    camera3.top = viewHeight / 2;
+    camera3.bottom = -viewHeight / 2;
+    if (portrait) camera3.position.set(22, 27, 0.5);
+    else camera3.position.set(17, 20, 18);
+    camera3.lookAt(0.5, 0, 0);
+    camera3.updateProjectionMatrix();
+  }
+
+  function screenToWorldThree(clientX, clientY) {
+    const rect = canvas3d.getBoundingClientRect();
+    const pointer3 = threeBattlefield.pointer;
+    pointer3.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pointer3.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    threeBattlefield.raycaster.setFromCamera(pointer3, threeBattlefield.camera);
+    const hit = threeBattlefield.raycaster.intersectObject(threeBattlefield.hitPlane, false)[0];
+    if (!hit) return { x: WORLD.w / 2, y: WORLD.h / 2 };
+    const point = threeToWorld(hit.point);
+    return {
+      x: clamp(point.x, -100, WORLD.w + 100),
+      y: clamp(point.y, -100, WORLD.h + 100),
+    };
+  }
+
+  function syncThreeBiome(force = false) {
+    if (!threeBattlefield.ready && !force) return;
+    const biome = getBiome();
+    if (!force && biome.id === threeBattlefield.biomeId) return;
+    threeBattlefield.biomeId = biome.id;
+    const roleColors = {
+      ground: biome.ground,
+      ground2: biome.ground2,
+      path: biome.path,
+      pathLight: biome.pathLight,
+      pathShadow: shade(biome.path, -40),
+      pathStone: shade(biome.path, -42),
+      rock: biome.rock,
+      tree: biome.tree,
+      treeLight: shade(biome.tree, 22),
+      roof: biome.roof,
+      water: biome.water,
+      castleWall: biome.id === 'frost' ? '#a8bdcc' : '#ad8268',
+    };
+    threeBattlefield.scene.background = new threeBattlefield.T.Color(biome.sky);
+    threeBattlefield.scene.fog = new threeBattlefield.T.Fog(biome.sky, 28, 50);
+    threeBattlefield.scene.traverse((child) => {
+      const material = child.material;
+      const role = material?.userData?.biomeRole;
+      if (role && roleColors[role]) material.color.set(roleColors[role]);
+    });
+  }
+
+  function makeThreeEnemy(enemy) {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    const bodyMat = threeToon(enemy.color);
+    const darkMat = threeToon(0x2c3040);
+    const body = boxThree(0.92, 0.72, 0.82, bodyMat, [0, 0.62, 0]);
+    group.add(body);
+    group.add(boxThree(0.18, 0.78, 0.86, darkMat, [0.12, 0.64, 0.01]));
+    group.add(boxThree(0.17, 0.42, 0.19, darkMat, [-0.28, 0.21, 0.2]));
+    group.add(boxThree(0.17, 0.42, 0.19, darkMat, [0.28, 0.21, 0.2]));
+    const eyeMat = threeStandard(0x151923, { emissive: 0x151923, emissiveIntensity: 0.3 });
+    group.add(meshThree(new T.SphereGeometry(0.06, 7, 5), eyeMat, [-0.23, 0.73, 0.43]));
+    group.add(meshThree(new T.SphereGeometry(0.06, 7, 5), eyeMat, [0.23, 0.73, 0.43]));
+
+    if (enemy.type === 'runner') {
+      group.add(boxThree(0.76, 0.08, 0.08, threeToon(0xffd35d), [0, 0.25, 0.46]));
+    } else if (enemy.type === 'shield') {
+      const shield = cylinderThree(0.55, 0.55, 0.11, 12, threeStandard(0x9fe1ff, {
+        transparent: true,
+        opacity: 0.65,
+      }), [0, 0.7, 0.56]);
+      shield.rotation.x = Math.PI / 2;
+      group.add(shield);
+    } else if (enemy.type === 'splitter') {
+      const gemMat = threeStandard(0xffd35d, { emissive: 0x9b6200, emissiveIntensity: 0.8 });
+      group.add(meshThree(new T.SphereGeometry(0.12, 8, 6), gemMat, [-0.22, 0.62, 0.48]));
+      group.add(meshThree(new T.SphereGeometry(0.1, 8, 6), gemMat, [0.26, 0.48, 0.48]));
+    } else if (enemy.type === 'boss') {
+      const crown = new T.Group();
+      for (const x of [-0.35, 0, 0.35]) {
+        const spike = cylinderThree(0, 0.14, 0.42 + Math.abs(x) * 0.2, 4, threeToon(0xffd35d), [x, 1.25, 0]);
+        crown.add(spike);
+      }
+      group.add(crown);
+    } else if (enemy.type === 'brute') {
+      const armor = boxThree(0.48, 0.7, 0.18, threeToon(0xaeb6c5), [0.58, 0.62, 0.08]);
+      armor.rotation.z = -0.18;
+      group.add(armor);
+    } else if (enemy.type === 'armored') {
+      group.add(boxThree(0.98, 0.22, 0.86, threeToon(0xcdd6e2), [0, 0.67, 0]));
+      const rivetMat = threeToon(0x8794a4);
+      for (const x of [-0.3, 0, 0.3]) {
+        group.add(meshThree(new T.SphereGeometry(0.055, 6, 4), rivetMat, [x, 0.84, 0.44]));
+      }
+    } else if (enemy.type === 'healer') {
+      const crossMat = threeStandard(0xeafff2, { emissive: 0x69e6a5, emissiveIntensity: 0.5 });
+      group.add(boxThree(0.14, 0.64, 0.08, crossMat, [0, 0.67, 0.46], false));
+      group.add(boxThree(0.62, 0.14, 0.08, crossMat, [0, 0.67, 0.46], false));
+      const aura = new T.Mesh(
+        new T.RingGeometry(0.68, 0.76, 36),
+        new T.MeshBasicMaterial({
+          color: 0x7cffb0,
+          transparent: true,
+          opacity: 0.3,
+          side: T.DoubleSide,
+          depthWrite: false,
+        }),
+      );
+      aura.rotation.x = -Math.PI / 2;
+      aura.position.y = 0.05;
+      group.add(aura);
+      group.userData.healerAura = aura;
+    }
+
+    const slowRing = new T.Mesh(
+      new T.RingGeometry(0.62, 0.7, 36),
+      new T.MeshBasicMaterial({
+        color: 0x8ff3ff,
+        transparent: true,
+        opacity: 0.55,
+        side: T.DoubleSide,
+        depthWrite: false,
+      }),
+    );
+    slowRing.rotation.x = -Math.PI / 2;
+    slowRing.position.y = 0.07;
+    slowRing.visible = false;
+    group.add(slowRing);
+    group.userData.slowRing = slowRing;
+
+    if (enemy.elite) {
+      const eliteRing = new T.Mesh(
+        new T.TorusGeometry(0.72, 0.035, 6, 32),
+        threeStandard(0xffd35d, { emissive: 0x9f6500, emissiveIntensity: 1.1 }),
+      );
+      eliteRing.rotation.x = Math.PI / 2;
+      eliteRing.position.y = 0.16;
+      group.add(eliteRing);
+      group.userData.eliteRing = eliteRing;
+    }
+
+    const hp = new T.Group();
+    hp.position.set(0, 1.34, 0);
+    hp.add(boxThree(0.94, 0.09, 0.06, threeStandard(0x26333a), [0, 0, 0], false));
+    const fill = boxThree(0.9, 0.055, 0.07, threeStandard(0xffdf6d, {
+      emissive: 0x705000,
+      emissiveIntensity: 0.35,
+    }), [0, 0, -0.04], false);
+    hp.add(fill);
+    hp.userData.fill = fill;
+    group.add(hp);
+    group.userData.hpBar = hp;
+    group.scale.setScalar(Math.max(0.58, enemy.radius * 0.035));
+    return group;
+  }
+
+  function updateThreeEnemy(enemy, model) {
+    const p = threeWorldPoint(enemy.x, enemy.y, 0);
+    model.position.set(p.x, 0.1 + Math.abs(Math.sin(threeBattlefield.elapsed * 7 + enemy.wobble)) * 0.04, p.z);
+    model.rotation.y = Math.PI / 2 - enemy.angle;
+    model.userData.slowRing.visible = enemy.slow > 0 || state.freezeTimer > 0;
+    if (model.userData.eliteRing) model.userData.eliteRing.rotation.z += 0.035;
+    if (model.userData.healerAura) {
+      const pulse = 0.95 + Math.sin(threeBattlefield.elapsed * 5 + enemy.wobble) * 0.08;
+      model.userData.healerAura.scale.setScalar(pulse);
+    }
+    const ratio = Math.max(0.001, enemy.hp / enemy.maxHp);
+    const bar = model.userData.hpBar;
+    bar.visible = ratio < 0.999 || enemy.type === 'boss';
+    bar.rotation.y = -model.rotation.y;
+    const fill = bar.userData.fill;
+    fill.scale.x = ratio;
+    fill.position.x = -0.45 * (1 - ratio);
+    fill.material.color.set(enemy.slow > 0 ? 0x8ff3ff : ratio < 0.3 ? 0xff6b68 : 0xffdf6d);
+  }
+
+  function makeThreePad(pad) {
+    const T = threeBattlefield.T;
+    const group = new T.Group();
+    const stone = threeToon(0x75858a);
+    group.add(cylinderThree(0.74, 0.84, 0.18, 12, stone, [0, 0.1, 0]));
+    if (!pad.built) {
+      group.add(cylinderThree(0.61, 0.64, 0.08, 12, threeStandard(0x286d72, {
+        emissive: 0x123b45,
+        emissiveIntensity: 0.7,
+      }), [0, 0.22, 0]));
+      const plusMat = threeStandard(0x60dcff, { emissive: 0x238bb5, emissiveIntensity: 1.3 });
+      group.add(boxThree(0.62, 0.12, 0.12, plusMat, [0, 0.36, 0]));
+      group.add(boxThree(0.12, 0.12, 0.62, plusMat, [0, 0.36, 0]));
+      const ring = new T.Mesh(
+        new T.TorusGeometry(0.66, 0.035, 6, 28),
+        threeStandard(0x60dcff, { emissive: 0x238bb5, emissiveIntensity: 1.5 }),
+      );
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.3;
+      group.add(ring);
+      group.userData.pulseRing = ring;
+    } else {
+      const visual = towerVisual(pad);
+      const accent = threeToon(visual.accent);
+      const dark = threeToon(visual.dark);
+      const light = threeStandard(visual.light, {
+        emissive: visual.accent,
+        emissiveIntensity: 0.55,
+      });
+      group.add(cylinderThree(0.54, 0.66, 0.9, 8, dark, [0, 0.66, 0]));
+      group.add(cylinderThree(0.6, 0.6, 0.16, 8, stone, [0, 1.16, 0]));
+      const rotor = new T.Group();
+      rotor.position.y = 1.28;
+      group.add(rotor);
+      group.userData.rotor = rotor;
+      if (pad.kind === 'bolt') {
+        rotor.add(boxThree(0.72, 0.46, 0.72, accent, [0, 0.22, 0]));
+        rotor.add(boxThree(0.12, 0.12, 1.0, light, [0, 0.38, 0.42]));
+      } else if (pad.kind === 'ring') {
+        rotor.add(cylinderThree(0.52, 0.62, 0.48, 8, accent, [0, 0.22, 0]));
+        const halo = new T.Mesh(new T.TorusGeometry(0.62, 0.07, 8, 28), light);
+        halo.rotation.x = Math.PI / 2;
+        halo.position.y = 0.58;
+        rotor.add(halo);
+      } else if (pad.kind === 'tesla') {
+        rotor.add(cylinderThree(0.36, 0.55, 0.62, 6, dark, [0, 0.28, 0]));
+        rotor.add(meshThree(new T.OctahedronGeometry(0.42, 0), light, [0, 0.9, 0]));
+      } else if (pad.kind === 'cannon') {
+        rotor.add(cylinderThree(0.5, 0.6, 0.48, 8, dark, [0, 0.2, 0]));
+        const barrel = cylinderThree(0.17, 0.23, 1.12, 10, accent, [0, 0.48, 0.44]);
+        barrel.rotation.x = Math.PI / 2;
+        rotor.add(barrel);
+      } else {
+        rotor.add(cylinderThree(0.32, 0.5, 0.82, 6, dark, [0, 0.38, 0]));
+        rotor.add(meshThree(new T.OctahedronGeometry(0.38, 0), light, [0, 1.0, 0]));
+      }
+      for (let i = 0; i < pad.level; i += 1) {
+        const pip = meshThree(new T.SphereGeometry(0.065, 7, 5), threeStandard(
+          i === 3 ? 0xff95ec : 0xffd35d,
+          { emissive: i === 3 ? 0x8d2c7d : 0x8a5a00, emissiveIntensity: 0.8 },
+        ), [-0.22 + i * 0.15, 1.18, 0.53]);
+        group.add(pip);
+      }
+    }
+    return group;
+  }
+
+  function padSignatureThree(pad) {
+    return pad.built
+      ? [pad.kind, pad.level, pad.branch || '', pad.targetMode || ''].join(':')
+      : 'empty';
+  }
+
+  function syncThreePads() {
+    const active = new Set(state.pads);
+    for (const pad of state.pads) {
+      const signature = padSignatureThree(pad);
+      let record = threeBattlefield.padModels.get(pad);
+      if (!record || record.signature !== signature) {
+        if (record) {
+          threeBattlefield.actorRoot.remove(record.group);
+          disposeThreeObject(record.group);
+        }
+        record = { signature, group: makeThreePad(pad) };
+        threeBattlefield.padModels.set(pad, record);
+        threeBattlefield.actorRoot.add(record.group);
+      }
+      const p = threeWorldPoint(pad.x, pad.y, 0);
+      record.group.position.set(p.x, 0, p.z);
+      if (record.group.userData.pulseRing) {
+        const pulse = 1 + Math.sin(threeBattlefield.elapsed * 4 + pad.x) * 0.045;
+        record.group.userData.pulseRing.scale.setScalar(pulse);
+        record.group.userData.pulseRing.rotation.z += 0.018;
+      }
+      if (record.group.userData.rotor) record.group.userData.rotor.rotation.y += 0.006;
+    }
+    removeMissingThreeModels(threeBattlefield.padModels, active);
+  }
+
+  function syncThreeEnemies() {
+    const active = new Set(state.enemies);
+    for (const enemy of state.enemies) {
+      let model = threeBattlefield.enemyModels.get(enemy);
+      if (!model) {
+        model = makeThreeEnemy(enemy);
+        threeBattlefield.enemyModels.set(enemy, model);
+        threeBattlefield.actorRoot.add(model);
+      }
+      updateThreeEnemy(enemy, model);
+    }
+    removeMissingThreeModels(threeBattlefield.enemyModels, active);
+  }
+
+  function makeThreeDrop(drop) {
+    const coin = cylinderThree(
+      0.14,
+      0.14,
+      0.065,
+      12,
+      threeStandard(0xffd35d, { emissive: 0x8f5d00, emissiveIntensity: 0.8 }),
+      [0, 0, 0],
+    );
+    coin.rotation.z = Math.PI / 2;
+    coin.scale.setScalar(drop.value === 2 ? 1.2 : 1);
+    return coin;
+  }
+
+  function makeThreePower(power) {
+    const T = threeBattlefield.T;
+    const metaPower = POWER_UPS[power.type] || POWER_UPS.freeze;
+    return meshThree(
+      new T.OctahedronGeometry(0.3, 0),
+      threeStandard(metaPower.color, {
+        emissive: metaPower.color,
+        emissiveIntensity: 1.25,
+      }),
+    );
+  }
+
+  function syncThreePickups() {
+    const activeDrops = new Set(state.drops);
+    for (const drop of state.drops) {
+      let model = threeBattlefield.dropModels.get(drop);
+      if (!model) {
+        model = makeThreeDrop(drop);
+        threeBattlefield.dropModels.set(drop, model);
+        threeBattlefield.actorRoot.add(model);
+      }
+      const p = threeWorldPoint(drop.x, drop.y, 0.32);
+      model.position.set(p.x, p.y + Math.abs(Math.sin(drop.age * 7)) * 0.08, p.z);
+      model.rotation.x = drop.spin + drop.age * 7;
+      model.rotation.y += 0.08;
+    }
+    removeMissingThreeModels(threeBattlefield.dropModels, activeDrops);
+
+    const activePowers = new Set(state.powerUps);
+    for (const power of state.powerUps) {
+      let model = threeBattlefield.powerModels.get(power);
+      if (!model) {
+        model = makeThreePower(power);
+        threeBattlefield.powerModels.set(power, model);
+        threeBattlefield.actorRoot.add(model);
+      }
+      const p = threeWorldPoint(power.x, power.y, 0.48);
+      model.position.set(p.x, p.y + Math.sin(power.pulse * 5) * 0.08, p.z);
+      model.rotation.x += 0.045;
+      model.rotation.y += 0.06;
+    }
+    removeMissingThreeModels(threeBattlefield.powerModels, activePowers);
+  }
+
+  function makeThreeParticle(particle) {
+    const T = threeBattlefield.T;
+    return meshThree(
+      new T.TetrahedronGeometry(Math.max(0.035, particle.radius * 0.012), 0),
+      threeStandard(particle.color, {
+        emissive: particle.color,
+        emissiveIntensity: 0.65,
+      }),
+      null,
+      false,
+    );
+  }
+
+  function syncThreeParticles() {
+    const active = new Set(state.particles);
+    for (const particle of state.particles) {
+      let model = threeBattlefield.particleModels.get(particle);
+      if (!model) {
+        model = makeThreeParticle(particle);
+        threeBattlefield.particleModels.set(particle, model);
+        threeBattlefield.actorRoot.add(model);
+      }
+      const p = threeWorldPoint(particle.x, particle.y, 0.35 + Math.max(0, particle.radius) * 0.01);
+      model.position.set(p.x, p.y, p.z);
+      const alpha = Math.max(0, particle.life / particle.maxLife);
+      model.scale.setScalar(0.35 + alpha);
+      model.rotation.x += 0.08;
+      model.rotation.y += 0.06;
+    }
+    removeMissingThreeModels(threeBattlefield.particleModels, active);
+  }
+
+  function makeThreeBeam(beam) {
+    const T = threeBattlefield.T;
+    const geometry = new T.BufferGeometry();
+    const material = new T.LineBasicMaterial({
+      color: beam.color,
+      transparent: true,
+      opacity: 1,
+      linewidth: Math.max(1, beam.width),
+    });
+    return new T.Line(geometry, material);
+  }
+
+  function syncThreeBeams() {
+    const T = threeBattlefield.T;
+    const active = new Set(state.beams);
+    for (const beam of state.beams) {
+      let model = threeBattlefield.beamModels.get(beam);
+      if (!model) {
+        model = makeThreeBeam(beam);
+        threeBattlefield.beamModels.set(beam, model);
+        threeBattlefield.actorRoot.add(model);
+      }
+      const a = threeWorldPoint(beam.x1, beam.y1, 0.95);
+      const b = threeWorldPoint(beam.x2, beam.y2, 0.9);
+      const mid = a.clone().lerp(b, 0.5);
+      mid.y += 0.18;
+      model.geometry.setFromPoints([a, mid, b]);
+      model.material.opacity = Math.max(0, beam.life / beam.maxLife);
+    }
+    removeMissingThreeModels(threeBattlefield.beamModels, active);
+  }
+
+  function updateThreeHeroAndBase() {
+    const heroModel = threeBattlefield.heroModel;
+    const hp = threeWorldPoint(hero.x, hero.y, 0);
+    heroModel.position.set(hp.x, 0.08 + Math.sin(threeBattlefield.elapsed * 4) * 0.025, hp.z);
+    const rangeSize = heroRangeValue() * threeBattlefield.worldScale;
+    heroModel.userData.range.scale.setScalar(rangeSize);
+    if (state.strikePulse > 0) {
+      const k = 1 - state.strikePulse / 0.5;
+      heroModel.userData.strike.visible = true;
+      heroModel.userData.strike.scale.setScalar(0.8 + k * 2.8);
+      heroModel.userData.strike.material.opacity = state.strikePulse / 0.5;
+    } else {
+      heroModel.userData.strike.visible = false;
+    }
+
+    const castle = threeBattlefield.baseModel;
+    const ratio = Math.max(0.001, state.baseHp / state.baseMax);
+    const fill = castle.userData.hpBar.userData.fill;
+    fill.scale.x = ratio;
+    fill.position.x = -0.96 * (1 - ratio);
+    fill.material.color.set(ratio > 0.35 ? 0x52e38b : 0xff4b4b);
+    castle.userData.hpBar.rotation.y = -threeBattlefield.camera.rotation.y;
+
+    const shock = threeBattlefield.shockRing;
+    if (state.shockPulse > 0) {
+      const k = 1 - state.shockPulse / 0.75;
+      const bp = threeWorldPoint(base.x, base.y, 0.12);
+      shock.position.set(bp.x, bp.y, bp.z);
+      shock.scale.setScalar(2 + k * 4.4);
+      shock.material.opacity = state.shockPulse / 0.75;
+      shock.visible = true;
+    } else {
+      shock.visible = false;
+    }
+
+    const target = threeBattlefield.targetMarker;
+    target.visible = Boolean(input.target && state.status === 'playing');
+    if (target.visible) {
+      const p = threeWorldPoint(input.target.x, input.target.y, 0.09);
+      target.position.set(p.x, p.y, p.z);
+      target.rotation.z += 0.035;
+    }
+    const place = threeBattlefield.placeMarker;
+    place.visible = Boolean(state.pendingPlace);
+    if (place.visible) {
+      const p = threeWorldPoint(state.pendingPlace.x, state.pendingPlace.y, 0.1);
+      place.position.set(p.x, p.y, p.z);
+      place.material.color.set(canPlaceAt(state.pendingPlace.x, state.pendingPlace.y) ? 0x60dcff : 0xff6b68);
+      place.rotation.z += 0.03;
+    }
+  }
+
+  function removeMissingThreeModels(map, active) {
+    for (const [key, record] of map) {
+      if (active.has(key)) continue;
+      const model = record?.group || record;
+      threeBattlefield.actorRoot.remove(model);
+      disposeThreeObject(model);
+      map.delete(key);
+    }
+  }
+
+  function disposeThreeObject(object) {
+    object?.traverse?.((child) => {
+      child.geometry?.dispose?.();
+      if (Array.isArray(child.material)) child.material.forEach((material) => material.dispose?.());
+      else child.material?.dispose?.();
+    });
+  }
+
+  function animateThreeScenery() {
+    if (threeBattlefield.clouds) {
+      for (const cloud of threeBattlefield.clouds.children) {
+        cloud.position.x += cloud.userData.cloudSpeed * 0.016;
+        if (cloud.position.x > 18) cloud.position.x = -18;
+      }
+    }
+  }
+
+  function renderThreeBattlefield() {
+    if (!threeBattlefield.ready || !state) return;
+    threeBattlefield.elapsed = state.runSeconds || performance.now() / 1000;
+    resizeThreeBattlefield();
+    syncThreeBiome();
+    syncThreePads();
+    syncThreeEnemies();
+    syncThreePickups();
+    syncThreeParticles();
+    syncThreeBeams();
+    updateThreeHeroAndBase();
+    animateThreeScenery();
+    threeBattlefield.renderer.render(threeBattlefield.scene, threeBattlefield.camera);
+  }
+
   state = makeState();
   setupEvents();
+  setViewMode(selectedViewMode, false);
   resetRun();
   resizeCanvas();
   updateCamera(0, true);
+  initThreeBattlefield();
   requestAnimationFrame(frame);
 })();
 </script>
