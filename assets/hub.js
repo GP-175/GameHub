@@ -51,6 +51,16 @@
 
     // Early Elementary (ages 5-7)
     {
+      id: 'name-detective',
+      title: 'Name Detective',
+      subject: 'Language',
+      icon: '🔎',
+      tagline: 'Discover common nouns and particular names',
+      ageGroups: ['early-elem'],
+      path: 'games/name-detective.html',
+      accent: '#173d4b',
+    },
+    {
       id: 'counting-adventure',
       title: 'Counting Adventure',
       subject: 'Math',

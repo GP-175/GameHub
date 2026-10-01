@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#173d4b">
+<title>Name Detective – GameHub</title>
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<style>
+* { box-sizing: border-box; }
+body { margin: 0; background: #f5f1e5; color: #173d4b; font: 1.25rem/1.5 system-ui, sans-serif; }
+header, main { max-width: 920px; margin: auto; padding: 20px; }
+header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; }
+h1 { font-size: clamp(1.7rem, 4vw, 2.4rem); margin: 0; }
+h2 { margin-top: 0; }
+.panel { padding: clamp(20px, 4vw, 36px); border: 2px solid #b5c8c8; border-radius: 24px; background: #fffef9; }
+button, .back { display: inline-flex; align-items: center; justify-content: center; min-height: 60px; padding: 12px 20px; border: 2px solid #173d4b; border-radius: 16px; background: #173d4b; color: white; font: inherit; font-weight: 700; cursor: pointer; text-decoration: none; touch-action: manipulation; }
+button.secondary, .back { background: #fffef9; color: #173d4b; }
+button:disabled { opacity: .6; cursor: default; }
+button:focus-visible, a:focus-visible { outline: 4px solid #ad5a00; outline-offset: 4px; }
+.row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 20px; }
+.choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 20px 0; }
+.choices button { min-height: 100px; flex-direction: column; }
+small { font-size: 1rem; font-weight: normal; }
+.word { display: block; text-align: center; font-size: clamp(2.5rem, 8vw, 4rem); font-weight: 800; margin: 12px 0; overflow-wrap: anywhere; }
+.feedback { padding: 16px; border-left: 6px solid #ad5a00; background: #fff2ce; }
+.note { font-size: 1rem; }
+#voice-status { margin-bottom: 0; }
+li { margin: 10px 0; }
+@media (max-width: 540px) { .choices { grid-template-columns: 1fr; } header, main { padding: 12px; } }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
+</style>
+<script src="name-detective-model.js" defer></script>
+<script src="name-detective-ui.js" defer></script>
+</head>
+<body>
+<header><a class="back" href="../index.html">← Game Hub</a><h1>🔎 Name Detective</h1></header>
+<main><section id="app" class="panel" aria-label="Name Detective activity"></section>
+<p class="note">Anonymous activity: answers stay in this tab only and disappear when you reload. No game telemetry, saved progress, or automatic learning-record integration. Browser/device speech services may process read-aloud text; no answers are included.</p></main>
+</body>
+</html>
