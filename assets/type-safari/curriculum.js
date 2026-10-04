@@ -1,0 +1,42 @@
+export const worlds=[{name:'Launch pad',icon:'🚀',subtitle:'Find your home on the keyboard',goal:0},{name:'River explorers',icon:'🌊',subtitle:'Reach for every letter',goal:0},{name:'Mountain climbers',icon:'⛰',subtitle:'Build words and sentences',goal:12},{name:'Sky adventurers',icon:'☁',subtitle:'Fly with accuracy and speed',goal:25}];
+const definitions=[
+['Find your home row','Rest your index fingers on the little bumps on F and J.','f j ff jj fj jf fff jjj fj fj','f j'],
+['Meet your left hand','A: pinky. S: ring finger. D: middle finger. F: index finger.','a s d f as df sad fad dad sad','a s d f'],
+['Meet your right hand','J: index finger. K: middle finger. L: ring finger. Semicolon: pinky.','j k l ; jk kl jkl; jj kk ll ;;','j k l ;'],
+['Home row hero','Your left index finger reaches G; your right index finger reaches H. Use your thumbs for spaces.','a lad asks a dad; a glass falls; ha ha','All home-row keys'],
+['Reach for the top','Reach up from your home row and come right back.','q w e r t y u i o p we tip to you','Top-row keys'],
+['Top row trek','Slow and steady! Keep your eyes on the screen.','we write quiet poetry you type it','Top-row words'],
+['Down to the river','Reach down gently. Keep your wrists relaxed.','z x c v b n m zip mix van cab','Bottom-row keys'],
+['All letters aboard','Use all your fingers. Take a breath between words.','a zebra and a fox nap by the river','Every letter'],
+['Word wanderer','Accuracy first. Smooth typing comes with practice.','the little tiger finds a sunny spot','Short words'],
+['Sentence safari','Hold Shift with one hand and type the letter with the other.','The tiger sees a bird. Can it fly?','Capitals & periods'],
+['Number trail','Reach for the number row, then return to your home row.','We saw 3 birds, 2 cats, and 5 frogs.','Numbers & commas'],
+['Mountain mission','Use the opposite pinky to hold Shift for capital letters.','Our team climbed 12 hills! What a big adventure.','Sentences & symbols'],
+['Smooth sailing','Find a steady rhythm. There is no need to rush.','A bright butterfly floats above the quiet river.','Steady rhythm'],
+['Punctuation pilot','Use Shift for ! and ?. You can look at the keyboard for help.','Look! The fox found 7 stars. "Can we join?" asked Mia.','Quotes & punctuation'],
+['Speed explorer','Aim for 30 words per minute with at least 95% accuracy.','The brave little explorers packed their bags and followed the winding path through the forest.','30 WPM challenge'],
+['Safari superstar','Aim for 40 words per minute and 97% accuracy. You can keep practicing until it feels easy.','Today, our curious team discovered 24 colorful butterflies! "What an amazing adventure," said Sam. We smiled, took a deep breath, and explored the next trail.','40 WPM challenge']];
+export const lessons=definitions.map((x,i)=>({id:i,title:x[0],tip:x[1],text:x[2],keys:x[3],world:Math.floor(i/4),accuracy:i>=14?(i===15?97:95):i>=8?92:90,wpm:i===15?40:i===14?30:worlds[Math.floor(i/4)].goal}));
+export function emptyProgress(){return {completed:[],history:[],keys:{},xp:0,mastery:{}};}
+export function weakKeys(p){return Object.entries(p.keys).filter(([k,v])=>k!==' '&&v.attempts>=3).map(([k,v])=>({key:k,accuracy:Math.round(100*v.correct/v.attempts),...v})).sort((a,b)=>a.accuracy-b.accuracy).slice(0,5);}
+export function unlocked(p){return Math.min(15,Array.from({length:16},(_,i)=>i).find(i=>!p.completed.includes(i))??15);}
+export function practiceText(p){const weakest=weakKeys(p).filter(k=>k.accuracy<95);const level=unlocked(p);const alphabet=lessons.slice(0,level+1).map(l=>l.text).join('');const pool=['sad','dad','fall','ask','lad','flask','jazz','fox','river','tiger','quick','yellow','little','brave','sunny','zebra','jump','van','mix','quiet','bird','packed','bright','explore','forest'];let words=pool.filter(w=>[...w].every(k=>alphabet.includes(k)));if(weakest.length){const focused=words.filter(w=>weakest.some(k=>w.includes(k.key)));if(focused.length)words=focused;}return words.length?Array.from({length:10},(_,i)=>words[i%words.length]).join(' '):'f j fj jf ff jj fj jf ff jj';}
+export function scoreSession(text,events,duration){let position=0,correct=0;const keys={};for(const k of events){const expected=text[position];if(!expected)throw Error('Too many keystrokes');keys[expected]??={attempts:0,correct:0};keys[expected].attempts++;if(k===expected){keys[expected].correct++;correct++;position++;}}if(position!==text.length)throw Error('Finish the whole lesson first');return {accuracy:Math.round(correct/events.length*100),wpm:Math.round(correct/5/(Math.max(1,duration)/60)),keys};}
+export const PRACTICE_ROUNDS=3;
+export const CHECK_ROUNDS=3;
+export function lessonMastery(p,id){const saved=p.mastery?.[id];return saved||{practice:0,checks:0,attempts:0,review:false,mastered:p.completed.includes(id)};}
+const sentenceVariants={
+9:['A little tiger naps. Can you see it?','The bird can fly. Can the fox jump?','A brave cat runs. Is the sun up?'],
+10:['We saw 4 frogs, 3 birds, and 6 cats.','I have 2 pens, 5 bags, and 8 hats.','We found 7 shells, 4 stones, and 9 leaves.'],
+11:['We climbed 14 hills! What a sunny day.','Our team found 23 stars! What a bright sky.','We packed 16 bags! What a great trip.'],
+12:['The little explorers followed a winding trail beside the quiet river.','A gentle breeze moved the bright leaves above the sunny forest path.','The curious tiger watched a colorful butterfly fly across the garden.'],
+13:['Look! We found 5 shells. "Can I keep one?" asked Sam.','Wow! There are 8 birds. "Where will they fly?" asked Mia.','Run! The 3 cats are here. "Can we play?" asked Leo.'],
+14:['A curious little explorer followed the winding river and discovered a bright garden full of colorful flowers.','The brave tiger and its friends walked slowly through the forest and watched the butterflies float above them.','After a sunny morning beside the river, our little team packed their bags and followed a new trail together.'],
+15:['Today, we found 32 bright butterflies! "Where will they go?" asked Mia. Our curious team watched them fly across the garden, then followed the quiet trail home.','Our team packed 18 small bags. "Are you ready?" asked Sam. We climbed the winding path, spotted 27 colorful birds, and smiled at the wonderful view!','What a bright day! "Can we explore?" asked Leo. We found 45 little shells by the river, watched the butterflies, and shared a story about our adventure.']};
+export function lessonRound(p,id){const l=lessons[id],m=lessonMastery(p,id);const phase=m.mastered?'replay':m.review?'refresher':m.practice<PRACTICE_ROUNDS?'practice':'check';const index=phase==='check'?m.checks:Math.min(2,m.practice);const seed=m.attempts+index;let text;
+if(sentenceVariants[id])text=sentenceVariants[id][seed%3];else{const parts=l.text.split(' ');const shift=(seed*3)%parts.length;let words=parts.slice(shift).concat(parts.slice(0,shift));if(seed%2)words=words.reverse();text=Array.from({length:Math.max(2,Math.ceil(85/l.text.length))},(_,i)=>i%2?words.slice().reverse().join(' '):words.join(' ')).join(' ');}
+if(phase==='refresher'){const allowed=new Set([...l.text]);const tricky=Object.entries(m.tricky||{}).filter(([k])=>k!==' '&&allowed.has(k)).slice(0,4).map(([k])=>k);if(tricky.length)text=tricky.map(k=>`${k} ${k}${k} ${k}${k}${k}`).join(' ')+' '+text;}
+return {...l,text,phase,round:index+1,accuracy:phase==='check'?l.accuracy:85,wpm:phase==='check'?l.wpm:0,roundKey:`${id}:${m.attempts}:${phase}:${m.practice}:${m.checks}`,mastery:m};}
+export function recordRound(p,id,round,score){p.mastery??={};const m={...lessonMastery(p,id)};m.attempts++;const tricky=Object.fromEntries(Object.entries(score.keys).filter(([k,v])=>k!==' '&&v.attempts>=3&&v.correct/v.attempts<.8));const passed=score.accuracy>=round.accuracy&&score.wpm>=round.wpm&&(round.phase!=='check'||Object.keys(tricky).length===0);let mastered=m.mastered;
+if(!m.mastered){if(round.phase==='practice'&&passed)m.practice=Math.min(PRACTICE_ROUNDS,m.practice+1);if(round.phase==='refresher'&&passed)m.review=false;if(round.phase==='check'){if(passed){m.checks++;if(m.checks===CHECK_ROUNDS){m.mastered=true;mastered=true;if(!p.completed.includes(id))p.completed.push(id);}}else{m.checks=0;m.review=true;m.tricky=Object.fromEntries(Object.entries(score.keys).filter(([k,v])=>k!==' '&&v.correct<v.attempts));}}}
+p.mastery[id]=m;return {passed,mastered,phase:round.phase,practice:m.practice,checks:m.checks,review:m.review};}

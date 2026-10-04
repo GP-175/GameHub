@@ -1,0 +1,106 @@
+/* Type Safari learning colors, adapted for GameHub; account CSS omitted. */
+button{color:var(--ink);background:#e9eef8}
+button.primary{background:#456ee8;color:#fff;border-color:#456ee8;box-shadow:0 3px 0 #294ba4}
+button.primary:hover{background:#3459c9;color:#fff}
+button.primary:disabled{background:#53698f;color:#fff;opacity:1;box-shadow:none;cursor:wait}
+.hand-link{color:#315dcc;background:transparent}
+.header-tools{gap:14px}
+.header-tools .theme-button{color:#674ed5;border-radius:8px;font-size:20px}
+.adventure .art{display:none}
+.adventure{background:radial-gradient(ellipse at 100% 30%,#b9c6ff 0,transparent 65%),#e8edff}
+.adventure:after{content:'✦';position:absolute;right:8%;top:12%;font-size:104px;color:#6c7ee1;transform:rotate(-15deg);pointer-events:none}
+.adventure-copy{max-width:75%}
+.adventure h2{color:#293f80}
+.adventure p{color:#556887}
+.practice-card{background:#edf1fc}
+.brandmark{background:#456ee8}
+.nav.active{background:#e8edff;color:#315dcc}
+.nav:hover{background:#eef2fc}
+input{background:#fff;color:#21334d}
+body[data-theme="dark"]{color-scheme:dark;--green:#8faaff;--ink:#edf1ff;--muted:#aab6d0;--line:#303b57;--yellow:#f7c66a;--bg:#101624;background:#101624;color:#edf1ff}
+body[data-theme="dark"] :is(.sidebar,header,.daily-goal,.lesson-card,.tip-card,.play-card,.metric,.panel,.badge,.hand-guide){background:#1a2235;border-color:#303b57;color:#edf1ff}
+body[data-theme="dark"] :is(.intro p,.adventure p,.goal-copy p,.lesson-card p,.tip-card p,.practice-card p,.play-card p,.hand-guide p,.hand-steps,.shift-note,.thumb-note,.breadcrumb,.breadcrumb b,.journey-label,.profile small,footer,.input-label,.section-heading small,.lesson-modal p,.card-heading small,.ring small,.goal-note,.lesson-bottom,.lesson-number,.lesson-card .status,.world-tab,.nav,.key-chip small,.history-row,.fullscreen-status){color:#b8c4df}
+body[data-theme="dark"] :is(h1,h2,h3,h4,.brand,.goal-copy b,.ring b,.profile b,.lesson-card h3){color:#edf1ff}
+body[data-theme="dark"] :is(.daily,.pill,.practice-card,.lesson-icon,.tip-icon,.lesson-hands,.thumb-note,.finger-cue,.round-progress span,.key-chip){background:#25304a;color:#d8e3ff;border-color:#39476a}
+body[data-theme="dark"] .adventure{background:radial-gradient(ellipse at 100% 0,#3b3b78 0,transparent 65%),#222d49;border-color:#3d4a71}
+body[data-theme="dark"] .adventure:after{color:#adb1ff;text-shadow:0 0 50px #887eea}
+body[data-theme="dark"] .eyebrow{color:#b6c6ff}
+body[data-theme="dark"] .nav.active,body[data-theme="dark"] .world-tab.active{background:#344575;color:#edf1ff}
+body[data-theme="dark"] .nav:hover{background:#2b3756;color:#fff}
+body[data-theme="dark"] .lesson-card.current{background:#242f4a;border-color:#809eff;box-shadow:0 3px 0 #111827}
+body[data-theme="dark"] .lesson-card:disabled{background:#151d2e;border-color:#303b57;color:#a9b4cd;opacity:1}
+body[data-theme="dark"] .lesson-card.current .lesson-icon{background:#524572;color:#fff}
+body[data-theme="dark"] .ring{background:conic-gradient(#8faaff var(--percent),#303b57 0)}
+body[data-theme="dark"] .ring-center{background:#1a2235}
+body[data-theme="dark"] :is(button,.header-tools button,.practice-card button){background:#303e5d;color:#edf1ff!important;border-color:#50617f!important}
+body[data-theme="dark"] button:hover{background:#3c507a;color:#fff}
+body[data-theme="dark"] :is(button.primary){background:#4566cb;color:#fff!important;border-color:#4566cb!important;box-shadow:0 3px 0 #334ca0}
+body[data-theme="dark"] :is(button.primary:hover){background:#5071d5;color:#fff}
+body[data-theme="dark"] .hand-link{background:transparent;color:#adc1ff!important}
+body[data-theme="dark"] :is(input,#typing-input){background:#111a2c;color:#f1f4ff;border-color:#52617e}
+body[data-theme="dark"] input::placeholder{color:#98a6c0}
+body[data-theme="dark"] .lesson-modal{background:#182135;color:#edf1ff}
+body[data-theme="dark"] .typing-text{background:#10192b;border-color:#394a6d;color:#b9c5df}
+body[data-theme="dark"] .typing-text .done{color:#c2e4ff;background:#213e5b}
+body[data-theme="dark"] .typing-text .next{color:#fff0bc;background:#534629;border-bottom-color:#ffd676}
+body[data-theme="dark"] .keyboard .key{background:var(--finger-color,#d6e1f5);color:#17263e;border-color:#7c8ba4}
+body[data-theme="dark"] .keyboard .key.home{background:var(--finger-color,#d6e1f5);color:#17263e}
+body[data-theme="dark"] .keyboard .key.highlight,body[data-theme="dark"] .keyboard .key.home.highlight{background:var(--finger-color,#d6e1f5);color:#17263e;border-color:#426dde;outline-color:#a7c4ff}
+body[data-theme="dark"] .live-stats b,body[data-theme="dark"] .round-progress b{color:#b6c7ff}
+body[data-theme="dark"] .focus-mode,body[data-theme="dark"].focus-mode .modal-backdrop{background:#101624}
+body[data-theme="dark"] .error{color:#ffbcae}
+body[data-theme="dark"] .alert{background:#2d3850;color:#e1e8ff}
+@media(max-width:800px){.header-tools{gap:7px}
+.adventure-copy{max-width:80%}
+.adventure:after{font-size:72px;right:5%}
+}
+.card-heading,.ring b,.play-card h3{font-family:Nunito,ui-rounded,sans-serif}
+body[data-theme="dark"] .daily p{color:#b8c4df}
+body[data-theme="light"]{color-scheme:light;--green:#315dcc;--ink:#213450;--muted:#61728e;--line:#dce4f1;--bg:#f6f8fd;background:#f6f8fd;color:#213450}
+body[data-theme="light"] :is(.sidebar,header,.daily-goal,.lesson-card,.tip-card,.play-card,.metric,.panel,.badge,.hand-guide){background:#fff;border-color:#dce4f1;color:#213450}
+body[data-theme="light"] :is(.daily,.pill,.practice-card,.lesson-icon,.tip-icon,.lesson-hands,.thumb-note,.finger-cue,.round-progress span,.key-chip){background:#edf2fc;color:#294a8d;border-color:#d7e2f7}
+body[data-theme="light"] :is(.intro p,.adventure p,.goal-copy p,.lesson-card p,.tip-card p,.practice-card p,.play-card p,.hand-guide p,.hand-steps,.shift-note,.breadcrumb,.breadcrumb b,.journey-label,.profile small,footer,.input-label,.section-heading small,.lesson-modal p,.card-heading small,.ring small,.goal-note,.lesson-bottom,.lesson-number,.lesson-card .status,.world-tab,.nav,.key-chip small,.history-row,.fullscreen-status,.daily p,.finger-home span){color:#596d8e}
+body[data-theme="light"] :is(h1,h2,h3,h4,.brand,.goal-copy b,.ring b,.profile b,.lesson-card h3){color:#213450}
+body[data-theme="light"] .eyebrow,body[data-theme="light"] .xp,body[data-theme="light"] .streak{color:#315dcc}
+body[data-theme="light"] .nav.active,body[data-theme="light"] .world-tab.active{background:#e6edfc;color:#294d9c}
+body[data-theme="light"] .nav:hover{background:#edf2fd;color:#294d9c}
+body[data-theme="light"] .lesson-card.current{background:#f7f9ff;border-color:#819dde;box-shadow:0 3px 0 #e3eafb}
+body[data-theme="light"] .lesson-card:disabled{background:#edf1f8;border-color:#dce4f1;color:#6b7b95}
+body[data-theme="light"] .lesson-card.current .lesson-icon,body[data-theme="light"] .avatar{background:#dbe6ff;color:#315dcc}
+body[data-theme="light"] .ring{background:conic-gradient(#6487df var(--percent),#e8eef9 0)}
+body[data-theme="light"] .ring-center{background:#fff}
+body[data-theme="light"] .lesson-modal{background:#f9fbff;color:#213450}
+body[data-theme="light"] :is(input,#typing-input){background:#fff;color:#213450;border-color:#aebfde}
+body[data-theme="light"] .typing-text{background:#fff;border-color:#dce4f1;color:#596d8e}
+body[data-theme="light"] .typing-text .done{background:#e6efff;color:#254a9b}
+body[data-theme="light"] .typing-text .next{background:#dce8ff;color:#163a87;border-bottom-color:#456ee8}
+body[data-theme="light"] .alert{background:#e8effd;color:#294a8d}
+body[data-theme="light"].focus-mode .modal-backdrop{background:#edf2fb}
+body[data-theme="light"] .sun{color:#456ee8}
+.keyboard .key,.keyboard .key.highlight{isolation:auto;z-index:auto}
+.key-label{position:relative;z-index:3;pointer-events:none;font-weight:700;color:inherit}
+.keyboard .key.highlight{background:var(--finger-color,#d6e1f5);color:#17263e;outline:3px solid #315dcc;border-color:#426dde}
+.finger-home kbd{color:#17263e}
+body[data-theme="dark"] .finger-home span{color:#c4d1eb}
+.active-finger .finger-outline{stroke:#315dcc}
+body[data-theme="dark"] .active-finger .finger-outline{stroke:#a7c4ff}
+body[data-theme="dark"] .hand-name{fill:#c4d1eb}
+body[data-theme="light"] .hand-name{fill:#36558b}
+body[data-theme="light"] .keyboard .key{color:#17263e}
+body[data-theme="light"] :is(.header-tools button,.practice-card button,.lesson-top button,.live-stats b,.round-progress b){color:#315dcc}
+.key-bump{z-index:3}
+.modal-backdrop{background:#122343aa}
+body[data-theme="light"] .lesson-top .fullscreen-button{background:#e6edfc;color:#315dcc}
+body[data-theme="light"] :is(.lesson-hands summary,.hand-assist-controls,.live-stats,.lesson-top button,.ring span){color:#36558b}
+body[data-theme="dark"] :is(.lesson-hands summary,.hand-assist-controls,.live-stats){color:#c4d1eb}
+body[data-theme="light"] .hand-assist-controls span{color:#596d8e}
+body[data-theme="dark"] .hand-assist-controls span{color:#b8c4df}
+input[type="checkbox"]{accent-color:#456ee8}
+body[data-theme="light"] .keyboard .key{background:var(--finger-color,#e6edfc);border-color:#b1bdd4}
+button:focus-visible,a:focus-visible,input:focus-visible,summary:focus-visible{outline-color:#6387ed}
+body[data-theme="dark"] .typing-text .next{background:#314777;color:#edf1ff;border-bottom-color:#9ebaff}
+body[data-theme="light"] .badge b{color:#315dcc!important}
+body[data-theme="dark"] .badge b{color:#adc1ff!important}
+.finger-target{stroke:#315dcc}
+body[data-theme="dark"] .finger-target{stroke:#a7c4ff}
+.finger-target.miss{stroke:#c34558}

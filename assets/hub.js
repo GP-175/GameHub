@@ -10,6 +10,7 @@
   const DEFAULT_PIN = '1234';
   const REMOTE_SYNC_META_KEY = 'gamehub.remoteSyncMeta';
   let syncTimer = null;
+  let syncPushPromise = null;
   let initPromise = null;
   let refreshTimer = null;
   const syncListeners = new Set();
@@ -47,6 +48,17 @@
       ageGroups: ['toddler'],
       path: 'games/animal-friends.html',
       accent: '#ffd166',
+    },
+
+    {
+      id: 'type-safari',
+      title: 'Type Safari',
+      subject: 'Typing',
+      icon: '⌨️',
+      tagline: 'Learn touch typing · keyboard recommended',
+      ageGroups: ['early-elem', 'adult'],
+      path: 'games/type-safari.html',
+      accent: '#6c5ce7',
     },
 
     // Early Elementary (ages 5-7)
@@ -247,11 +259,16 @@
   }
 
   function save(state) {
+    const previousSync = state._sync;
+    state._sync = { ...previousSync, localPending: uid() + Date.now() };
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       queueRemoteSync(state);
+      return true;
     } catch (e) {
+      state._sync = previousSync;
       console.error('GameHub: failed to save storage.', e);
+      return false;
     }
   }
 
@@ -270,8 +287,20 @@
     return `${window.location.origin}${getApiBase() ? ` via ${getApiBase()}` : ''}`;
   }
 
-  async function syncRemoteState(snapshot) {
+  function syncRemoteState(snapshot) {
+    const waiting = syncPushPromise;
+    const task = (waiting || Promise.resolve()).catch(() => {}).then(() => performRemoteSync(waiting ? state : snapshot));
+    syncPushPromise = task;
+    task.finally(() => { if (syncPushPromise === task) syncPushPromise = null; }).catch(() => {});
+    return task;
+  }
+
+  async function performRemoteSync(snapshot) {
     if (!window.fetch) return { ok: false, reason: 'no-fetch' };
+    const pending = snapshot?._sync?.localPending;
+    // Freeze the request. Mutations during fetch belong to the next push.
+    snapshot = JSON.parse(JSON.stringify(snapshot));
+    if (snapshot._sync) delete snapshot._sync.localPending;
     const expectedRevision = snapshot?._sync?.revision || 0;
     const res = await fetch(`${getApiBase()}/api/state`, {
       method: 'POST',
@@ -281,9 +310,13 @@
     const ok = !!res.ok;
     if (ok) {
       const data = await res.json();
-      snapshot._sync = { revision: data.revision || expectedRevision, updatedAt: data.updatedAt || new Date().toISOString() };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
-      setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: true, lastConflict: null, revision: snapshot._sync.revision, updatedAt: snapshot._sync.updatedAt });
+      const sync = { revision: data.revision || expectedRevision, updatedAt: data.updatedAt || new Date().toISOString() };
+      const newerPending = state._sync?.localPending;
+      // A late acknowledgement must never replace newer local progress.
+      state._sync = newerPending && newerPending !== pending ? { ...sync, localPending: newerPending } : sync;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      if (state._sync.localPending) queueRemoteSync(state);
+      setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: true, lastConflict: null, revision: sync.revision, updatedAt: sync.updatedAt });
     } else if (res.status === 409) {
       const conflict = await res.json().catch(() => ({}));
       setRemoteSyncMeta({ lastPushAt: new Date().toISOString(), lastPushOk: false, lastConflict: true, conflictRevision: conflict.currentRevision || null, conflictUpdatedAt: conflict.updatedAt || null });
@@ -334,13 +367,34 @@
     } catch (_) {}
   }
 
-  function setRemoteUser() {
-    initPromise = loadRemoteState().then((remote) => {
-      if (remote && typeof remote === 'object') {
-        state = Object.assign(defaultState(), remote);
+  // Protect offline/unflushed writes when a lesson refreshes or returns to Hub.
+  // A divergent remote revision is reported, never silently used to erase them.
+  function applyRemoteState(remote) {
+    if (!remote || typeof remote !== 'object') {
+      if (state._sync?.localPending) queueRemoteSync(state);
+      return;
+    }
+    if (state._sync?.localPending) {
+      const content = value => { const copy = { ...value }; delete copy._sync; return JSON.stringify(copy); };
+      if (content(state) === content(remote)) {
+        state._sync = remote._sync;
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } else if ((state._sync.revision || 0) === (remote._sync?.revision || 0)) {
+        queueRemoteSync(state);
+      } else {
+        setRemoteSyncMeta({ lastConflict: true, conflictRevision: remote._sync?.revision, conflictUpdatedAt: remote._sync?.updatedAt });
         emitSyncStatus();
       }
+      return;
+    }
+    state = Object.assign(defaultState(), remote);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  }
+
+  function setRemoteUser() {
+    initPromise = loadRemoteState().then((remote) => {
+      applyRemoteState(remote);
+      emitSyncStatus();
       startBackgroundRefresh();
       return state;
     }).catch(() => state);
@@ -362,19 +416,13 @@
     clearInterval(refreshTimer);
     refreshTimer = setInterval(async () => {
       const remote = await loadRemoteState();
-      if (remote && typeof remote === 'object') {
-        state = Object.assign(defaultState(), remote);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-      }
+      applyRemoteState(remote);
     }, 15000);
   }
 
   let state = load();
   initPromise = loadRemoteState().then((remote) => {
-    if (remote && typeof remote === 'object') {
-      state = Object.assign(defaultState(), remote);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    }
+    applyRemoteState(remote);
     startBackgroundRefresh();
     return state;
   }).catch(() => state);
@@ -517,12 +565,16 @@
   }
 
   function setGameConfig(profileId, gameId, config) {
-    if (!profileId) return;
+    if (!profileId) return false;
     ensureProfileBuckets(profileId);
+    const previous = state.gameConfig[profileId][gameId];
     state.gameConfig[profileId][gameId] = config && typeof config === 'object'
       ? JSON.parse(JSON.stringify(config))
       : {};
-    save(state);
+    if (save(state)) return true;
+    if (previous === undefined) delete state.gameConfig[profileId][gameId];
+    else state.gameConfig[profileId][gameId] = previous;
+    return false;
   }
 
   // ---------- Progress API ----------
@@ -826,17 +878,31 @@
     };
   }
 
-  function recordPlay(gameId, score, seconds) {
+  // Optional attempt metadata commits detailed game config and the dashboard
+  // counter in ONE storage write. Retries cannot double-count a completed round.
+  // Existing three-argument callers keep their original behavior.
+  function recordPlay(gameId, score, seconds, attempt = null) {
     const profileId = state.activeProfileId;
-    if (!profileId) return;
+    if (!profileId) return false;
+    if (attempt && (attempt.profileId !== profileId || !getActiveProfile() || !isGameEnabled(profileId, gameId))) return false;
     ensureProfileBuckets(profileId);
-    const cur = state.progress[profileId][gameId] || { plays: 0, bestScore: 0, totalSeconds: 0, lastPlayed: null };
+    const previous = state.progress[profileId][gameId];
+    const previousConfig = state.gameConfig[profileId][gameId];
+    const cur = JSON.parse(JSON.stringify(previous || { plays: 0, bestScore: 0, totalSeconds: 0, lastPlayed: null }));
+    if (attempt?.id && cur.recentAttemptIds?.includes(attempt.id)) return true;
     cur.plays = (cur.plays || 0) + 1;
     cur.bestScore = Math.max(cur.bestScore || 0, Math.round(score));
     cur.totalSeconds = (cur.totalSeconds || 0) + Math.round(seconds || 0);
     cur.lastPlayed = new Date().toISOString();
+    if (attempt?.id) cur.recentAttemptIds = [...(cur.recentAttemptIds || []), attempt.id].slice(-500);
+    if (attempt?.config) state.gameConfig[profileId][gameId] = JSON.parse(JSON.stringify(attempt.config));
     state.progress[profileId][gameId] = cur;
-    save(state);
+    if (save(state)) return true;
+    if (previous === undefined) delete state.progress[profileId][gameId];
+    else state.progress[profileId][gameId] = previous;
+    if (previousConfig === undefined) delete state.gameConfig[profileId][gameId];
+    else state.gameConfig[profileId][gameId] = previousConfig;
+    return false;
   }
 
   function resetProgress(profileId) {

@@ -8,6 +8,7 @@
     "build": "node -e \"console.log('GameHub static assets require no build step')\"",
     "start": "node server/server.js",
     "test": "node --test",
+    "test:type-safari:browser": "node scripts/smoke-type-safari.cjs",
     "load:gp-hoot": "node scripts/load-gp-hoot.js"
   },
   "dependencies": {

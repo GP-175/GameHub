@@ -4,7 +4,7 @@
  * the kid has visited at least once. Bump CACHE_VERSION when
  * you change any asset so browsers pick up the new copy.
  * ========================================================== */
-const CACHE_VERSION = 'gamehub-v34';
+const CACHE_VERSION = 'gamehub-v36';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -13,6 +13,15 @@ const CORE_ASSETS = [
   './assets/styles.css',
   './assets/hub.js',
   './assets/icon.svg',
+  './games/type-safari.html',
+  './assets/type-safari/app.js',
+  './assets/type-safari/hub-adapter.js',
+  './assets/type-safari/curriculum.js',
+  './assets/type-safari/hands.js',
+  './assets/type-safari/style.css',
+  './assets/type-safari/theme.css',
+  './assets/type-safari/hub.css',
+  './assets/type-safari/hand-position.png',
   './games/color-match.html',
   './games/shape-sorter.html',
   './games/animal-friends.html',
