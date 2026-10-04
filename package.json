@@ -6,6 +6,7 @@
   "main": "server/server.js",
   "scripts": {
     "build": "node -e \"console.log('GameHub static assets require no build step')\"",
+    "build:vercel": "node scripts/build-vercel.mjs",
     "start": "node server/server.js",
     "test": "node --test",
     "test:type-safari:browser": "node scripts/smoke-type-safari.cjs",
