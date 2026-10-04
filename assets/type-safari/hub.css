@@ -1,0 +1,45 @@
+/* GameHub shell and palette; Safari's learning trail stays inside the game. */
+:root { --hub-accent:#6c5ce7; --hub-soft:#ece8ff; }
+body,button,input,.intro h1,.adventure h2,.lesson-card h3,.section-heading h2,.lesson-modal h2,.metric b,.panel h3,.play-card h3,.badge h3,.ring b,.card-heading { font-family:'Nunito','Segoe UI',system-ui,-apple-system,sans-serif; }
+body[data-theme="light"] { --bg:#faf7ff; --ink:#1f2740; --muted:#5b6584; --line:#e6e1f3; --green:#6c5ce7; background:radial-gradient(circle at 90% 0%,#e0f7ff,transparent 40%),var(--bg); color:var(--ink); }
+body[data-theme="dark"] { --bg:#0d1117; --ink:#e6edf3; --muted:#9ba7b6; --line:#30363d; --green:#a78bfa; background:var(--bg); color:var(--ink); }
+.sidebar { width:220px; padding:28px 20px; }
+.workspace { margin-left:220px; }
+.brand { font-size:25px; letter-spacing:-.5px; }
+.brandmark { width:40px; height:40px; line-height:40px; font-size:24px; background:linear-gradient(135deg,#ff7eb6,#6c5ce7); border-radius:12px; }
+.hub-return { display:block; font-weight:700; font-size:14px; margin:22px 12px 0; color:var(--green); }
+.journey-label { margin-top:30px; }
+header { padding:18px 32px; min-height:80px; height:auto; gap:16px; flex-wrap:wrap; }
+.header-tools { flex-wrap:wrap; gap:12px; }
+.hub-profile { font-weight:800; color:var(--ink); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hub-parent { color:var(--green); font-weight:700; }
+.hub-notice { padding:14px 32px; border-bottom:1px solid var(--line); color:var(--muted); font-size:13px; line-height:1.6; }
+main { padding:30px 32px; }
+button.primary,body[data-theme="light"] button.primary,body[data-theme="dark"] button.primary,a.primary { background:#6c5ce7; color:#fff!important; border-color:#6c5ce7!important; border-radius:999px; box-shadow:0 3px 0 #5141c5; display:inline-block; }
+button.primary:hover,body[data-theme="dark"] button.primary:hover { background:#5946d4; }
+body[data-theme="light"] .nav.active,body[data-theme="light"] .world-tab.active { background:#ece8ff; color:#5946d4; }
+body[data-theme="dark"] .nav.active,body[data-theme="dark"] .world-tab.active { background:#30254c; color:#e9ddff; }
+body[data-theme="light"] .lesson-card.current { border-color:#6c5ce7; background:#f8f6ff; box-shadow:0 3px 0 #ece8ff; }
+body[data-theme="dark"] .lesson-card.current { border-color:#a78bfa; background:#28203a; }
+body[data-theme="dark"] :is(.sidebar,header,.daily-goal,.lesson-card,.tip-card,.play-card,.metric,.panel,.badge,.hand-guide) { background:#161b22; color:#e6edf3; border-color:#30363d; }
+body[data-theme="dark"] .lesson-modal { background:#161b22; }
+body[data-theme="light"] .adventure { background:radial-gradient(ellipse at 100% 0%,#d8ceff,transparent 65%),#eee9ff; border-color:#e0d8fa; }
+body[data-theme="dark"] .adventure { background:radial-gradient(ellipse at 100% 0%,#433467,transparent 65%),#231b35; border-color:#4a3b68; }
+.adventure:after { color:#9b88de; }
+.lesson-card,.daily-goal,.panel,.play-card,.metric,.adventure,.badge { border-radius:18px; }
+.profile .avatar { background:#ece8ff; color:#6c5ce7; font-size:20px; }
+footer { gap:16px; flex-wrap:wrap; }
+footer a { color:var(--green); font-weight:700; }
+button:focus-visible,a:focus-visible,input:focus-visible { outline-color:#a78bfa; }
+@media(max-width:800px) {
+ .sidebar { position:static; width:auto; padding:18px 20px; }
+ .workspace { margin-left:0; }
+ .hub-return { margin:12px 0 0; }
+ header { padding:14px 20px; }
+ .header-tools { justify-content:flex-start; }
+ .hub-notice { padding:12px 20px; }
+ main { padding:24px 20px; }
+ .intro { flex-wrap:wrap; }
+ .lesson-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }
